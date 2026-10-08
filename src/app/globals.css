@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+/*
+ * Clyntique design tokens.
+ * The app is light-only for the MVP; every color the UI uses is defined here
+ * so the palette can be tuned in one place.
+ */
+@theme {
+  /* Neutrals */
+  --color-canvas: #f7f7f5;
+  --color-surface: #ffffff;
+  --color-subtle: #f2f1ee;
+  --color-line: #e7e5e0;
+  --color-line-strong: #d6d3cc;
+  --color-ink: #18181b;
+  --color-ink-soft: #3f3f46;
+  --color-muted: #71717a;
+  --color-faint: #a1a1aa;
+
+  /* Brand: a deep, slightly warm violet */
+  --color-brand-50: #f4f2fe;
+  --color-brand-100: #e9e5fc;
+  --color-brand-200: #d4ccf8;
+  --color-brand-500: #6a52e0;
+  --color-brand-600: #5a41d1;
+  --color-brand-700: #4a33b3;
+  --color-brand-900: #2a1d66;
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Elevation: kept very soft on purpose */
+  --shadow-card: 0 1px 2px rgb(24 24 27 / 0.04);
+  --shadow-pop: 0 4px 16px rgb(24 24 27 / 0.06), 0 1px 3px rgb(24 24 27 / 0.06);
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  ::selection {
+    background: var(--color-brand-100);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+/* Typography scale: application sizes, not marketing sizes. */
+@utility text-page-title {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+@utility text-section-title {
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+@utility text-card-title {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 550;
+}
+
+@utility text-body {
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
+@utility text-meta {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--color-muted);
+}
+
+@utility text-label {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 550;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
