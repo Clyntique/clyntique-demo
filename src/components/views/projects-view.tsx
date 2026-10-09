@@ -1,27 +1,25 @@
 import Link from "next/link";
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
-import { getDemoSnapshot } from "@/lib/demo-data";
+import { getProjects } from "@/lib/data/workspace";
+import { requestTime } from "@/lib/format";
 import { basePathFor } from "@/lib/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { FolderIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/states";
-import { DemoDataNotice } from "@/components/workspace/demo-notice";
 import { ProjectList } from "@/components/workspace/project-list";
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export async function ProjectsView({ role, searchParams }: { role: Role; searchParams: SearchParams }) {
-  await requireRole(role);
+  const user = await requireRole(role);
   const { q } = await searchParams;
   const query = typeof q === "string" ? q.trim() : "";
 
-  const { now, projects: all } = getDemoSnapshot(role);
-  const projects = query
-    ? all.filter((p) => `${p.clientName} ${p.name}`.toLowerCase().includes(query.toLowerCase()))
-    : all;
+  const projects = await getProjects(user, query);
+  const now = requestTime();
 
   return (
     <>
@@ -34,10 +32,9 @@ export async function ProjectsView({ role, searchParams }: { role: Role; searchP
         }
         action={
           role === "TEAM" && (
-            // Project creation arrives in a later phase.
-            <Button disabled title="Available in a later phase">
+            <Link href="/admin/projects/new" className={buttonClasses()}>
               <PlusIcon /> New project
-            </Button>
+            </Link>
           )
         }
       />
@@ -58,7 +55,7 @@ export async function ProjectsView({ role, searchParams }: { role: Role; searchP
       </form>
 
       {projects.length ? (
-        <ProjectList projects={projects} now={now} />
+        <ProjectList projects={projects} role={role} now={now} />
       ) : query ? (
         <EmptyState
           icon={<SearchIcon />}
@@ -76,12 +73,18 @@ export async function ProjectsView({ role, searchParams }: { role: Role; searchP
           title="No projects yet."
           description={
             role === "TEAM"
-              ? "Projects you create will appear here."
+              ? "Create a project for a client to start sharing creatives."
               : "Projects shared with you will appear here."
+          }
+          action={
+            role === "TEAM" && (
+              <Link href="/admin/projects/new" className={buttonClasses({ size: "sm" })}>
+                <PlusIcon /> New project
+              </Link>
+            )
           }
         />
       )}
-      <DemoDataNotice />
     </>
   );
 }

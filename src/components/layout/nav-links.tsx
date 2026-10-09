@@ -15,15 +15,22 @@ const ITEMS = [
   { label: "Activity", segment: "/activity", icon: ActivityIcon },
 ];
 
-export function NavLinks({ role, layout }: { role: Role; layout: "sidebar" | "tabs" }) {
-  const pathname = usePathname();
+type NavProps = { role: Role; layout: "sidebar" | "tabs" };
+
+export function NavLinks(props: NavProps) {
+  return <NavList {...props} pathname={usePathname()} />;
+}
+
+// Server-renderable nav without an active item. Used as the Suspense fallback
+// on dynamic routes, where the pathname is only known at request time.
+export function NavList({ role, layout, pathname }: NavProps & { pathname: string | null }) {
   const base = basePathFor(role);
 
   return (
     <ul className={layout === "sidebar" ? "flex flex-col gap-0.5" : "flex gap-1"}>
       {ITEMS.map(({ label, segment, icon: Icon }) => {
         const href = base + segment;
-        const active = segment ? pathname.startsWith(href) : pathname === href;
+        const active = pathname !== null && (segment ? pathname.startsWith(href) : pathname === href);
         return (
           <li key={label}>
             <Link

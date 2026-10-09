@@ -30,9 +30,16 @@ Fictional accounts created by `npm run db:seed`. These passwords are for local d
 - `/admin`, `/admin/projects`, `/admin/creatives`, `/admin/activity`: TEAM shell. Other roles are redirected to `/dashboard`.
 - `/dashboard`, `/dashboard/projects`, `/dashboard/creatives`, `/dashboard/activity`: CLIENT shell. TEAM users are redirected to `/admin`.
 
-Dashboard, project, creative, and activity pages currently show static sample data from
-`src/lib/demo-data.ts` (labelled as sample data in the UI). Nothing there is read from or
-written to the database yet.
+- `/admin/projects/new`, `/admin/projects/[projectId]`, `/admin/projects/[projectId]/creatives/new`: TEAM project detail and creation.
+- `/dashboard/projects/[projectId]`: CLIENT project detail (own projects only; anything else returns 404).
+
+All workspace data comes from PostgreSQL through `src/lib/data/workspace.ts`, which scopes every
+query to the signed-in user: TEAM sees everything, CLIENT sees only their own projects and never
+DRAFT creatives. Mutations live in `src/app/admin/projects/actions.ts` and re-check the TEAM role
+on the server.
+
+If `npm run db:push` fails with P1001 against Render while `npm run db:check` works, run that one
+command with `sslmode=require` in place of `sslmode=verify-full` in the connection URL.
 
 Auth is a signed (HS256 JWT), httpOnly session cookie. `src/proxy.ts` does early redirects;
 the authoritative checks are in `src/lib/auth/dal.ts` (`requireUser`, `requireRole`), which

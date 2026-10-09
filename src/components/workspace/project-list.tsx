@@ -1,5 +1,8 @@
 import type { Role } from "@/generated/prisma/enums";
-import type { ProjectSummary } from "@/lib/demo-data";
+import Link from "next/link";
+import type { ProjectSummary } from "@/lib/data/workspace";
+import { basePathFor } from "@/lib/navigation";
+import { Badge } from "@/components/ui/badge";
 import { formatRelative, pluralize } from "@/lib/format";
 import { ReviewProgress } from "@/components/ui/review-progress";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -33,31 +36,33 @@ export function ProjectTable({
         {projects.map((p) => {
           const needsReview = p.statusCounts.IN_REVIEW ?? 0;
           return (
-            <li
-              key={p.id}
-              className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-4 transition-colors hover:bg-canvas/60 lg:items-center lg:gap-6 ${cols}`}
-            >
-              <div className="min-w-0 max-lg:col-span-2">
-                <p className="text-card-title truncate">{p.name}</p>
-                <p className="text-meta mt-0.5">
-                  {team && <span className="lg:hidden">{p.clientName} · </span>}
-                  {pluralize(p.creativeCount, "creative")}
-                </p>
-              </div>
-              {team && <p className="text-body truncate text-ink-soft max-lg:hidden">{p.clientName}</p>}
-              <ReviewProgress counts={p.statusCounts} className="max-lg:col-span-2" />
-              <div>
-                {team ? (
-                  <StatusBadge status={projectStatus(p.statusCounts)} />
-                ) : needsReview ? (
-                  <span className="inline-flex h-6 items-center rounded-full bg-brand-50 px-2.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 ring-inset">
-                    {pluralize(needsReview, "creative")}
-                  </span>
-                ) : (
-                  <span className="text-meta">Nothing waiting</span>
-                )}
-              </div>
-              <p className="text-meta lg:text-right">{formatRelative(p.lastActivityAt, now)}</p>
+            <li key={p.id}>
+              <Link
+                href={`${basePathFor(role)}/projects/${p.id}`}
+                className={`grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5 py-4 transition-colors hover:bg-canvas/60 lg:items-center lg:gap-6 ${cols}`}
+              >
+                <div className="min-w-0 max-lg:col-span-2">
+                  <p className="text-card-title truncate">{p.name}</p>
+                  <p className="text-meta mt-0.5">
+                    {team && <span className="lg:hidden">{p.clientName} · </span>}
+                    {pluralize(p.creativeCount, "creative")}
+                  </p>
+                </div>
+                {team && <p className="text-body truncate text-ink-soft max-lg:hidden">{p.clientName}</p>}
+                <ReviewProgress counts={p.statusCounts} className="max-lg:col-span-2" />
+                <div>
+                  {team ? (
+                    <ProjectStatus project={p} />
+                  ) : needsReview ? (
+                    <span className="inline-flex h-6 items-center rounded-full bg-brand-50 px-2.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 ring-inset">
+                      {pluralize(needsReview, "creative")}
+                    </span>
+                  ) : (
+                    <span className="text-meta">Nothing waiting</span>
+                  )}
+                </div>
+                <p className="text-meta lg:text-right">{formatRelative(p.lastActivityAt, now)}</p>
+              </Link>
             </li>
           );
         })}
@@ -69,19 +74,20 @@ export function ProjectTable({
 // Full project list used on the Projects page.
 export function ProjectList({
   projects,
+  role,
   now,
 }: {
   projects: ProjectSummary[];
+  role: Role;
   now: number;
 }) {
   return (
     <ul className="flex flex-col gap-3">
-      {projects.map((p) => {
-        const status = projectStatus(p.statusCounts);
-        return (
-          <li
-            key={p.id}
-            className="rounded-lg border border-line bg-surface p-5 shadow-card transition-shadow hover:shadow-pop"
+      {projects.map((p) => (
+        <li key={p.id}>
+          <Link
+            href={`${basePathFor(role)}/projects/${p.id}`}
+            className="block rounded-lg border border-line bg-surface p-5 shadow-card transition-shadow hover:border-line-strong hover:shadow-pop"
           >
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
               <div className="min-w-0 lg:w-[38%]">
@@ -94,18 +100,24 @@ export function ProjectList({
                       {pluralize(p.creativeCount, "creative")}
                     </p>
                   </div>
-                  <StatusBadge status={status} className="lg:hidden" />
+                  <ProjectStatus project={p} className="lg:hidden" />
                 </div>
               </div>
               <ReviewProgress counts={p.statusCounts} showLegend className="flex-1" />
               <div className="flex items-center justify-between gap-4 lg:w-48 lg:flex-col lg:items-end lg:gap-1.5">
-                <StatusBadge status={status} className="max-lg:hidden" />
+                <ProjectStatus project={p} className="max-lg:hidden" />
                 <p className="text-meta">Last activity {formatRelative(p.lastActivityAt, now).toLowerCase()}</p>
               </div>
             </div>
-          </li>
-        );
-      })}
+          </Link>
+        </li>
+      ))}
     </ul>
   );
+}
+
+// Overall status, or a neutral marker for a project with nothing in it yet.
+export function ProjectStatus({ project, className }: { project: ProjectSummary; className?: string }) {
+  if (!project.creativeCount) return <Badge tone="outline" className={className}>No creatives yet</Badge>;
+  return <StatusBadge status={projectStatus(project.statusCounts)} className={className} />;
 }

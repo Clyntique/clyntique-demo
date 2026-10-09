@@ -1,16 +1,17 @@
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
-import { getDemoSnapshot } from "@/lib/demo-data";
+import { getActivity } from "@/lib/data/workspace";
+import { requestTime } from "@/lib/format";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { ActivityIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/states";
 import { ActivityTimeline } from "@/components/workspace/activity-feed";
-import { DemoDataNotice } from "@/components/workspace/demo-notice";
 
 export async function ActivityView({ role }: { role: Role }) {
-  await requireRole(role);
-  const { now, activity: items } = getDemoSnapshot(role);
+  const user = await requireRole(role);
+  const items = await getActivity(user, { take: 100 });
+  const now = requestTime();
 
   return (
     <>
@@ -29,7 +30,6 @@ export async function ActivityView({ role }: { role: Role }) {
       ) : (
         <EmptyState icon={<ActivityIcon />} title="No activity yet." />
       )}
-      <DemoDataNotice />
     </>
   );
 }

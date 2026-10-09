@@ -23,6 +23,14 @@ enum CreativeStatus {
   ARCHIVED
 }
 
+// Placement the creative is designed for. Drives the preview aspect ratio.
+enum CreativeFormat {
+  STORY
+  FEED
+  STATIC
+  VIDEO
+}
+
 enum EvidenceType {
   RESEARCH
   STATISTIC
@@ -83,6 +91,7 @@ model Creative {
   projectId   String
   name        String
   description String?
+  format      CreativeFormat @default(FEED)
   status      CreativeStatus @default(DRAFT)
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt

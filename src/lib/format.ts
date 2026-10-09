@@ -38,3 +38,8 @@ export function greetingFor(date = new Date()) {
 export function pluralize(n: number, word: string) {
   return `${n} ${word}${n === 1 ? "" : "s"}`;
 }
+
+// Reference time for relative timestamps, read once per server render.
+export function requestTime() {
+  return Date.now();
+}

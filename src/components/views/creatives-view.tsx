@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { CreativeStatus, Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
-import { getDemoSnapshot } from "@/lib/demo-data";
+import { getCreatives } from "@/lib/data/workspace";
+import { requestTime } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { basePathFor } from "@/lib/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -9,7 +10,6 @@ import { ImageIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/states";
 import { STATUS_STYLES } from "@/components/ui/status-badge";
 import { CreativeCard } from "@/components/workspace/creative-card";
-import { DemoDataNotice } from "@/components/workspace/demo-notice";
 import type { SearchParams } from "./projects-view";
 
 const FILTERS: Record<Role, CreativeStatus[]> = {
@@ -18,11 +18,12 @@ const FILTERS: Record<Role, CreativeStatus[]> = {
 };
 
 export async function CreativesView({ role, searchParams }: { role: Role; searchParams: SearchParams }) {
-  await requireRole(role);
+  const user = await requireRole(role);
   const { status } = await searchParams;
   const active = FILTERS[role].find((s) => s === status);
 
-  const { now, creatives: all } = getDemoSnapshot(role);
+  const all = await getCreatives(user);
+  const now = requestTime();
   const creatives = active ? all.filter((c) => c.status === active) : all;
   const href = `${basePathFor(role)}/creatives`;
 
@@ -83,12 +84,11 @@ export async function CreativesView({ role, searchParams }: { role: Role; search
           title={active ? "No creatives with this status." : "No creatives yet."}
           description={
             role === "TEAM"
-              ? "Creatives you upload will appear here."
+              ? "Add creatives from a project page."
               : "Creatives shared with you for review will appear here."
           }
         />
       )}
-      <DemoDataNotice />
     </>
   );
 }

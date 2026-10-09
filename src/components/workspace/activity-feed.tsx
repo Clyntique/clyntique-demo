@@ -1,8 +1,7 @@
 import type { ActivityType } from "@/generated/prisma/enums";
-import type { ActivityItem } from "@/lib/demo-data";
+import type { ActivityItem } from "@/lib/data/workspace";
 import { cn } from "@/lib/cn";
 import { formatDayLabel, formatRelative } from "@/lib/format";
-import { activityTitle } from "./copy";
 
 const DOT: Record<ActivityType, string> = {
   CREATIVE_UPLOADED: "bg-zinc-400",
@@ -20,11 +19,10 @@ function Entry({ item, now, compact, last }: { item: ActivityItem; now: number; 
       {!last && <span aria-hidden className="absolute top-4 bottom-0 left-[4.5px] w-px bg-line" />}
       <span aria-hidden className={cn("relative mt-1.5 size-2.5 shrink-0 rounded-full ring-4 ring-surface", DOT[item.type])} />
       <div className="min-w-0 flex-1">
-        <p className="text-card-title">{activityTitle(item.type, item.version)}</p>
-        <p className="text-body truncate text-ink-soft">{item.creativeName}</p>
+        <p className="text-card-title">{item.message}</p>
         <p className="text-meta mt-0.5 truncate">
-          {compact ? null : <>{item.projectName} · </>}
-          {item.actorName} · {formatRelative(item.createdAt, now)}
+          {item.projectName} · {item.actorName}
+          {compact ? <span className="block">{formatRelative(item.createdAt, now)}</span> : <> · {formatRelative(item.createdAt, now)}</>}
         </p>
       </div>
     </li>

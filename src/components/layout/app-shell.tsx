@@ -7,7 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/states";
 import { Brand } from "./brand";
 import { LogoutButton } from "./logout-button";
-import { NavLinks } from "./nav-links";
+import { NavLinks, NavList } from "./nav-links";
 
 const WORKSPACE_LABEL: Record<Role, string> = {
   TEAM: "Team workspace",
@@ -30,7 +30,9 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
         </div>
         <p className="text-label px-5 pb-2">{WORKSPACE_LABEL[role]}</p>
         <nav aria-label="Main" className="flex-1 px-3">
-          <NavLinks role={role} layout="sidebar" />
+          <Suspense fallback={<NavList role={role} layout="sidebar" pathname={null} />}>
+            <NavLinks role={role} layout="sidebar" />
+          </Suspense>
         </nav>
         <div className="border-t border-line p-3">
           <Suspense fallback={<UserSkeleton />}>
@@ -50,7 +52,9 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
           </Suspense>
         </div>
         <nav aria-label="Main" className="-mb-px overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
-          <NavLinks role={role} layout="tabs" />
+          <Suspense fallback={<NavList role={role} layout="tabs" pathname={null} />}>
+            <NavLinks role={role} layout="tabs" />
+          </Suspense>
         </nav>
       </header>
 
