@@ -11,7 +11,7 @@ import { ArrowRightIcon, FolderIcon, PlusIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ActivityList } from "@/components/workspace/activity-feed";
-import { REVIEW_STATE, projectStatus } from "@/components/workspace/copy";
+import { projectStatus, reviewStateLabel } from "@/components/workspace/copy";
 import { CreativeThumb } from "@/components/workspace/creative-card";
 import { ProjectTable } from "@/components/workspace/project-list";
 import { StatRow, type Stat } from "@/components/workspace/stat-row";
@@ -64,9 +64,14 @@ export async function DashboardView({ role }: { role: Role }) {
               <PlusIcon /> New project
             </Link>
           ) : (
-            <Link href={`${base}/projects`} className={buttonClasses({ variant: "secondary" })}>
-              View projects
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href={`${base}/projects`} className={buttonClasses({ variant: "secondary" })}>
+                View projects
+              </Link>
+              <Link href="/dashboard/submissions/new" className={buttonClasses()}>
+                <PlusIcon /> New submission
+              </Link>
+            </div>
           )
         }
       />
@@ -90,7 +95,7 @@ export async function DashboardView({ role }: { role: Role }) {
                   {attention.map((c) => (
                     <Link
                       key={c.id}
-                      href={`${base}/projects/${c.projectId}`}
+                      href={`${base}/creatives/${c.id}`}
                       className="flex items-center gap-4 p-3 pr-5 transition-colors hover:bg-canvas/60"
                     >
                       <CreativeThumb creative={c} className="size-14 shrink-0 rounded-md" />
@@ -101,7 +106,7 @@ export async function DashboardView({ role }: { role: Role }) {
                         </p>
                       </div>
                       <span className="hidden text-xs font-medium text-brand-700 sm:block">
-                        {REVIEW_STATE[role][c.status]}
+                        {reviewStateLabel(role, c.workflow, c.status)}
                       </span>
                       <StatusBadge status={c.status} className="sm:hidden" />
                     </Link>

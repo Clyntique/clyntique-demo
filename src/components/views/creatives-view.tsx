@@ -6,15 +6,17 @@ import { requestTime } from "@/lib/format";
 import { cn } from "@/lib/cn";
 import { basePathFor } from "@/lib/navigation";
 import { PageHeader } from "@/components/layout/page-header";
-import { ImageIcon } from "@/components/ui/icons";
+import { buttonClasses } from "@/components/ui/button";
+import { ImageIcon, PlusIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/states";
 import { STATUS_STYLES } from "@/components/ui/status-badge";
 import { CreativeCard } from "@/components/workspace/creative-card";
 import type { SearchParams } from "./projects-view";
 
+// Tabs with no creatives are hidden, so legacy and new statuses can share one list.
 const FILTERS: Record<Role, CreativeStatus[]> = {
-  TEAM: ["IN_REVIEW", "CHANGES_REQUESTED", "APPROVED", "DRAFT"],
-  CLIENT: ["IN_REVIEW", "CHANGES_REQUESTED", "APPROVED"],
+  TEAM: ["SUBMITTED", "IN_REVIEW", "CHANGES_REQUESTED", "REVIEW_COMPLETE", "APPROVED", "DRAFT"],
+  CLIENT: ["DRAFT", "SUBMITTED", "IN_REVIEW", "CHANGES_REQUESTED", "REVIEW_COMPLETE", "APPROVED"],
 };
 
 export async function CreativesView({ role, searchParams }: { role: Role; searchParams: SearchParams }) {
@@ -29,21 +31,26 @@ export async function CreativesView({ role, searchParams }: { role: Role; search
 
   const tabs = [
     { label: "All", value: undefined, count: all.length },
-    ...FILTERS[role].map((s) => ({
-      label: role === "CLIENT" && s === "IN_REVIEW" ? "Needs your review" : STATUS_STYLES[s].label,
-      value: s,
-      count: all.filter((c) => c.status === s).length,
-    })),
+    ...FILTERS[role]
+      .map((s) => ({ label: STATUS_STYLES[s].label, value: s, count: all.filter((c) => c.status === s).length }))
+      .filter((t) => t.count > 0 || t.value === active),
   ];
 
   return (
     <>
       <PageHeader
-        title="Creatives"
+        title={role === "TEAM" ? "Creatives" : "Submissions"}
         description={
           role === "TEAM"
-            ? "Every creative across your projects, with its latest version and review state."
-            : "Creatives shared with you, and where each one is in review."
+            ? "Submitted work across your projects, plus earlier creatives. Client drafts stay private until submitted."
+            : "Your submissions and drafts, and where each one is in review."
+        }
+        action={
+          role === "CLIENT" && (
+            <Link href="/dashboard/submissions/new" className={buttonClasses()}>
+              <PlusIcon /> New submission
+            </Link>
+          )
         }
       />
 
@@ -81,11 +88,11 @@ export async function CreativesView({ role, searchParams }: { role: Role; search
       ) : (
         <EmptyState
           icon={<ImageIcon />}
-          title={active ? "No creatives with this status." : "No creatives yet."}
+          title={active ? "Nothing with this status." : role === "TEAM" ? "Nothing submitted yet." : "No submissions yet."}
           description={
             role === "TEAM"
-              ? "Add creatives from a project page."
-              : "Creatives shared with you for review will appear here."
+              ? "Client submissions appear here once they are submitted for review."
+              : "Create a submission to upload a creative and send it for review."
           }
         />
       )}

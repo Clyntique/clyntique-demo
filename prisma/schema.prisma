@@ -1,5 +1,9 @@
 // Prisma schema for Clyntique.
 // The connection URL is configured in prisma.config.ts (Prisma 7), not here.
+//
+// Migrations live in prisma/migrations (0_init = the schema as it existed
+// before migrations were introduced; later folders are additive). Never use
+// `prisma db push` or `prisma migrate dev` against the shared database.
 
 generator client {
   provider = "prisma-client"
@@ -15,12 +19,28 @@ enum Role {
   CLIENT
 }
 
+// Where a creative is in its workflow. In the submission-review workflow:
+// DRAFT -> SUBMITTED -> IN_REVIEW -> CHANGES_REQUESTED -> SUBMITTED ... -> REVIEW_COMPLETE.
+// APPROVED is legacy-only (a client approval in the pre-compliance workflow)
+// and is never set for SUBMISSION_REVIEW creatives. REVIEW_COMPLETE only says
+// the internal review cycle is closed; the human outcome is ReviewDecision.outcome.
 enum CreativeStatus {
   DRAFT
   IN_REVIEW
   CHANGES_REQUESTED
   APPROVED
   ARCHIVED
+  SUBMITTED
+  REVIEW_COMPLETE
+}
+
+// Which workflow a creative belongs to. Rows that existed before the
+// submission-review workflow were set to LEGACY_CLIENT_APPROVAL by migration;
+// the column default makes every new row SUBMISSION_REVIEW. Never inferred
+// from other columns, never updated.
+enum CreativeWorkflow {
+  LEGACY_CLIENT_APPROVAL
+  SUBMISSION_REVIEW
 }
 
 // Placement the creative is designed for. Drives the preview aspect ratio.
@@ -28,6 +48,12 @@ enum CreativeFormat {
   STORY
   FEED
   STATIC
+  VIDEO
+}
+
+// Kind of file a creative version holds. Decides image vs video preview.
+enum MediaType {
+  IMAGE
   VIDEO
 }
 
@@ -40,9 +66,66 @@ enum EvidenceType {
   OTHER
 }
 
+// Who supplied a piece of evidence. Null on rows from the legacy workflow
+// (their creative's workflow says they are legacy).
+enum EvidenceOrigin {
+  CLIENT_SUBMITTED
+  REVIEWER_ADDED
+}
+
+enum EvidenceVisibility {
+  SHARED // visible to the submission's client
+  INTERNAL // team only
+}
+
+// Legacy: a CLIENT decision in the pre-compliance workflow. Kept unchanged as history.
 enum ApprovalStatus {
   APPROVED
   CHANGES_REQUESTED
+}
+
+enum ReviewDecisionKind {
+  CHANGES_REQUESTED // interim: findings published, client asked to remediate
+  FINAL // closes the review cycle with an outcome
+}
+
+// Human reviewer's conclusion for a FINAL decision. Internal review only:
+// not legal advice, not government approval, not platform acceptance.
+// Values pending product confirmation (plan D3).
+enum ReviewOutcome {
+  NO_ISSUES_IDENTIFIED
+  ISSUES_RESOLVED
+  COMPLETED_WITH_OPEN_ISSUES
+  NOT_REVIEWABLE
+}
+
+enum FindingStatus {
+  DRAFT // reviewer-only, not visible to the client
+  OPEN // published; client action required
+  RESPONDED // client responded; awaiting reviewer
+  RESOLVED // reviewer judged it resolved
+  DISMISSED // reviewer withdrew it (reason recorded in FindingEvent)
+}
+
+// Reviewer-assessed severity, not a legal classification.
+enum FindingSeverity {
+  HIGH
+  MEDIUM
+  LOW
+  ADVISORY
+}
+
+// What the client must do to address a finding (details in actionDetails).
+enum FindingAction {
+  REVISE_CONTENT
+  PROVIDE_EVIDENCE
+  CLARIFY
+  ACKNOWLEDGE
+}
+
+enum MarketKind {
+  COUNTRY
+  SUBDIVISION
 }
 
 enum ActivityType {
@@ -52,6 +135,12 @@ enum ActivityType {
   CHANGES_REQUESTED
   CREATIVE_APPROVED
   OTHER
+  SUBMISSION_SUBMITTED
+  EVIDENCE_SUBMITTED
+  REVIEW_STARTED
+  FINDING_RECORDED
+  RESUBMITTED
+  REVIEW_COMPLETED
 }
 
 model User {
@@ -68,6 +157,18 @@ model User {
   comments       Comment[]
   approvals      Approval[]
   activities     Activity[]
+
+  createdCreatives  Creative[]        @relation("CreativeCreatedBy")
+  openedCycles      ReviewCycle[]     @relation("CycleOpenedBy")
+  submittedRounds   SubmissionRound[] @relation("RoundSubmittedBy")
+  reviewDecisions   ReviewDecision[]  @relation("DecisionReviewer")
+  createdFindings   Finding[]         @relation("FindingCreatedBy")
+  resolvedFindings  Finding[]         @relation("FindingResolvedBy")
+  findingEvents     FindingEvent[]
+  findingResponses  FindingResponse[]
+  findingEvidence   FindingEvidence[]
+  addedEvidence     Evidence[]        @relation("EvidenceAddedBy")
+  withdrawnEvidence Evidence[]        @relation("EvidenceWithdrawnBy")
 }
 
 // A campaign/client project, e.g. "Acme Health — Q4 Campaign".
@@ -86,54 +187,103 @@ model Project {
   @@index([clientId])
 }
 
+// A creative. In the SUBMISSION_REVIEW workflow this is a client submission.
 model Creative {
-  id          String         @id @default(cuid())
+  id          String           @id @default(cuid())
   projectId   String
   name        String
   description String?
-  format      CreativeFormat @default(FEED)
-  status      CreativeStatus @default(DRAFT)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  // Campaign context for reviewers: objective, audience, key message.
+  context     String?
+  format      CreativeFormat   @default(FEED)
+  status      CreativeStatus   @default(DRAFT)
+  workflow    CreativeWorkflow @default(SUBMISSION_REVIEW)
+  // Who created the record (client, or team on the client's behalf). Null on legacy rows.
+  createdById String?
+  // First submission time. Null until submitted, and on legacy rows.
+  submittedAt DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   project   Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy User?             @relation("CreativeCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   versions  CreativeVersion[]
   evidence  Evidence[]
   comments  Comment[]
   approvals Approval[]
 
+  cycles     ReviewCycle[]
+  rounds     SubmissionRound[]
+  decisions  ReviewDecision[]
+  findings   Finding[]
+  markets    SubmissionMarket[]
+  platforms  SubmissionPlatform[]
+  activities Activity[]
+
   @@index([projectId])
+  @@index([createdById])
 }
 
 model CreativeVersion {
-  id            String   @id @default(cuid())
+  id            String     @id @default(cuid())
   creativeId    String
   versionNumber Int
+  // Private Vercel Blob URL. Files are served through /api/media/[versionId],
+  // never linked directly. File contents are never stored in PostgreSQL.
   fileUrl       String
+  // Blob pathname (storage key). Also the idempotency key for retried uploads.
+  filePathname  String?
+  fileName      String?
+  mimeType      String?
+  sizeBytes     Int?
+  mediaType     MediaType?
+  changeNotes   String?
   createdById   String
-  createdAt     DateTime @default(now())
+  createdAt     DateTime   @default(now())
 
   creative  Creative   @relation(fields: [creativeId], references: [id], onDelete: Cascade)
   createdBy User       @relation(fields: [createdById], references: [id], onDelete: Restrict)
   comments  Comment[]
   approvals Approval[]
 
+  rounds           SubmissionRound[]
+  decisions        ReviewDecision[]
+  findings         Finding[]         @relation("FindingIdentifiedIn")
+  resolvedFindings Finding[]         @relation("FindingResolvedIn")
+  findingResponses FindingResponse[]
+  evidence         Evidence[]
+
   // A creative can never have two versions with the same number.
   @@unique([creativeId, versionNumber])
 }
 
-// Supporting research/context shown to the client alongside a creative.
+// Supporting research/context for a creative. Legacy rows: origin and addedById
+// are null. New rows always record who added them. Never marked "verified".
 model Evidence {
-  id          String       @id @default(cuid())
-  creativeId  String
-  title       String
-  type        EvidenceType
-  description String?
-  source      String?
-  date        DateTime?
-  createdAt   DateTime     @default(now())
+  id            String             @id @default(cuid())
+  creativeId    String
+  title         String
+  type          EvidenceType
+  description   String?
+  source        String?
+  // Optional reference link (http/https only, validated on the server).
+  url           String?
+  date          DateTime?
+  createdAt     DateTime           @default(now())
+  origin        EvidenceOrigin?
+  addedById     String?
+  visibility    EvidenceVisibility @default(SHARED)
+  // Optional: the version this evidence refers to.
+  versionId     String?
+  // Evidence in a submitted cycle is withdrawn, never deleted.
+  withdrawnAt   DateTime?
+  withdrawnById String?
 
-  creative Creative @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  creative    Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  addedBy     User?             @relation("EvidenceAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  withdrawnBy User?             @relation("EvidenceWithdrawnBy", fields: [withdrawnById], references: [id], onDelete: Restrict)
+  version     CreativeVersion?  @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  findings    FindingEvidence[]
 
   @@index([creativeId])
 }
@@ -155,12 +305,15 @@ model Comment {
   @@index([versionId])
 }
 
+// Legacy client decisions (pre-compliance workflow). Unchanged; read-only history.
 model Approval {
   id         String         @id @default(cuid())
   creativeId String
   versionId  String
   userId     String
   status     ApprovalStatus
+  // Required explanation when status is CHANGES_REQUESTED.
+  reason     String?
   createdAt  DateTime       @default(now())
 
   creative Creative        @relation(fields: [creativeId], references: [id], onDelete: Cascade)
@@ -171,17 +324,267 @@ model Approval {
   @@index([versionId])
 }
 
+// ---------------------------------------------------------------------------
+// Submission review workflow
+
+// One review cycle: from submission to a FINAL decision. A later reopening
+// (not implemented; plan D7) would start cycle n+1 and leave cycle n intact.
+model ReviewCycle {
+  id           String    @id @default(cuid())
+  creativeId   String
+  number       Int
+  openedById   String
+  openedReason String?
+  openedAt     DateTime  @default(now())
+  closedAt     DateTime?
+
+  creative  Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  openedBy  User              @relation("CycleOpenedBy", fields: [openedById], references: [id], onDelete: Restrict)
+  rounds    SubmissionRound[]
+  decisions ReviewDecision[]
+  findings  Finding[]
+
+  @@unique([creativeId, number])
+}
+
+// One submit or resubmit within a cycle, fixing the exact version submitted.
+model SubmissionRound {
+  id            String   @id @default(cuid())
+  creativeId    String
+  cycleId       String
+  number        Int
+  versionId     String
+  submittedById String
+  submittedAt   DateTime @default(now())
+  note          String?
+
+  creative    Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  cycle       ReviewCycle       @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  version     CreativeVersion   @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  submittedBy User              @relation("RoundSubmittedBy", fields: [submittedById], references: [id], onDelete: Restrict)
+  decisions   ReviewDecision[]
+  responses   FindingResponse[]
+
+  @@unique([cycleId, number])
+  @@index([creativeId])
+}
+
+// A human reviewer's decision on one round's version. Immutable.
+model ReviewDecision {
+  id         String             @id @default(cuid())
+  creativeId String
+  cycleId    String
+  roundId    String
+  versionId  String
+  reviewerId String
+  kind       ReviewDecisionKind
+  // Required for FINAL decisions, null for CHANGES_REQUESTED (enforced in code).
+  outcome    ReviewOutcome?
+  summary    String
+  // What the review covered, e.g. markets/platforms considered. Free text.
+  scopeNote  String?
+  createdAt  DateTime           @default(now())
+
+  creative Creative        @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  cycle    ReviewCycle     @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  round    SubmissionRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  version  CreativeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  reviewer User            @relation("DecisionReviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  // At most one decision per round.
+  @@unique([roundId])
+  @@index([creativeId])
+  @@index([versionId])
+}
+
+// A human reviewer's finding. Issue text is fixed once published; history
+// lives in FindingEvent and FindingResponse. Future claim/rule links are
+// additive nullable columns (not modelled yet).
+model Finding {
+  id                  String          @id @default(cuid())
+  creativeId          String
+  cycleId             String
+  // Version where the issue was identified.
+  versionId           String?
+  createdById         String
+  issue               String
+  explanation         String
+  severity            FindingSeverity
+  requiredAction      FindingAction
+  actionDetails       String
+  status              FindingStatus   @default(DRAFT)
+  publishedAt         DateTime?
+  resolvedById        String?
+  resolvedAt          DateTime?
+  resolutionNote      String?
+  resolvedInVersionId String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  creative          Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  cycle             ReviewCycle       @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  version           CreativeVersion?  @relation("FindingIdentifiedIn", fields: [versionId], references: [id], onDelete: SetNull)
+  resolvedInVersion CreativeVersion?  @relation("FindingResolvedIn", fields: [resolvedInVersionId], references: [id], onDelete: SetNull)
+  createdBy         User              @relation("FindingCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  resolvedBy        User?             @relation("FindingResolvedBy", fields: [resolvedById], references: [id], onDelete: Restrict)
+  events            FindingEvent[]
+  responses         FindingResponse[]
+  evidence          FindingEvidence[]
+  markets           FindingMarket[]
+  platforms         FindingPlatform[]
+
+  @@index([creativeId])
+  @@index([cycleId])
+}
+
+// Append-only status history of a finding.
+model FindingEvent {
+  id         String         @id @default(cuid())
+  findingId  String
+  fromStatus FindingStatus?
+  toStatus   FindingStatus
+  actorId    String
+  note       String?
+  createdAt  DateTime       @default(now())
+
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  actor   User    @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([findingId])
+}
+
+// Append-only remediation thread on a finding (client or reviewer).
+model FindingResponse {
+  id        String   @id @default(cuid())
+  findingId String
+  authorId  String
+  message   String
+  // The revision this response refers to, if any.
+  versionId String?
+  roundId   String?
+  createdAt DateTime @default(now())
+
+  finding Finding          @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  author  User             @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  version CreativeVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  round   SubmissionRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+
+  @@index([findingId])
+}
+
+model FindingEvidence {
+  findingId  String
+  evidenceId String
+  linkedById String
+  linkedAt   DateTime @default(now())
+
+  finding  Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  evidence Evidence @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  linkedBy User     @relation(fields: [linkedById], references: [id], onDelete: Restrict)
+
+  @@id([findingId, evidenceId])
+  @@index([evidenceId])
+}
+
+// ---------------------------------------------------------------------------
+// Review context: where the client plans to run the ad. Selecting a market or
+// platform does NOT mean its rules are checked, and implies no approval.
+
+model Market {
+  code       String     @id // ISO 3166-1 alpha-2 (US, CA, AE) or ISO 3166-2 (e.g. CA-ON)
+  name       String
+  kind       MarketKind @default(COUNTRY)
+  parentCode String?
+  active     Boolean    @default(true)
+  sortOrder  Int        @default(0)
+
+  parent      Market?            @relation("MarketParent", fields: [parentCode], references: [code], onDelete: Restrict)
+  children    Market[]           @relation("MarketParent")
+  submissions SubmissionMarket[]
+  findings    FindingMarket[]
+}
+
+model AdPlatform {
+  code      String  @id
+  name      String
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  submissions SubmissionPlatform[]
+  findings    FindingPlatform[]
+}
+
+model SubmissionMarket {
+  creativeId String
+  marketCode String
+
+  creative Creative @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  market   Market   @relation(fields: [marketCode], references: [code], onDelete: Restrict)
+
+  @@id([creativeId, marketCode])
+  @@index([marketCode])
+}
+
+model SubmissionPlatform {
+  creativeId   String
+  platformCode String
+
+  creative Creative   @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  platform AdPlatform @relation(fields: [platformCode], references: [code], onDelete: Restrict)
+
+  @@id([creativeId, platformCode])
+  @@index([platformCode])
+}
+
+// Optional: markets/platforms a finding is specifically relevant to.
+model FindingMarket {
+  findingId  String
+  marketCode String
+
+  finding Finding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  market  Market  @relation(fields: [marketCode], references: [code], onDelete: Restrict)
+
+  @@id([findingId, marketCode])
+}
+
+model FindingPlatform {
+  findingId    String
+  platformCode String
+
+  finding  Finding    @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  platform AdPlatform @relation(fields: [platformCode], references: [code], onDelete: Restrict)
+
+  @@id([findingId, platformCode])
+}
+
+// ---------------------------------------------------------------------------
+
 // Project timeline entries. userId is null for system events.
 model Activity {
-  id        String       @id @default(cuid())
-  projectId String
-  userId    String?
-  type      ActivityType
-  message   String
-  createdAt DateTime     @default(now())
+  id         String       @id @default(cuid())
+  projectId  String
+  userId     String?
+  type       ActivityType
+  message    String
+  // The submission this event belongs to (new events only; null on older rows).
+  creativeId String?
+  createdAt  DateTime     @default(now())
 
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  project  Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  creative Creative? @relation(fields: [creativeId], references: [id], onDelete: SetNull)
 
   @@index([projectId, createdAt])
+  @@index([creativeId, createdAt])
+}
+
+// Failed/successful sign-in attempts, for rate limiting. `key` is a hash of
+// the normalised email and client address, never the raw values.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  succeeded Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
 }

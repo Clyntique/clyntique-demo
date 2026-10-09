@@ -9,12 +9,19 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "prisma db seed",
-    "db:check": "tsx prisma/db-check.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:check": "tsx prisma/db-check.ts",
+    "db:target": "tsx prisma/db-target.ts",
+    "db:inventory": "tsx prisma/db-inventory.ts",
+    "db:export": "tsx prisma/db-export.ts",
+    "db:migrate:status": "prisma migrate status",
+    "blob:orphans": "tsx prisma/blob-orphans.ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
+    "@vercel/blob": "2.8.1",
     "bcryptjs": "3.0.3",
     "jose": "6.2.12",
     "next": "16.4.0",
@@ -35,6 +42,7 @@
     "prisma": "7.10.0",
     "tailwindcss": "^4",
     "tsx": "4.23.15",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "3.2.4"
   }
 }

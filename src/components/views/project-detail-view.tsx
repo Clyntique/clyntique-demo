@@ -46,7 +46,7 @@ export async function ProjectDetailView({
   const team = role === "TEAM";
   const base = basePathFor(role);
   const success = typeof created === "string" ? SUCCESS[created] : undefined;
-  const addHref = `/admin/projects/${project.id}/creatives/new`;
+  const newSubmissionHref = `/dashboard/submissions/new?project=${project.id}`;
 
   return (
     <>
@@ -62,9 +62,9 @@ export async function ProjectDetailView({
           </>
         }
         action={
-          team && (
-            <Link href={addHref} className={buttonClasses()}>
-              <PlusIcon /> Add creative
+          !team && (
+            <Link href={newSubmissionHref} className={buttonClasses()}>
+              <PlusIcon /> New submission
             </Link>
           )
         }
@@ -88,7 +88,11 @@ export async function ProjectDetailView({
         <section className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <SectionHeader
             title="Creatives"
-            description={team ? "Everything in this project, including drafts." : "Creatives shared with you for review."}
+            description={
+              team
+                ? "Submitted work and earlier creatives. Client drafts stay private until submitted."
+                : "Your submissions and drafts, plus creatives shared with you earlier."
+            }
           />
           {creatives.length ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -99,16 +103,16 @@ export async function ProjectDetailView({
           ) : (
             <EmptyState
               icon={<ImageIcon />}
-              title="No creatives yet."
+              title={team ? "Nothing submitted yet." : "No submissions yet."}
               description={
                 team
-                  ? "Add the first creative to start the review."
-                  : "The team hasn't shared anything for review yet."
+                  ? "Submissions appear here once the client submits them for review."
+                  : "Create a submission: upload your creative, choose markets and platforms, then submit it for review."
               }
               action={
-                team && (
-                  <Link href={addHref} className={buttonClasses({ size: "sm" })}>
-                    <PlusIcon /> Add creative
+                !team && (
+                  <Link href={newSubmissionHref} className={buttonClasses({ size: "sm" })}>
+                    <PlusIcon /> New submission
                   </Link>
                 )
               }

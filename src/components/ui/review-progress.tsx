@@ -4,7 +4,9 @@ import { STATUS_STYLES } from "./status-badge";
 
 export type StatusCounts = Partial<Record<CreativeStatus, number>>;
 
-const ORDER: CreativeStatus[] = ["APPROVED", "IN_REVIEW", "CHANGES_REQUESTED", "DRAFT"];
+// Finished first, then work in progress. APPROVED is the legacy client approval;
+// REVIEW_COMPLETE closes an internal review (submission workflow).
+const ORDER: CreativeStatus[] = ["APPROVED", "REVIEW_COMPLETE", "IN_REVIEW", "SUBMITTED", "CHANGES_REQUESTED", "DRAFT"];
 
 // Segmented bar showing how a project's creatives are spread across review states.
 export function ReviewProgress({
@@ -17,15 +19,15 @@ export function ReviewProgress({
   className?: string;
 }) {
   const total = ORDER.reduce((sum, s) => sum + (counts[s] ?? 0), 0);
-  const approved = counts.APPROVED ?? 0;
-  const percent = total ? Math.round((approved / total) * 100) : 0;
+  const done = (counts.APPROVED ?? 0) + (counts.REVIEW_COMPLETE ?? 0);
+  const percent = total ? Math.round((done / total) * 100) : 0;
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-center gap-3">
         <div
           role="img"
-          aria-label={`${approved} of ${total} creatives approved`}
+          aria-label={`${done} of ${total} creatives approved or reviewed`}
           className="flex h-1.5 flex-1 gap-0.5 overflow-hidden rounded-full bg-subtle"
         >
           {ORDER.map((status) => {

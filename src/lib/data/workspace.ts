@@ -1,6 +1,6 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
-import type { ActivityType, CreativeFormat, CreativeStatus } from "@/generated/prisma/enums";
+import type { ActivityType, CreativeFormat, CreativeStatus, CreativeWorkflow, MediaType } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
 
@@ -9,9 +9,9 @@ import { prisma } from "@/lib/prisma";
  *
  * Every function takes the signed-in user (from requireRole/requireUser) and
  * scopes its query to what that user may see:
- * - TEAM sees every project and creative.
- * - CLIENT sees only projects where they are the client, and never DRAFT
- *   creatives (drafts are not shared yet).
+ * - TEAM sees every project, and every creative except clients' draft submissions.
+ * - CLIENT sees only projects where they are the client: their own draft
+ *   submissions, and never the team's legacy drafts.
  * Pages must never query Project/Creative/Activity directly.
  */
 
@@ -33,10 +33,13 @@ export type CreativeSummary = {
   description: string | null;
   format: CreativeFormat;
   status: CreativeStatus;
+  workflow: CreativeWorkflow;
   projectId: string;
   projectName: string;
   clientName: string;
   versionCount: number;
+  /** Newest version, for the thumbnail. Null until a file is uploaded. */
+  latestVersion: { id: string; versionNumber: number; mediaType: MediaType | null } | null;
   updatedAt: Date;
 };
 
@@ -52,12 +55,24 @@ export type ActivityItem = {
 
 export type ClientOption = { id: string; name: string; email: string };
 
-function projectScope(user: CurrentUser): Prisma.ProjectWhereInput {
+export function projectScope(user: CurrentUser): Prisma.ProjectWhereInput {
   return user.role === "TEAM" ? {} : { clientId: user.id };
 }
 
-function creativeScope(user: CurrentUser): Prisma.CreativeWhereInput {
-  return user.role === "TEAM" ? {} : { project: { clientId: user.id }, status: { not: "DRAFT" } };
+/*
+ * Drafts are private to the side that owns them:
+ * - TEAM never sees a client's draft submission (SUBMISSION_REVIEW + DRAFT).
+ * - CLIENT never sees a legacy draft (the team's pre-compliance workflow), but
+ *   does see their own draft submissions.
+ */
+function draftPrivacy(user: CurrentUser): Prisma.CreativeWhereInput {
+  return user.role === "TEAM"
+    ? { NOT: { workflow: "SUBMISSION_REVIEW", status: "DRAFT" } }
+    : { OR: [{ workflow: "SUBMISSION_REVIEW" }, { status: { not: "DRAFT" } }] };
+}
+
+export function creativeScope(user: CurrentUser): Prisma.CreativeWhereInput {
+  return user.role === "TEAM" ? draftPrivacy(user) : { project: { clientId: user.id }, ...draftPrivacy(user) };
 }
 
 const projectSelect = (user: CurrentUser) =>
@@ -68,7 +83,7 @@ const projectSelect = (user: CurrentUser) =>
     updatedAt: true,
     client: { select: { name: true } },
     creatives: {
-      where: user.role === "TEAM" ? {} : { status: { not: "DRAFT" } },
+      where: draftPrivacy(user),
       select: { status: true, updatedAt: true },
     },
     activities: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
@@ -136,9 +151,15 @@ export async function getCreatives(
       description: true,
       format: true,
       status: true,
+      workflow: true,
       updatedAt: true,
       project: { select: { id: true, name: true, client: { select: { name: true } } } },
       _count: { select: { versions: true } },
+      versions: {
+        orderBy: { versionNumber: "desc" },
+        take: 1,
+        select: { id: true, versionNumber: true, mediaType: true },
+      },
     },
   });
   return rows.map((c) => ({
@@ -147,10 +168,12 @@ export async function getCreatives(
     description: c.description,
     format: c.format,
     status: c.status,
+    workflow: c.workflow,
     projectId: c.project.id,
     projectName: c.project.name,
     clientName: c.project.client.name,
     versionCount: c._count.versions,
+    latestVersion: c.versions[0] ?? null,
     updatedAt: c.updatedAt,
   }));
 }

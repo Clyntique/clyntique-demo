@@ -37,6 +37,19 @@ export const STATUS_STYLES: Record<
     dot: "border border-zinc-400 bg-transparent",
     bar: "bg-zinc-200",
   },
+  // Submission-review workflow statuses (schema M1A). Not set by any code yet.
+  SUBMITTED: {
+    label: "Submitted",
+    badge: "bg-violet-50 text-violet-800 ring-violet-200",
+    dot: "bg-violet-500",
+    bar: "bg-violet-400",
+  },
+  REVIEW_COMPLETE: {
+    label: "Review complete",
+    badge: "bg-teal-50 text-teal-800 ring-teal-200",
+    dot: "bg-teal-500",
+    bar: "bg-teal-500",
+  },
 };
 
 export function StatusBadge({

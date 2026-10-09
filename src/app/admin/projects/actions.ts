@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { CreativeFormat, type CreativeStatus } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
 
@@ -19,8 +18,6 @@ export type FormState =
 
 const NAME_MAX = 120;
 const DESCRIPTION_MAX = 1000;
-// New creatives start as a draft or go straight to the client.
-const INITIAL_STATUSES: CreativeStatus[] = ["DRAFT", "IN_REVIEW"];
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -84,66 +81,12 @@ export async function createProject(_prev: FormState, formData: FormData): Promi
   redirect(`/admin/projects/${projectId}?created=project`);
 }
 
-export async function createCreative(_prev: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireRole("TEAM");
-
-  const values = {
-    projectId: text(formData, "projectId"),
-    name: text(formData, "name"),
-    description: text(formData, "description"),
-    format: text(formData, "format"),
-    status: text(formData, "status"),
-  };
-  const fieldErrors: Record<string, string> = {};
-
-  if (values.name.length < 2) fieldErrors.name = "Enter a creative name (at least 2 characters).";
-  else if (values.name.length > NAME_MAX) fieldErrors.name = `Keep the name under ${NAME_MAX} characters.`;
-  if (values.description.length > DESCRIPTION_MAX)
-    fieldErrors.description = `Keep the notes under ${DESCRIPTION_MAX} characters.`;
-
-  const format = Object.values(CreativeFormat).find((f) => f === values.format);
-  if (!format) fieldErrors.format = "Choose a format.";
-  const status = INITIAL_STATUSES.find((s) => s === values.status);
-  if (!status) fieldErrors.status = "Choose whether to share it now or keep it as a draft.";
-
-  const project = values.projectId
-    ? await prisma.project.findUnique({ where: { id: values.projectId }, select: { id: true } })
-    : null;
-  if (!project) return { error: "This project no longer exists.", values };
-
-  if (Object.keys(fieldErrors).length || !format || !status) {
-    return { fieldErrors, values };
-  }
-
-  try {
-    await prisma.$transaction(async (tx) => {
-      await tx.creative.create({
-        data: {
-          projectId: project.id,
-          name: values.name,
-          description: values.description || null,
-          format,
-          status,
-        },
-      });
-      // Drafts are not visible to the client, so they are not announced
-      // on the shared project timeline.
-      if (status !== "DRAFT") {
-        await tx.activity.create({
-          data: {
-            projectId: project.id,
-            userId: user.id,
-            type: "CREATIVE_UPLOADED",
-            message: `Shared “${values.name}” for review`,
-          },
-        });
-      }
-    });
-  } catch (error) {
-    console.error("createCreative failed", error);
-    return { error: "Something went wrong. Please try again.", values };
-  }
-
-  revalidateWorkspaces();
-  redirect(`/admin/projects/${project.id}?created=creative`);
+/**
+ * Creatives are now submitted by clients (src/lib/workflow/commands.ts,
+ * createDraft). Team creation on a client's behalf is deferred (decision D6),
+ * so this action only refuses. Existing legacy creatives are unaffected.
+ */
+export async function createCreative(): Promise<FormState> {
+  await requireRole("TEAM");
+  return { error: "Creatives are now submitted by the client. Ask the client to create a submission in this project." };
 }

@@ -10,6 +10,13 @@ const DOT: Record<ActivityType, string> = {
   CHANGES_REQUESTED: "bg-amber-500",
   CREATIVE_APPROVED: "bg-emerald-500",
   OTHER: "bg-zinc-300",
+  // Submission-review workflow events (schema M1A). Not written by any code yet.
+  SUBMISSION_SUBMITTED: "bg-violet-500",
+  EVIDENCE_SUBMITTED: "bg-zinc-400",
+  REVIEW_STARTED: "bg-sky-500",
+  FINDING_RECORDED: "bg-amber-500",
+  RESUBMITTED: "bg-violet-500",
+  REVIEW_COMPLETED: "bg-teal-500",
 };
 
 function Entry({ item, now, compact, last }: { item: ActivityItem; now: number; compact: boolean; last: boolean }) {

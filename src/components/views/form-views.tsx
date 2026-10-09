@@ -3,12 +3,15 @@ import { requireRole } from "@/lib/auth/dal";
 import { getClientOptions, getProject } from "@/lib/data/workspace";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { PageHeader } from "@/components/layout/page-header";
-import { CreativeForm } from "@/components/forms/creative-form";
+import Link from "next/link";
 import { ProjectForm } from "@/components/forms/project-form";
+import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/states";
 
 // TEAM-only creation pages. The actions re-check the role on submit.
+// Creatives are created by clients as submissions. Team creation on a client's
+// behalf is deferred (D6), so the old "Add creative" page only explains that.
 
 export async function NewProjectView() {
   const user = await requireRole("TEAM");
@@ -48,9 +51,15 @@ export async function NewCreativeView({ params }: { params: Promise<{ projectId:
         current="New creative"
       />
       <PageHeader title="Add creative" description={`${project.clientName} — ${project.name}`} />
-      <Card className="p-6">
-        <CreativeForm projectId={project.id} />
-      </Card>
+      <EmptyState
+        title="Creatives are now submitted by the client."
+        description={`${project.clientName} creates submissions in this project, uploads the creative and submits it. It appears here for review once submitted.`}
+        action={
+          <Link href={`/admin/projects/${project.id}`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+            Back to project
+          </Link>
+        }
+      />
     </div>
   );
 }

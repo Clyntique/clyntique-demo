@@ -28,8 +28,10 @@ export function NavList({ role, layout, pathname }: NavProps & { pathname: strin
 
   return (
     <ul className={layout === "sidebar" ? "flex flex-col gap-0.5" : "flex gap-1"}>
-      {ITEMS.map(({ label, segment, icon: Icon }) => {
+      {ITEMS.map(({ label: defaultLabel, segment, icon: Icon }) => {
         const href = base + segment;
+        // Clients own their creatives as submissions.
+        const label = role === "CLIENT" && segment === "/creatives" ? "Submissions" : defaultLabel;
         const active = pathname !== null && (segment ? pathname.startsWith(href) : pathname === href);
         return (
           <li key={label}>
