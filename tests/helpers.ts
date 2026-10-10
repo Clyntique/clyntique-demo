@@ -40,6 +40,8 @@ export function createPrismaMock() {
     findingEvent: model(),
     findingResponse: model(),
     findingEvidence: model(),
+    findingMarket: model(),
+    findingPlatform: model(),
     market: model(),
     adPlatform: model(),
     submissionMarket: model(),

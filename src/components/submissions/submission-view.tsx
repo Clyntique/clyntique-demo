@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { CreativeStatus, Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
 import { getSubmission, getTargetingOptions, type SubmissionDetail, type SubmissionVersion } from "@/lib/data/submission";
+import { getSubmissionReview, type SubmissionReview } from "@/lib/data/submission-review";
 import { cn } from "@/lib/cn";
 import { FORMATS } from "@/lib/creative-format";
 import { formatRelative, requestTime } from "@/lib/format";
@@ -18,6 +19,10 @@ import { CheckIcon, FileIcon } from "@/components/ui/icons";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { MediaFallback, MediaPreview } from "@/components/review/media-preview";
 import { VersionUploader } from "@/components/review/version-uploader";
+import { REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
+import { FindingsList, SeverityLegend } from "./findings-list";
+import { AddFindingForm, CompleteReviewForm, RequestChangesForm, StartReviewForm } from "./review-panel";
+import { DecisionHistory, EvidenceList } from "./review-history";
 import { SubmissionForm } from "./submission-form";
 import { SubmitPanel } from "./submit-panel";
 
@@ -25,8 +30,11 @@ import { SubmitPanel } from "./submit-panel";
  * Detail page for a client submission (workflow SUBMISSION_REVIEW).
  * - CLIENT (owner): upload versions, edit the draft, choose markets and
  *   platforms, submit. Read-only once submitted.
- * - TEAM: read-only view of submitted work. Never sees drafts (getSubmission
- *   uses the shared scope). Review actions arrive with the reviewer workflow.
+ * - TEAM: reviews submitted work: start review, record draft findings (team
+ *   only), request changes or complete the review with an outcome. Never sees
+ *   client drafts (getSubmission uses the shared scope).
+ * - Findings reach the CLIENT only after the team requests changes or
+ *   completes the review; getSubmissionReview filters them in the query.
  * Every control here is backed by a server action that re-checks authorization.
  */
 
@@ -54,7 +62,33 @@ export async function SubmissionView({
   const editable = role === "CLIENT" && authorize(user, "EDIT_DRAFT", facts).ok;
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
-  const targeting = editable ? await getTargetingOptions() : null;
+  const [targeting, review] = await Promise.all([editable ? getTargetingOptions() : Promise.resolve(null), getSubmissionReview(user, submission.id)]);
+  if (!review) notFound();
+
+  const team = role === "TEAM";
+  const inReview = team && submission.status === "IN_REVIEW";
+  const target =
+    inReview && review.round && !review.round.hasDecision && review.cycle && !review.cycle.closedAt
+      ? {
+          creativeId: submission.id,
+          roundId: review.round.id,
+          versionId: review.round.versionId,
+          versionNumber: review.round.versionNumber,
+          roundNumber: review.round.number,
+        }
+      : null;
+  const currentCycle = review.cycle?.number;
+  const cycleFindings = review.findings.filter((f) => f.cycleNumber === currentCycle);
+  const draftCount = cycleFindings.filter((f) => f.status === "DRAFT").length;
+  const openCount = cycleFindings.filter((f) => f.status === "OPEN" || f.status === "RESPONDED").length;
+  const showFindings = inReview || review.findings.length > 0;
+  const defaultScope = [
+    submission.markets.length ? `Markets: ${submission.markets.map((m) => m.name).join(", ")}.` : "",
+    submission.platforms.length ? `Platforms: ${submission.platforms.map((p) => p.name).join(", ")}.` : "",
+    review.round ? `Reviewed V${review.round.versionNumber}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const now = requestTime();
   const base = basePathFor(role);
@@ -97,7 +131,7 @@ export async function SubmissionView({
       )}
 
       <Progress status={submission.status} />
-      <StatusBanner submission={submission} role={role} />
+      <StatusBanner submission={submission} role={role} review={review} />
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-8">
@@ -139,6 +173,41 @@ export async function SubmissionView({
             <Details submission={submission} />
           </Card>
 
+          {showFindings && (
+            <section aria-labelledby="findings-heading" className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 id="findings-heading" className="text-section-title">
+                    Findings
+                  </h2>
+                  <p className="text-meta mt-0.5">
+                    {team
+                      ? draftCount
+                        ? `${draftCount} draft (team only) · ${openCount} shared and open`
+                        : `${openCount} shared and open`
+                      : "Issues raised by the Clyntique reviewer, and what each one needs from you."}
+                  </p>
+                </div>
+                <SeverityLegend />
+              </div>
+              {review.findings.length ? (
+                <FindingsList findings={review.findings} role={role} editable={inReview} markets={submission.markets} platforms={submission.platforms} />
+              ) : (
+                <p className="text-meta rounded-md border border-dashed border-line-strong px-4 py-5">
+                  No findings yet. Add a finding for each issue, or complete the review with “No issues identified”.
+                </p>
+              )}
+              {inReview && <AddFindingForm creativeId={submission.id} markets={submission.markets} platforms={submission.platforms} />}
+            </section>
+          )}
+
+          {submission.status !== "DRAFT" && (
+            <Card className="p-5">
+              <SectionHeader title="Evidence" className="mb-3" />
+              <EvidenceList evidence={review.evidence} role={role} />
+            </Card>
+          )}
+
           {editable && targeting && (
             <Card className="p-5">
               <details className="group" open={!current}>
@@ -169,6 +238,39 @@ export async function SubmissionView({
         </div>
 
         <aside className="flex min-w-0 flex-col gap-6">
+          {team && submission.status === "SUBMITTED" && (
+            <Card className="border-brand-200 p-5">
+              <SectionHeader
+                title="Ready for review"
+                description={review.round ? `Round ${review.round.number} · V${review.round.versionNumber}` : undefined}
+                className="mb-4"
+              />
+              <StartReviewForm creativeId={submission.id} />
+            </Card>
+          )}
+
+          {target && (
+            <>
+              <Card className="p-5">
+                <SectionHeader title="Request changes" description="Shares the findings with the client and asks for a revision." className="mb-4" />
+                <RequestChangesForm target={target} drafts={draftCount} open={openCount} />
+              </Card>
+              {review.outcomes && (
+                <Card className="p-5">
+                  <SectionHeader title="Complete review" description="Records the internal outcome for this version." className="mb-4" />
+                  <CompleteReviewForm target={target} drafts={draftCount} availability={review.outcomes} defaultScope={defaultScope} />
+                </Card>
+              )}
+            </>
+          )}
+
+          {review.decisions.length > 0 && (
+            <Card className="p-5">
+              <SectionHeader title="Review decisions" className="mb-3" />
+              <DecisionHistory decisions={review.decisions} role={role} />
+            </Card>
+          )}
+
           {canSubmit && (
             <Card className="border-brand-200 p-5">
               <SectionHeader title="Ready to submit?" description="Everything below is needed before review." className="mb-4" />
@@ -259,21 +361,25 @@ function Progress({ status }: { status: CreativeStatus }) {
   );
 }
 
-function StatusBanner({ submission, role }: { submission: SubmissionDetail; role: Role }) {
+function StatusBanner({ submission, role, review }: { submission: SubmissionDetail; role: Role; review: SubmissionReview }) {
   const submitted = submission.submittedAt ? formatDateTime(submission.submittedAt) : null;
+  const final = review.decisions.find((d) => d.kind === "FINAL" && d.outcome);
+  const outcome = final?.outcome ? `Outcome: ${REVIEW_OUTCOME_LABEL[final.outcome]}.` : "";
   const messages: Record<Role, Partial<Record<CreativeStatus, string>>> = {
     CLIENT: {
       DRAFT: "Private draft. Only you can see it until you submit it.",
       SUBMITTED: `Submitted${submitted ? ` on ${submitted}` : ""}. It's waiting for the Clyntique team to review it.`,
       IN_REVIEW: "The Clyntique team is reviewing this submission.",
-      CHANGES_REQUESTED: "The reviewer asked for changes.",
-      REVIEW_COMPLETE: "The internal review is complete.",
+      CHANGES_REQUESTED: "The reviewer requested changes. Each finding below says what's needed.",
+      REVIEW_COMPLETE: `The internal review is complete. ${outcome}`.trim(),
     },
     TEAM: {
       SUBMITTED: `Submitted by ${submission.createdByName ?? submission.project.clientName}${submitted ? ` on ${submitted}` : ""}. Waiting for review.`,
-      IN_REVIEW: "In review.",
-      CHANGES_REQUESTED: "Waiting for the client's changes.",
-      REVIEW_COMPLETE: "Review complete.",
+      IN_REVIEW: review.round
+        ? `In review: round ${review.round.number}, V${review.round.versionNumber}. Findings stay internal until you request changes or complete the review.`
+        : "In review.",
+      CHANGES_REQUESTED: "Changes requested. Waiting for the client's revision.",
+      REVIEW_COMPLETE: `Review complete. ${outcome}`.trim(),
     },
   };
   const tone: Partial<Record<CreativeStatus, string>> = {

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
-import { getActivity, getCreatives, getCreativeStatusCounts, getProjects } from "@/lib/data/workspace";
+import { getReviewQueue, getReviewSummary } from "@/lib/data/review-queue";
+import { getActivity, getCreatives, getCreativeStatusCounts, getProjects, type StatusCounts } from "@/lib/data/workspace";
 import { formatRelative, greetingFor, pluralize, requestTime } from "@/lib/format";
 import { basePathFor } from "@/lib/navigation";
 import { PageHeader } from "@/components/layout/page-header";
@@ -11,35 +12,34 @@ import { ArrowRightIcon, FolderIcon, PlusIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/states";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { ActivityList } from "@/components/workspace/activity-feed";
-import { projectStatus, reviewStateLabel } from "@/components/workspace/copy";
+import { reviewStateLabel } from "@/components/workspace/copy";
 import { CreativeThumb } from "@/components/workspace/creative-card";
 import { ProjectTable } from "@/components/workspace/project-list";
 import { StatRow, type Stat } from "@/components/workspace/stat-row";
+import { QueueRow } from "./review-queue-view";
 
 export async function DashboardView({ role }: { role: Role }) {
   const user = await requireRole(role);
   const base = basePathFor(role);
   const team = role === "TEAM";
 
-  // What this person should act on next.
-  const attentionStatus = team ? "CHANGES_REQUESTED" : "IN_REVIEW";
-  const [projects, counts, attention, activity] = await Promise.all([
+  // What this person should act on next. TEAM: the internal review queue
+  // (submission workflow). CLIENT: unchanged until the M6 dashboard pass.
+  const [projects, counts, attention, activity, queue, summary] = await Promise.all([
     getProjects(user),
-    getCreativeStatusCounts(user),
-    getCreatives(user, { status: attentionStatus }),
+    team ? Promise.resolve<StatusCounts>({}) : getCreativeStatusCounts(user),
+    team ? Promise.resolve([]) : getCreatives(user, { status: "IN_REVIEW" }),
     getActivity(user, { take: 6 }),
+    team ? getReviewQueue(user) : Promise.resolve([]),
+    team ? getReviewSummary(user) : Promise.resolve(null),
   ]);
   const now = requestTime();
 
   const stats: Stat[] = team
     ? [
-        {
-          label: "Active projects",
-          value: projects.filter((p) => !p.creativeCount || projectStatus(p.statusCounts) !== "APPROVED").length,
-          hint: `${pluralize(projects.length, "project")} in total`,
-        },
-        { label: "In client review", value: counts.IN_REVIEW ?? 0, hint: "Waiting on client feedback" },
-        { label: "Changes requested", value: counts.CHANGES_REQUESTED ?? 0, hint: "Feedback to address", highlight: true },
+        { label: "Waiting for review", value: summary?.waiting ?? 0, hint: "Submitted, not yet started", highlight: true },
+        { label: "In review", value: summary?.inReview ?? 0, hint: "Decision pending" },
+        { label: "Changes requested", value: summary?.changesRequested ?? 0, hint: "Waiting on the client" },
       ]
     : [
         { label: "Projects", value: projects.length, hint: "Shared with you" },
@@ -55,7 +55,7 @@ export async function DashboardView({ role }: { role: Role }) {
         title={team ? `${greetingFor()}, ${user.name}` : `Welcome back, ${firstName}`}
         description={
           team
-            ? "Overview of your creative work and current review progress."
+            ? `Internal review of client submissions.${summary?.completedThisWeek ? ` ${pluralize(summary.completedThisWeek, "review")} completed in the last 7 days.` : ""}`
             : "Your creative review overview."
         }
         action={
@@ -81,14 +81,32 @@ export async function DashboardView({ role }: { role: Role }) {
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-8">
           <div className="flex min-w-0 flex-col gap-10 lg:col-span-2">
+            {team ? (
+              <section className="flex flex-col gap-4">
+                <SectionHeader
+                  title="Review queue"
+                  description="Oldest submission first."
+                  action={
+                    <Link href="/admin/review" className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 hover:text-brand-900">
+                      Open queue ({queue.length}) <ArrowRightIcon className="size-3.5" />
+                    </Link>
+                  }
+                />
+                {queue.length ? (
+                  <Card className="divide-y divide-line">
+                    {queue.slice(0, 5).map((item) => (
+                      <QueueRow key={item.id} item={item} now={now} compact />
+                    ))}
+                  </Card>
+                ) : (
+                  <EmptyState title="The review queue is clear." description="New client submissions appear here as soon as they are submitted." />
+                )}
+              </section>
+            ) : (
             <section className="flex flex-col gap-4">
               <SectionHeader
-                title={team ? "Needs revision" : "Waiting for your review"}
-                description={
-                  team
-                    ? "Creatives where the client asked for changes."
-                    : "Creatives the team has shared for your feedback."
-                }
+                title="Waiting for your review"
+                description="Creatives the team has shared for your feedback."
               />
               {attention.length ? (
                 <Card className="divide-y divide-line">
@@ -113,12 +131,10 @@ export async function DashboardView({ role }: { role: Role }) {
                   ))}
                 </Card>
               ) : (
-                <EmptyState
-                  title="You're all caught up."
-                  description={team ? "No open change requests right now." : "Nothing is waiting for your review."}
-                />
+                <EmptyState title="You're all caught up." description="Nothing is waiting for your review." />
               )}
             </section>
+            )}
 
             <section className="flex flex-col gap-4">
               <SectionHeader

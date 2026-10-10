@@ -148,7 +148,10 @@ export async function createDraft(user: CurrentUser, input: DraftInput): Promise
     ? await prisma.project.findUnique({ where: { id: String(input.projectId) }, select: { id: true, clientId: true } })
     : null;
   const allowed = project ? canCreateSubmission(user, project) : ({ ok: false, reason: "NOT_FOUND" } as const);
-  if (!project || !allowed.ok) return fail(allowed.ok ? DENIAL_MESSAGE.NOT_FOUND : DENIAL_MESSAGE[allowed.reason]);
+  // Missing and other clients' projects look the same.
+  if (!project || !allowed.ok) {
+    return fail(!allowed.ok && allowed.reason === "FORBIDDEN" ? "Only the client assigned to a project can create submissions in it." : "This project isn't available.");
+  }
 
   const valid = validateDraft(input);
   if (!valid.ok) return valid;
@@ -399,24 +402,34 @@ export type FindingInput = {
   platformCodes?: string[];
 };
 
-/** TEAM records a DRAFT finding (team-only until published) on the version under review. */
-export async function recordFinding(user: CurrentUser, input: FindingInput): Promise<CommandResult<{ findingId: string }>> {
-  const g = await guard(user, "RECORD_FINDING", input.creativeId);
-  if (!g.ok) return g;
-
+async function validateFinding(input: Omit<FindingInput, "creativeId">) {
   const issue = clean(input.issue, LIMITS.finding);
   const explanation = clean(input.explanation, LIMITS.text);
   const actionDetails = clean(input.actionDetails, LIMITS.text);
   const severity = Object.values(Severities).find((v) => v === input.severity) as FindingSeverity | undefined;
   const requiredAction = Object.values(FindingActions).find((v) => v === input.requiredAction) as FindingAction | undefined;
+  if (issue === null) return fail(`Keep the issue under ${LIMITS.finding} characters.`);
   if (!issue || issue.length < 3) return fail("Describe the issue.");
+  if (explanation === null || actionDetails === null) return fail(`Keep each field under ${LIMITS.text} characters.`);
   if (!explanation) return fail("Explain why this is an issue.");
-  if (!actionDetails) return fail("Say exactly what the client needs to do.");
   if (!severity) return fail("Choose a severity.");
   if (!requiredAction) return fail("Choose the required client action.");
+  if (!actionDetails) return fail("Say exactly what the client needs to do.");
   const markets = await validCodes("market", input.marketCodes ?? []);
   const platforms = await validCodes("platform", input.platformCodes ?? []);
   if (!markets.ok || !platforms.ok) return fail("Choose markets and platforms from the list.");
+  return { ok: true as const, data: { issue, explanation, actionDetails, severity, requiredAction }, markets: markets.codes, platforms: platforms.codes };
+}
+
+/** TEAM records a DRAFT finding (team-only until published) on the version under review. */
+export async function recordFinding(user: CurrentUser, input: FindingInput): Promise<CommandResult<{ findingId: string }>> {
+  const g = await guard(user, "RECORD_FINDING", input.creativeId);
+  if (!g.ok) return g;
+  const valid = await validateFinding(input);
+  if (!valid.ok) return valid;
+  const { issue, explanation, actionDetails, severity, requiredAction } = valid.data;
+  const markets = { codes: valid.markets };
+  const platforms = { codes: valid.platforms };
 
   const current = await currentRound(g.s.id);
   if (!current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
@@ -447,18 +460,56 @@ export async function recordFinding(user: CurrentUser, input: FindingInput): Pro
   );
 }
 
-/** TEAM publishes, resolves, reopens or dismisses a finding during review. */
-export async function reviewFinding(
+/**
+ * TEAM edits a finding while it is still a DRAFT (never seen by the client).
+ * Published findings can't be edited; their history lives in FindingEvent.
+ */
+export async function updateDraftFinding(
   user: CurrentUser,
-  input: { findingId: string; move: Exclude<FindingMove, "RESPOND">; note?: string },
+  input: Omit<FindingInput, "creativeId"> & { findingId: string },
 ): Promise<CommandResult> {
   const finding = await prisma.finding.findUnique({
     where: { id: String(input.findingId ?? "") },
     select: { id: true, creativeId: true, status: true },
   });
   if (!finding) return fail("This finding is no longer available.");
-  const action: SubmissionAction =
-    input.move === "PUBLISH" ? "PUBLISH_FINDING" : input.move === "RESOLVE" ? "RESOLVE_FINDING" : input.move === "REOPEN" ? "REOPEN_FINDING" : "DISMISS_FINDING";
+  const g = await guard(user, "RECORD_FINDING", finding.creativeId);
+  if (!g.ok) return g;
+  if (finding.status !== "DRAFT") return fail("Only draft findings can be edited. This one has already been shared with the client.");
+  const valid = await validateFinding(input);
+  if (!valid.ok) return valid;
+
+  return run("updateDraftFinding", async () =>
+    prisma.$transaction(async (tx) => {
+      const { count } = await tx.finding.updateMany({ where: { id: finding.id, status: "DRAFT" }, data: valid.data });
+      if (!count) throw new Conflict("This finding changed meanwhile. Refresh and try again.");
+      await tx.findingMarket.deleteMany({ where: { findingId: finding.id } });
+      await tx.findingPlatform.deleteMany({ where: { findingId: finding.id } });
+      if (valid.markets.length) await tx.findingMarket.createMany({ data: valid.markets.map((marketCode) => ({ findingId: finding.id, marketCode })) });
+      if (valid.platforms.length) await tx.findingPlatform.createMany({ data: valid.platforms.map((platformCode) => ({ findingId: finding.id, platformCode })) });
+      await tx.findingEvent.create({ data: { findingId: finding.id, fromStatus: "DRAFT", toStatus: "DRAFT", actorId: user.id, note: "Edited" } });
+      return { ok: true as const };
+    }),
+  );
+}
+
+/**
+ * TEAM dismisses, resolves or reopens a finding during review. Findings are
+ * never published one by one: they reach the client only through
+ * requestChanges or completeReview.
+ */
+export async function reviewFinding(
+  user: CurrentUser,
+  input: { findingId: string; move: Extract<FindingMove, "DISMISS" | "RESOLVE" | "REOPEN">; note?: string },
+): Promise<CommandResult> {
+  const finding = await prisma.finding.findUnique({
+    where: { id: String(input.findingId ?? "") },
+    select: { id: true, creativeId: true, status: true },
+  });
+  if (!finding) return fail("This finding is no longer available.");
+  const moves = { RESOLVE: "RESOLVE_FINDING", REOPEN: "REOPEN_FINDING", DISMISS: "DISMISS_FINDING" } as const;
+  const action: SubmissionAction | undefined = moves[input.move as keyof typeof moves];
+  if (!action) return fail("This action isn't available.");
   const g = await guard(user, action, finding.creativeId);
   if (!g.ok) return g;
 
@@ -475,7 +526,6 @@ export async function reviewFinding(
         where: { id: finding.id, status: finding.status },
         data: {
           status: move.to,
-          ...(input.move === "PUBLISH" ? { publishedAt: now } : {}),
           ...(input.move === "RESOLVE"
             ? { resolvedById: user.id, resolvedAt: now, resolutionNote: note, resolvedInVersionId: current?.round?.versionId ?? null }
             : {}),
@@ -483,10 +533,18 @@ export async function reviewFinding(
       });
       if (!count) throw new Conflict("This finding changed meanwhile. Refresh and try again.");
       await tx.findingEvent.create({ data: { findingId: finding.id, fromStatus: finding.status, toStatus: move.to, actorId: user.id, note: note || null } });
-      if (input.move === "PUBLISH") await activity(tx, g.s, user, "FINDING_RECORDED", `Finding recorded on “${g.s.name}”`);
       return { ok: true as const };
     }),
   );
+}
+
+/** Publishes DRAFT findings (DRAFT -> OPEN) with history and one activity entry. */
+async function publishDrafts(tx: Prisma.TransactionClient, s: Loaded, user: CurrentUser, drafts: string[]) {
+  if (!drafts.length) return;
+  const { count } = await tx.finding.updateMany({ where: { id: { in: drafts }, status: "DRAFT" }, data: { status: "OPEN", publishedAt: new Date() } });
+  if (count !== drafts.length) throw new Conflict("Findings changed while you were reviewing. Refresh and try again.");
+  await tx.findingEvent.createMany({ data: drafts.map((findingId) => ({ findingId, fromStatus: "DRAFT" as const, toStatus: "OPEN" as const, actorId: user.id })) });
+  await activity(tx, s, user, "FINDING_RECORDED", `${drafts.length} finding${drafts.length === 1 ? "" : "s"} shared on “${s.name}”`);
 }
 
 async function decisionContext(creativeId: string, requested: { roundId: string; versionId: string }) {
@@ -537,11 +595,7 @@ export async function requestChanges(
         data: { status: "CHANGES_REQUESTED" },
       });
       if (!count) throw new Conflict("This submission changed while you were reviewing. Refresh and try again.");
-      const now = new Date();
-      if (drafts.length) {
-        await tx.finding.updateMany({ where: { id: { in: drafts }, status: "DRAFT" }, data: { status: "OPEN", publishedAt: now } });
-        await tx.findingEvent.createMany({ data: drafts.map((findingId) => ({ findingId, fromStatus: "DRAFT" as const, toStatus: "OPEN" as const, actorId: user.id })) });
-      }
+      await publishDrafts(tx, g.s, user, drafts);
       // One decision per round (unique roundId) rejects a concurrent second decision.
       await tx.reviewDecision.create({
         data: { creativeId: g.s.id, cycleId: ctx.cycleId, roundId: requested.roundId, versionId: requested.versionId, reviewerId: user.id, kind: "CHANGES_REQUESTED", summary },
@@ -555,7 +609,16 @@ export async function requestChanges(
 /** TEAM completes the review cycle with a final internal outcome on the round's exact version. */
 export async function completeReview(
   user: CurrentUser,
-  input: { creativeId: string; roundId: string; versionId: string; outcome: string; summary: string; scopeNote?: string },
+  input: {
+    creativeId: string;
+    roundId: string;
+    versionId: string;
+    outcome: string;
+    summary: string;
+    scopeNote?: string;
+    /** Explicitly share the remaining DRAFT findings as part of this outcome. Otherwise they must be dismissed first. */
+    publishDrafts?: boolean;
+  },
 ): Promise<CommandResult> {
   const g = await guard(user, "COMPLETE_REVIEW", input.creativeId);
   if (!g.ok) return g;
@@ -570,8 +633,11 @@ export async function completeReview(
   const ctx = await decisionContext(g.s.id, requested);
   if (!ctx.ok) return fail(ctx.error);
 
-  const findings = await prisma.finding.findMany({ where: { cycleId: ctx.cycleId }, select: { status: true, severity: true } });
-  const allowed = checkOutcome(outcome, findings, summary);
+  const findings = await prisma.finding.findMany({ where: { cycleId: ctx.cycleId }, select: { id: true, status: true, severity: true } });
+  const drafts = input.publishDrafts ? findings.filter((f) => f.status === "DRAFT").map((f) => f.id) : [];
+  // Judge the outcome on the findings as they will be once drafts are shared.
+  const effective = findings.map((f) => (drafts.includes(f.id) ? { ...f, status: "OPEN" as const } : f));
+  const allowed = checkOutcome(outcome, effective, summary);
   if (!allowed.ok) return fail(allowed.error);
 
   return run("completeReview", async () =>
@@ -586,6 +652,7 @@ export async function completeReview(
         data: { status: "REVIEW_COMPLETE" },
       });
       if (!count) throw new Conflict("This submission changed while you were reviewing. Refresh and try again.");
+      await publishDrafts(tx, g.s, user, drafts);
       const closed = await tx.reviewCycle.updateMany({ where: { id: ctx.cycleId, closedAt: null }, data: { closedAt: new Date() } });
       if (!closed.count) throw new Conflict("This review cycle is already closed.");
       await tx.reviewDecision.create({

@@ -4,15 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
-import { ActivityIcon, FolderIcon, HomeIcon, ImageIcon } from "@/components/ui/icons";
+import { ActivityIcon, FolderIcon, HomeIcon, ImageIcon, LayersIcon } from "@/components/ui/icons";
 import { basePathFor } from "@/lib/navigation";
 
-// Intentionally small: only sections that exist.
+// Intentionally small: only sections that exist. The review queue is TEAM-only.
 const ITEMS = [
-  { label: "Dashboard", segment: "", icon: HomeIcon },
-  { label: "Projects", segment: "/projects", icon: FolderIcon },
-  { label: "Creatives", segment: "/creatives", icon: ImageIcon },
-  { label: "Activity", segment: "/activity", icon: ActivityIcon },
+  { label: "Dashboard", segment: "", icon: HomeIcon, teamOnly: false },
+  { label: "Review queue", segment: "/review", icon: LayersIcon, teamOnly: true },
+  { label: "Projects", segment: "/projects", icon: FolderIcon, teamOnly: false },
+  { label: "Creatives", segment: "/creatives", icon: ImageIcon, teamOnly: false },
+  { label: "Activity", segment: "/activity", icon: ActivityIcon, teamOnly: false },
 ];
 
 type NavProps = { role: Role; layout: "sidebar" | "tabs" };
@@ -28,7 +29,7 @@ export function NavList({ role, layout, pathname }: NavProps & { pathname: strin
 
   return (
     <ul className={layout === "sidebar" ? "flex flex-col gap-0.5" : "flex gap-1"}>
-      {ITEMS.map(({ label: defaultLabel, segment, icon: Icon }) => {
+      {ITEMS.filter((item) => role === "TEAM" || !item.teamOnly).map(({ label: defaultLabel, segment, icon: Icon }) => {
         const href = base + segment;
         // Clients own their creatives as submissions.
         const label = role === "CLIENT" && segment === "/creatives" ? "Submissions" : defaultLabel;

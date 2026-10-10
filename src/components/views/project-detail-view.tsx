@@ -18,7 +18,7 @@ import { ProjectStatus } from "@/components/workspace/project-list";
 import type { SearchParams } from "./projects-view";
 
 const SUCCESS: Record<string, string> = {
-  project: "Project created. Add its first creative when you're ready.",
+  project: "Project created. The client can now create submissions in it.",
   creative: "Creative added.",
 };
 

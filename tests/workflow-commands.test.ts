@@ -214,6 +214,7 @@ describe("version-specific decisions", () => {
   it("requestChanges publishes drafts and records the decision on the round's exact version", async () => {
     setRound();
     h.prisma.creative.updateMany.mockResolvedValue({ count: 1 });
+    h.prisma.finding.updateMany.mockResolvedValue({ count: 1 }); // the one draft is published
     const result = await cmd.requestChanges(TEAM, { creativeId: "s1", roundId: "r2", versionId: "v2", summary: SUMMARY });
     expect(result).toEqual({ ok: true });
     expect(h.prisma.creative.updateMany.mock.calls[0][0].where).toMatchObject({ status: "IN_REVIEW", versions: { none: { versionNumber: { gt: 2 } } } });
