@@ -12,7 +12,7 @@ export default function LoginPage() {
         <div className="rounded-lg border border-line bg-surface p-6 shadow-card sm:p-8">
           <h1 className="text-page-title text-[20px]">Sign in</h1>
           <p className="text-body mt-1 mb-6 text-muted">
-            Review creatives, share feedback, and track approvals in one place.
+            Submit advertising creatives for compliance review, and track findings and decisions in one place.
           </p>
           <LoginForm />
         </div>

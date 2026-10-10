@@ -6,7 +6,9 @@ import {
   addFindingAction,
   completeReviewAction,
   dismissFindingAction,
+  reopenFindingAction,
   requestChangesAction,
+  resolveFindingAction,
   startReviewAction,
   updateFindingAction,
   type ReviewActionState,
@@ -276,9 +278,9 @@ function TargetLine({ t }: { t: DecisionTarget }) {
   );
 }
 
-export function RequestChangesForm({ target, drafts, open }: { target: DecisionTarget; drafts: number; open: number }) {
+export function RequestChangesForm({ target, drafts, open, awaiting }: { target: DecisionTarget; drafts: number; open: number; awaiting: number }) {
   const [state, action, pending] = useActionState<ReviewActionState, FormData>(requestChangesAction, undefined);
-  const canRequest = drafts + open > 0;
+  const canRequest = drafts + open > 0 && awaiting === 0;
   return (
     <form action={action} className="flex flex-col gap-3">
       <input type="hidden" name="creativeId" value={target.creativeId} />
@@ -286,9 +288,11 @@ export function RequestChangesForm({ target, drafts, open }: { target: DecisionT
       <input type="hidden" name="versionId" value={target.versionId} />
       <TargetLine t={target} />
       <p className="text-[13px] text-ink-soft">
-        {canRequest
-          ? `${drafts} draft finding${drafts === 1 ? "" : "s"} will be shared with the client${open ? `, plus ${open} already open` : ""}.`
-          : "Add at least one finding before requesting changes."}
+        {awaiting > 0
+          ? `Resolve or reopen the ${awaiting} finding${awaiting === 1 ? "" : "s"} the client responded to first.`
+          : canRequest
+            ? `${drafts} draft finding${drafts === 1 ? "" : "s"} will be shared with the client${open ? `, plus ${open} open` : ""}.`
+            : "Add or reopen at least one finding before requesting changes."}
       </p>
       <FormError message={state?.error} />
       <Field label="Summary for the client">
@@ -378,5 +382,82 @@ export function CompleteReviewForm({
         {pending ? "Recording…" : "Complete review"}
       </Button>
     </form>
+  );
+}
+
+/**
+ * TEAM, while reviewing a resubmission: decide on each finding the client
+ * responded to. Resolve or reopen with a note; a resolved finding stays
+ * closed (if the issue returns, record a new finding). Published findings can
+ * also be withdrawn with a reason. The client sees these once you record a
+ * decision (request changes or complete the review).
+ */
+export function PublishedFindingControls({ finding }: { finding: FindingView }) {
+  const [mode, setMode] = useState<"idle" | "resolve" | "reopen" | "dismiss">("idle");
+  const done = (r: ReviewActionState) => {
+    if (r?.ok) setMode("idle");
+    return r;
+  };
+  const [resolveState, resolveAction, resolving] = useActionState<ReviewActionState, FormData>(async (p, fd) => done(await resolveFindingAction(p, fd)), undefined);
+  const [reopenState, reopenAction, reopening] = useActionState<ReviewActionState, FormData>(async (p, fd) => done(await reopenFindingAction(p, fd)), undefined);
+  const [dismissState, dismissAction, dismissing] = useActionState<ReviewActionState, FormData>(async (p, fd) => done(await dismissFindingAction(p, fd)), undefined);
+  const responded = finding.status === "RESPONDED";
+  const last = resolveState?.ok ?? reopenState?.ok ?? dismissState?.ok;
+
+  const noteForm = (
+    action: (fd: FormData) => void,
+    state: ReviewActionState,
+    pending: boolean,
+    label: string,
+    hint: string,
+    button: string,
+    variant: "primary" | "secondary",
+  ) => (
+    <form action={action} className="flex flex-col gap-3">
+      <input type="hidden" name="findingId" value={finding.id} />
+      <FormError message={state?.error} />
+      <Field label={label} hint={hint}>
+        <Textarea name="note" required maxLength={2000} className="min-h-16" defaultValue={(state?.values?.note as string) ?? ""} />
+      </Field>
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" onClick={() => setMode("idle")}>
+          Cancel
+        </Button>
+        <Button type="submit" variant={variant} disabled={pending}>
+          {pending ? "Saving…" : button}
+        </Button>
+      </div>
+    </form>
+  );
+
+  return (
+    <div className="mt-3 border-t border-line pt-3">
+      {mode === "idle" && (
+        <div className="flex flex-wrap items-center gap-2">
+          {responded ? (
+            <>
+              <Button size="sm" onClick={() => setMode("resolve")}>
+                Resolve
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setMode("reopen")}>
+                Reopen
+              </Button>
+            </>
+          ) : (
+            <span className="text-meta">Waiting for the client&apos;s response.</span>
+          )}
+          <Button size="sm" variant="ghost" onClick={() => setMode("dismiss")}>
+            Withdraw finding
+          </Button>
+          <Ok message={last} />
+        </div>
+      )}
+      {mode === "resolve" &&
+        noteForm(resolveAction, resolveState, resolving, "Resolution note", "Why the response or revision resolves this finding.", "Resolve finding", "primary")}
+      {mode === "reopen" &&
+        noteForm(reopenAction, reopenState, reopening, "What's still needed", "Shown to the client with the next change request.", "Reopen finding", "secondary")}
+      {mode === "dismiss" &&
+        noteForm(dismissAction, dismissState, dismissing, "Reason for withdrawing", "Kept in the finding's history and shown to the client after your next decision.", "Withdraw finding", "secondary")}
+    </div>
   );
 }

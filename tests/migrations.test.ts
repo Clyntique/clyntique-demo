@@ -16,8 +16,21 @@ const sql = (folder: string) => readFileSync(join(dir, folder, "migration.sql"),
 const statements = (folder: string) => sql(folder).replace(/--.*$/gm, "");
 
 describe("prisma/migrations", () => {
-  it("starts with the 0_init baseline, followed by the submission-workflow migration", () => {
-    expect(folders).toEqual(["0_init", "20261009180000_submission_workflow"]);
+  it("starts with the 0_init baseline, followed by the submission-workflow and evidence-files migrations", () => {
+    expect(folders).toEqual(["0_init", "20261009180000_submission_workflow", "20261011090000_evidence_files"]);
+  });
+
+  it("the evidence-files migration only adds four nullable columns to Evidence", () => {
+    const lines = statements("20261011090000_evidence_files")
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    expect(lines).toEqual([
+      'ALTER TABLE "Evidence" ADD COLUMN "fileUrl" TEXT',
+      'ALTER TABLE "Evidence" ADD COLUMN "fileName" TEXT',
+      'ALTER TABLE "Evidence" ADD COLUMN "mimeType" TEXT',
+      'ALTER TABLE "Evidence" ADD COLUMN "fileSize" INTEGER',
+    ]);
   });
 
   it("contains no destructive statements", () => {

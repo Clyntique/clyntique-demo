@@ -56,13 +56,13 @@ describe("resubmission rules", () => {
     status: "OPEN",
     severity: "HIGH",
     requiredAction: "CLARIFY",
-    identifiedInVersion: 1,
+    requestedOnVersion: 1,
     clientResponses: 0,
     linkedEvidence: 0,
     ...over,
   });
 
-  it("requires a response for every open, non-advisory finding", () => {
+  it("requires a response for every open finding, advisory included", () => {
     expect(resubmissionGaps([f({})], 1)).toEqual([{ findingId: "f1", missing: "RESPONSE" }]);
     expect(resubmissionGaps([f({ clientResponses: 1, status: "RESPONDED" })], 1)).toEqual([]);
   });
@@ -79,8 +79,15 @@ describe("resubmission rules", () => {
     expect(resubmissionGaps([{ ...finding, linkedEvidence: 1 }], 1)).toEqual([]);
   });
 
-  it("ignores advisory, resolved and dismissed findings", () => {
-    expect(resubmissionGaps([f({ severity: "ADVISORY" }), f({ status: "RESOLVED" }), f({ status: "DISMISSED" })], 1)).toEqual([]);
+  it("advisory findings need a response too; resolved and dismissed ones need nothing", () => {
+    expect(resubmissionGaps([f({ severity: "ADVISORY" })], 1)).toEqual([{ findingId: "f1", missing: "RESPONSE" }]);
+    expect(resubmissionGaps([f({ status: "RESOLVED" }), f({ status: "DISMISSED" })], 1)).toEqual([]);
+  });
+
+  it("REVISE_CONTENT after a repeat change request needs a version newer than the one it was requested on", () => {
+    const finding = f({ requiredAction: "REVISE_CONTENT", clientResponses: 1, status: "RESPONDED", requestedOnVersion: 2 });
+    expect(resubmissionGaps([finding], 2)).toEqual([{ findingId: "f1", missing: "NEW_VERSION" }]);
+    expect(resubmissionGaps([finding], 3)).toEqual([]);
   });
 });
 

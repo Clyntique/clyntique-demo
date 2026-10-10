@@ -42,6 +42,23 @@ export function findingVisibleTo(role: Role, finding: { status: FindingStatus; p
   return finding.status !== "DRAFT" && finding.publishedAt !== null;
 }
 
+export type FindingEventFact = { fromStatus: FindingStatus | null; toStatus: FindingStatus; createdAt: Date; byClient: boolean };
+
+/**
+ * What a client may know about a published finding. The reviewer's moves
+ * (resolve, reopen, dismiss) reach the client only once a decision has been
+ * recorded after them, so work in progress during a review stays internal,
+ * just like draft findings. The client's own responses are always theirs.
+ * Returns the status as the client should see it, and the events they may see.
+ */
+export function clientFindingView<T extends FindingEventFact>(events: T[], lastDecisionAt: Date | null): { status: FindingStatus | null; events: T[] } {
+  const visible = events
+    .filter((e) => e.byClient || (lastDecisionAt !== null && e.createdAt <= lastDecisionAt))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  const status = visible.length ? visible[visible.length - 1].toStatus : null;
+  return { status: status === "DRAFT" ? null : status, events: visible };
+}
+
 /** A client sees SHARED evidence only; INTERNAL evidence is team-only. Withdrawn items stay visible as history. */
 export function evidenceVisibleTo(role: Role, evidence: { visibility: "SHARED" | "INTERNAL" }): boolean {
   return role === "TEAM" || evidence.visibility === "SHARED";
@@ -55,36 +72,48 @@ export type FindingForReadiness = {
   status: FindingStatus;
   severity: FindingSeverity;
   requiredAction: FindingAction;
-  /** Version number the finding was identified on (null: not tied to a version). */
-  identifiedInVersion: number | null;
-  /** Client responses since the finding was published. */
+  /**
+   * Version number the latest change request was made on (or the version the
+   * finding was identified on, if later). A revision must be newer than this.
+   */
+  requestedOnVersion: number | null;
+  /** Client responses written since the latest change request. */
   clientResponses: number;
-  /** Active (not withdrawn) evidence linked to the finding that the client can see. */
+  /** Active (not withdrawn), shared evidence linked to the finding since the latest change request. */
   linkedEvidence: number;
 };
 
 export type Unmet = { findingId: string; missing: "RESPONSE" | "NEW_VERSION" | "EVIDENCE" };
 
 /**
- * Every open, non-advisory finding must meet its required action before the
- * client can resubmit:
- * - REVISE_CONTENT: a response and a newer version than the one it was found on
- * - PROVIDE_EVIDENCE: a response and at least one linked evidence item
- * - CLARIFY / ACKNOWLEDGE: a response
+ * Every open finding (any severity) must meet its required action before the
+ * client can resubmit, counting only what was done since the latest change
+ * request (so a reopened finding needs a fresh response):
+ * - every action: a response
+ * - REVISE_CONTENT: also a version newer than the one the changes were requested on
+ * - PROVIDE_EVIDENCE: also at least one evidence item linked to it
  * Meeting the action never resolves a finding; only the reviewer does that.
  */
 export function resubmissionGaps(findings: FindingForReadiness[], latestVersion: number): Unmet[] {
   const gaps: Unmet[] = [];
   for (const f of findings) {
     if (f.status !== "OPEN" && f.status !== "RESPONDED") continue;
-    if (f.severity === "ADVISORY") continue;
     if (f.clientResponses < 1) gaps.push({ findingId: f.id, missing: "RESPONSE" });
-    if (f.requiredAction === "REVISE_CONTENT" && !(latestVersion > (f.identifiedInVersion ?? 0))) {
+    if (f.requiredAction === "REVISE_CONTENT" && !(latestVersion > (f.requestedOnVersion ?? 0))) {
       gaps.push({ findingId: f.id, missing: "NEW_VERSION" });
     }
     if (f.requiredAction === "PROVIDE_EVIDENCE" && f.linkedEvidence < 1) gaps.push({ findingId: f.id, missing: "EVIDENCE" });
   }
   return gaps;
+}
+
+/**
+ * Evidence becomes part of the record once it has been included in a
+ * submitted round. Only evidence added after the latest submission (or while
+ * still a draft) may be withdrawn, and only by the client who added it.
+ */
+export function evidenceIsFinal(evidence: { createdAt: Date }, lastSubmittedAt: Date | null): boolean {
+  return lastSubmittedAt !== null && evidence.createdAt <= lastSubmittedAt;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,6 +123,14 @@ export type FindingForOutcome = { status: FindingStatus; severity: FindingSeveri
 
 /** Request changes needs at least one finding that will be OPEN once drafts are published. */
 export function canRequestChanges(findings: FindingForOutcome[]): { ok: true } | { ok: false; error: string } {
+  // In a resubmitted round, every client response needs the reviewer's judgement first.
+  const awaiting = findings.filter((f) => f.status === "RESPONDED").length;
+  if (awaiting) {
+    return {
+      ok: false,
+      error: `Resolve or reopen the ${awaiting} finding${awaiting === 1 ? "" : "s"} the client responded to before requesting changes.`,
+    };
+  }
   const willBeOpen = findings.some((f) => f.status === "DRAFT" || f.status === "OPEN");
   return willBeOpen ? { ok: true } : { ok: false, error: "Record at least one finding before requesting changes." };
 }

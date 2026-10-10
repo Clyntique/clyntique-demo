@@ -20,6 +20,8 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { MediaFallback, MediaPreview } from "@/components/review/media-preview";
 import { VersionUploader } from "@/components/review/version-uploader";
 import { REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
+import { EvidenceForm, ResubmitPanel, type ChecklistItem } from "./client-remediation";
+import { CompareRounds } from "./compare-rounds";
 import { FindingsList, SeverityLegend } from "./findings-list";
 import { AddFindingForm, CompleteReviewForm, RequestChangesForm, StartReviewForm } from "./review-panel";
 import { DecisionHistory, EvidenceList } from "./review-history";
@@ -29,10 +31,12 @@ import { SubmitPanel } from "./submit-panel";
 /*
  * Detail page for a client submission (workflow SUBMISSION_REVIEW).
  * - CLIENT (owner): upload versions, edit the draft, choose markets and
- *   platforms, submit. Read-only once submitted.
+ *   platforms, submit. When changes are requested: respond to each finding,
+ *   add or withdraw evidence, upload a revised version and resubmit.
  * - TEAM: reviews submitted work: start review, record draft findings (team
- *   only), request changes or complete the review with an outcome. Never sees
- *   client drafts (getSubmission uses the shared scope).
+ *   only), resolve or reopen findings the client responded to, compare
+ *   rounds, request changes or complete the review with an outcome. Never
+ *   sees client drafts (getSubmission uses the shared scope).
  * - Findings reach the CLIENT only after the team requests changes or
  *   completes the review; getSubmissionReview filters them in the query.
  * Every control here is backed by a server action that re-checks authorization.
@@ -62,6 +66,7 @@ export async function SubmissionView({
   const editable = role === "CLIENT" && authorize(user, "EDIT_DRAFT", facts).ok;
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
+  const canManageEvidence = role === "CLIENT" && authorize(user, "MANAGE_EVIDENCE", facts).ok;
   const [targeting, review] = await Promise.all([editable ? getTargetingOptions() : Promise.resolve(null), getSubmissionReview(user, submission.id)]);
   if (!review) notFound();
 
@@ -80,8 +85,26 @@ export async function SubmissionView({
   const currentCycle = review.cycle?.number;
   const cycleFindings = review.findings.filter((f) => f.cycleNumber === currentCycle);
   const draftCount = cycleFindings.filter((f) => f.status === "DRAFT").length;
-  const openCount = cycleFindings.filter((f) => f.status === "OPEN" || f.status === "RESPONDED").length;
+  const openCount = cycleFindings.filter((f) => f.status === "OPEN").length;
+  const awaitingCount = cycleFindings.filter((f) => f.status === "RESPONDED").length;
   const showFindings = inReview || review.findings.length > 0;
+
+  // Short labels for findings ("#2 Small-print legibility"), shared by evidence and the checklist.
+  const findingLabels = new Map(review.findings.map((f, i) => [f.id, `#${i + 1} ${f.issue.length > 48 ? `${f.issue.slice(0, 47)}…` : f.issue}`]));
+  const openInCycle = cycleFindings.filter((f) => f.status === "OPEN" || f.status === "RESPONDED");
+  const remediation = role === "CLIENT" && submission.status === "CHANGES_REQUESTED" && review.readiness && currentCycle != null ? review.readiness : null;
+  const checklist: ChecklistItem[] = remediation
+    ? openInCycle.map((f) => {
+        const missing = remediation.gaps.filter((g) => g.findingId === f.id).map((g) => g.missing);
+        const needs = [
+          "response",
+          ...(f.requiredAction === "REVISE_CONTENT" ? ["revised version"] : []),
+          ...(f.requiredAction === "PROVIDE_EVIDENCE" ? ["evidence"] : []),
+        ].join(" + ");
+        return { key: f.id, label: `${findingLabels.get(f.id)}: ${needs}`, done: missing.length === 0 };
+      })
+    : [];
+  const activeEvidence = review.evidence.filter((e) => !e.withdrawn).map((e) => ({ id: e.id, label: e.title }));
   const defaultScope = [
     submission.markets.length ? `Markets: ${submission.markets.map((m) => m.name).join(", ")}.` : "",
     submission.platforms.length ? `Platforms: ${submission.platforms.map((p) => p.name).join(", ")}.` : "",
@@ -168,6 +191,8 @@ export async function SubmissionView({
             </Card>
           </section>
 
+          {team && review.rounds.length >= 2 && <CompareRounds rounds={review.rounds} format={submission.format} name={submission.name} />}
+
           <Card className="p-5">
             <SectionHeader title="Submission details" className="mb-4" />
             <Details submission={submission} />
@@ -182,16 +207,31 @@ export async function SubmissionView({
                   </h2>
                   <p className="text-meta mt-0.5">
                     {team
-                      ? draftCount
-                        ? `${draftCount} draft (team only) · ${openCount} shared and open`
-                        : `${openCount} shared and open`
-                      : "Issues raised by the Clyntique reviewer, and what each one needs from you."}
+                      ? [
+                          draftCount ? `${draftCount} draft (team only)` : null,
+                          `${openCount} open`,
+                          awaitingCount ? `${awaitingCount} awaiting your decision` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")
+                      : remediation
+                        ? "Respond to each finding. Add evidence or a revised version where the required action asks for it."
+                        : "Issues raised by the Clyntique reviewer, and what each one needs from you."}
                   </p>
                 </div>
                 <SeverityLegend />
               </div>
               {review.findings.length ? (
-                <FindingsList findings={review.findings} role={role} editable={inReview} markets={submission.markets} platforms={submission.platforms} />
+                <FindingsList
+                  findings={review.findings}
+                  role={role}
+                  editable={inReview}
+                  reviewingCycle={target ? (currentCycle ?? null) : null}
+                  respond={remediation && currentCycle != null ? { cycle: currentCycle, gaps: remediation.gaps, evidence: activeEvidence } : null}
+                  evidence={review.evidence}
+                  markets={submission.markets}
+                  platforms={submission.platforms}
+                />
               ) : (
                 <p className="text-meta rounded-md border border-dashed border-line-strong px-4 py-5">
                   No findings yet. Add a finding for each issue, or complete the review with “No issues identified”.
@@ -201,10 +241,27 @@ export async function SubmissionView({
             </section>
           )}
 
-          {submission.status !== "DRAFT" && (
-            <Card className="p-5">
-              <SectionHeader title="Evidence" className="mb-3" />
-              <EvidenceList evidence={review.evidence} role={role} />
+          {(submission.status !== "DRAFT" || canManageEvidence) && (
+            <Card id="evidence" className="scroll-mt-6 p-5">
+              <SectionHeader
+                title="Evidence"
+                description={
+                  canManageEvidence
+                    ? "Supporting material for your claims. You can withdraw an item until you submit; after that it stays in the record."
+                    : undefined
+                }
+                className="mb-3"
+              />
+              <EvidenceList evidence={review.evidence} role={role} findingLabels={findingLabels} />
+              {canManageEvidence && (
+                <div className="mt-4 border-t border-line pt-4">
+                  <EvidenceForm
+                    creativeId={submission.id}
+                    configured={uploadsConfigured()}
+                    findings={remediation ? openInCycle.map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue })) : []}
+                  />
+                </div>
+              )}
             </Card>
           )}
 
@@ -253,7 +310,7 @@ export async function SubmissionView({
             <>
               <Card className="p-5">
                 <SectionHeader title="Request changes" description="Shares the findings with the client and asks for a revision." className="mb-4" />
-                <RequestChangesForm target={target} drafts={draftCount} open={openCount} />
+                <RequestChangesForm target={target} drafts={draftCount} open={openCount} awaiting={awaitingCount} />
               </Card>
               {review.outcomes && (
                 <Card className="p-5">
@@ -271,6 +328,13 @@ export async function SubmissionView({
             </Card>
           )}
 
+          {remediation && review.round && (
+            <Card className="border-brand-200 p-5">
+              <SectionHeader title="Resubmit for review" description="Each open finding needs what's listed before you can resubmit." className="mb-4" />
+              <ResubmitPanel creativeId={submission.id} items={checklist} nextRound={review.round.number + 1} />
+            </Card>
+          )}
+
           {canSubmit && (
             <Card className="border-brand-200 p-5">
               <SectionHeader title="Ready to submit?" description="Everything below is needed before review." className="mb-4" />
@@ -284,8 +348,14 @@ export async function SubmissionView({
           {canUpload && (
             <Card id="upload" className="scroll-mt-6 p-5">
               <SectionHeader
-                title={current ? "Upload a new version" : "Upload the creative"}
-                description={current ? `Adds V${current.versionNumber + 1}. Earlier versions are kept.` : "Image (JPEG, PNG, WebP) or video (MP4, WebM)."}
+                title={remediation ? "Upload a revised version" : current ? "Upload a new version" : "Upload the creative"}
+                description={
+                  remediation && current
+                    ? `Adds V${current.versionNumber + 1} for the next review round. Earlier versions are kept.`
+                    : current
+                      ? `Adds V${current.versionNumber + 1}. Earlier versions are kept.`
+                      : "Image (JPEG, PNG, WebP) or video (MP4, WebM)."
+                }
                 className="mb-4"
               />
               <VersionUploader
@@ -294,7 +364,7 @@ export async function SubmissionView({
                 limits={getUploadLimits()}
                 configured={uploadsConfigured()}
                 isDraft
-                doneHint="Submit it for review when everything is ready."
+                doneHint={remediation ? "Respond to the findings, then resubmit." : "Submit it for review when everything is ready."}
                 notesHint="Shown to the reviewer next to this version."
               />
             </Card>
@@ -318,6 +388,7 @@ export async function SubmissionView({
                     <p className="text-ink">
                       {r.number === 1 ? "Submitted" : `Resubmitted (round ${r.number})`} · V{r.versionNumber}
                     </p>
+                    {r.note && <p className="text-meta break-words whitespace-pre-line italic">“{r.note}”</p>}
                     <p className="text-meta">
                       {r.submittedByName} · <time dateTime={r.submittedAt.toISOString()}>{formatDateTime(r.submittedAt)}</time>
                     </p>
@@ -368,15 +439,23 @@ function StatusBanner({ submission, role, review }: { submission: SubmissionDeta
   const messages: Record<Role, Partial<Record<CreativeStatus, string>>> = {
     CLIENT: {
       DRAFT: "Private draft. Only you can see it until you submit it.",
-      SUBMITTED: `Submitted${submitted ? ` on ${submitted}` : ""}. It's waiting for the Clyntique team to review it.`,
+      SUBMITTED:
+        review.round && review.round.number > 1
+          ? `Resubmitted for round ${review.round.number}. It's waiting for the Clyntique team to review it.`
+          : `Submitted${submitted ? ` on ${submitted}` : ""}. It's waiting for the Clyntique team to review it.`,
       IN_REVIEW: "The Clyntique team is reviewing this submission.",
-      CHANGES_REQUESTED: "The reviewer requested changes. Each finding below says what's needed.",
+      CHANGES_REQUESTED: "The reviewer requested changes. Respond to each finding, add evidence or a revised version where asked, then resubmit.",
       REVIEW_COMPLETE: `The internal review is complete. ${outcome}`.trim(),
     },
     TEAM: {
-      SUBMITTED: `Submitted by ${submission.createdByName ?? submission.project.clientName}${submitted ? ` on ${submitted}` : ""}. Waiting for review.`,
+      SUBMITTED:
+        review.round && review.round.number > 1
+          ? `Resubmitted for round ${review.round.number} (V${review.round.versionNumber}). Compare it with the previous round, then start the review.`
+          : `Submitted by ${submission.createdByName ?? submission.project.clientName}${submitted ? ` on ${submitted}` : ""}. Waiting for review.`,
       IN_REVIEW: review.round
-        ? `In review: round ${review.round.number}, V${review.round.versionNumber}. Findings stay internal until you request changes or complete the review.`
+        ? review.round.number > 1
+          ? `In review: round ${review.round.number}, V${review.round.versionNumber}. Resolve or reopen each finding the client responded to. Your decisions stay internal until you request changes or complete the review.`
+          : `In review: round ${review.round.number}, V${review.round.versionNumber}. Findings stay internal until you request changes or complete the review.`
         : "In review.",
       CHANGES_REQUESTED: "Changes requested. Waiting for the client's revision.",
       REVIEW_COMPLETE: `Review complete. ${outcome}`.trim(),

@@ -1,10 +1,14 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
-import type { CreativeFormat, FindingAction, FindingSeverity, ReviewOutcome } from "@/generated/prisma/enums";
-import { CreativeFormat as CreativeFormats, FindingAction as FindingActions, FindingSeverity as Severities, ReviewOutcome as Outcomes } from "@/generated/prisma/enums";
+import type { CreativeFormat, EvidenceType, FindingAction, FindingSeverity, ReviewOutcome } from "@/generated/prisma/enums";
+import { CreativeFormat as CreativeFormats, EvidenceType as EvidenceTypes, FindingAction as FindingActions, FindingSeverity as Severities, ReviewOutcome as Outcomes } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
+import { EVIDENCE_MAX_BYTES, evidenceKindFor, evidencePathMatches } from "@/lib/evidence-files";
+import { UPLOAD_KEY_PATTERN } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
-import { canRequestChanges, checkOutcome, moveFinding, resubmissionGaps, type FindingMove } from "./findings";
+import { contentMatches, deleteUnreferencedBlob, headBlob, isPrivateBlobUrl } from "@/lib/review/blob";
+import { canRequestChanges, checkOutcome, evidenceIsFinal, moveFinding, type FindingMove } from "./findings";
+import { loadReadiness } from "./readiness";
 import { DENIAL_MESSAGE, authorize, canCreateSubmission, type SubmissionAction, type SubmissionFacts } from "./policy";
 import { SUBMIT_GAP_MESSAGE, submitGaps } from "./submission";
 import { checkDecisionTarget, transition, type WorkflowAction } from "./transitions";
@@ -20,8 +24,8 @@ import { checkDecisionTarget, transition, type WorkflowAction } from "./transiti
  *    pages, double submits and concurrent reviewers match zero rows,
  * 5. records the acting user on every row it creates (reviewer identity).
  *
- * Not yet called by any page, route or form: integration is M3–M5. The tables
- * these commands use exist only after the M1A migration is applied.
+ * Called by the form actions in src/app/dashboard/submissions/actions.ts
+ * (client) and src/app/admin/review/actions.ts (team).
  */
 
 export type CommandResult<T = object> = ({ ok: true } & T) | { ok: false; error: string };
@@ -258,7 +262,7 @@ export async function respondToFinding(
   if (!finding) return fail("This finding is no longer available.");
   const g = await guard(user, "RESPOND_TO_FINDING", finding.creativeId);
   if (!g.ok) return g;
-  // Clients can only ever act on findings they can see.
+  // Clients can only ever act on findings they can see, in the open review cycle.
   if (finding.status === "DRAFT" || !finding.publishedAt) return fail("This finding is no longer available.");
 
   const message = clean(input.message, LIMITS.text);
@@ -270,7 +274,7 @@ export async function respondToFinding(
     : null;
   if (input.versionId && !version) return fail("That version doesn't belong to this submission.");
 
-  const evidenceIds = [...new Set((input.evidenceIds ?? []).map(String))];
+  const evidenceIds = [...new Set((Array.isArray(input.evidenceIds) ? input.evidenceIds : []).map(String))];
   if (evidenceIds.length) {
     const usable = await prisma.evidence.count({
       where: { id: { in: evidenceIds }, creativeId: g.s.id, visibility: "SHARED", withdrawnAt: null },
@@ -279,6 +283,7 @@ export async function respondToFinding(
   }
 
   const current = await currentRound(g.s.id);
+  if (current && (current.cycle.id !== finding.cycleId || current.cycle.closedAt)) return fail("This finding belongs to an earlier, closed review.");
 
   return run("respondToFinding", async () =>
     prisma.$transaction(async (tx) => {
@@ -314,34 +319,7 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
   const [version, current] = await Promise.all([latestVersion(g.s.id), currentRound(g.s.id)]);
   if (!version || !current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
 
-  const findings = await prisma.finding.findMany({
-    where: { cycleId: current.cycle.id },
-    select: {
-      id: true,
-      status: true,
-      severity: true,
-      requiredAction: true,
-      version: { select: { versionNumber: true } },
-      _count: {
-        select: {
-          responses: { where: { author: { role: "CLIENT" } } },
-          evidence: { where: { evidence: { withdrawnAt: null, visibility: "SHARED" } } },
-        },
-      },
-    },
-  });
-  const gaps = resubmissionGaps(
-    findings.map((f) => ({
-      id: f.id,
-      status: f.status,
-      severity: f.severity,
-      requiredAction: f.requiredAction,
-      identifiedInVersion: f.version?.versionNumber ?? null,
-      clientResponses: f._count.responses,
-      linkedEvidence: f._count.evidence,
-    })),
-    version.versionNumber,
-  );
+  const { gaps } = await loadReadiness(g.s.id, current.cycle.id);
   if (gaps.length) return fail(`Address every open finding before resubmitting (${gaps.length} item${gaps.length === 1 ? "" : "s"} outstanding).`);
 
   return run("resubmit", async () =>
@@ -364,6 +342,195 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
       });
       await activity(tx, g.s, user, "RESUBMITTED", `Resubmitted “${g.s.name}” (V${version.versionNumber}, round ${current.round!.number + 1})`);
       return { ok: true as const, roundId: round.id };
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CLIENT: supporting evidence
+
+export type EvidenceInput = {
+  creativeId: string;
+  title: string;
+  type: string;
+  description?: string;
+  source?: string;
+  url?: string;
+  /** An uploaded file (private Blob), verified here before it is recorded. */
+  file?: { uploadKey: string; url: string; fileName: string } | null;
+  /** Published findings in the open cycle this evidence supports. */
+  findingIds?: string[];
+};
+
+function validLink(value: string) {
+  if (!value) return { ok: true as const, url: null };
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return { ok: false as const };
+    return { ok: true as const, url: url.toString() };
+  } catch {
+    return { ok: false as const };
+  }
+}
+
+/**
+ * CLIENT adds supporting evidence to their own submission (draft, or while
+ * changes are requested). Always client-submitted and shared with the team.
+ * An attached file must be the exact upload the server issued a token for,
+ * within the size limit, and really of its declared type; otherwise it is
+ * deleted and nothing is recorded.
+ */
+export async function addEvidence(user: CurrentUser, input: EvidenceInput): Promise<CommandResult<{ evidenceId: string }>> {
+  const g = await guard(user, "MANAGE_EVIDENCE", String(input.creativeId ?? ""));
+  if (!g.ok) return g;
+
+  const title = clean(input.title, LIMITS.name);
+  const description = clean(input.description, LIMITS.text);
+  const source = clean(input.source, LIMITS.name);
+  const type = Object.values(EvidenceTypes).find((t) => t === input.type) as EvidenceType | undefined;
+  if (!title || title.length < 2) return fail("Give the evidence a title (2–120 characters).");
+  if (!type) return fail("Choose the type of evidence.");
+  if (description === null) return fail(`Keep the description under ${LIMITS.text} characters.`);
+  if (source === null) return fail(`Keep the source under ${LIMITS.name} characters.`);
+  const link = validLink(String(input.url ?? "").trim());
+  if (!link.ok) return fail("Enter a full web address starting with https://, or leave the link empty.");
+  if (!input.file && !link.url && !description) return fail("Attach a file, add a link, or describe the evidence.");
+
+  // Findings it supports: published, in the open cycle, still open for a response.
+  const findingIds = [...new Set((Array.isArray(input.findingIds) ? input.findingIds : []).map(String))];
+  if (findingIds.length) {
+    const current = await currentRound(g.s.id);
+    const usable =
+      current && !current.cycle.closedAt
+        ? await prisma.finding.count({
+            where: {
+              id: { in: findingIds },
+              creativeId: g.s.id,
+              cycleId: current.cycle.id,
+              status: { in: ["OPEN", "RESPONDED"] },
+              publishedAt: { not: null },
+            },
+          })
+        : 0;
+    if (usable !== findingIds.length) return fail("Some of those findings aren't open for responses.");
+  }
+
+  let file: { url: string; name: string; mimeType: string; size: number } | null = null;
+  if (input.file) {
+    if (typeof input.file !== "object") return fail("This upload couldn't be verified. Please upload the file again.");
+    const checked = await verifyEvidenceUpload(g.s.id, input.file);
+    if (!checked.ok) return checked;
+    if (checked.existingId) return { ok: true, evidenceId: checked.existingId }; // retry of an upload already recorded
+    file = checked.file;
+  }
+
+  const version = await latestVersion(g.s.id);
+
+  return run("addEvidence", async () =>
+    prisma.$transaction(async (tx) => {
+      const { count } = await tx.creative.updateMany({
+        where: { id: g.s.id, workflow: "SUBMISSION_REVIEW", status: g.s.status, project: { clientId: user.id } },
+        data: { updatedAt: new Date() },
+      });
+      if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
+      const evidence = await tx.evidence.create({
+        data: {
+          creativeId: g.s.id,
+          title,
+          type,
+          description: description || null,
+          source: source || null,
+          url: link.url,
+          origin: "CLIENT_SUBMITTED",
+          visibility: "SHARED",
+          addedById: user.id,
+          versionId: version?.id ?? null,
+          fileUrl: file?.url ?? null,
+          fileName: file?.name ?? null,
+          mimeType: file?.mimeType ?? null,
+          fileSize: file?.size ?? null,
+        },
+        select: { id: true },
+      });
+      if (findingIds.length) {
+        await tx.findingEvidence.createMany({ data: findingIds.map((findingId) => ({ findingId, evidenceId: evidence.id, linkedById: user.id })) });
+      }
+      // Drafts are private: activity only once the team can see the submission.
+      if (g.s.status !== "DRAFT") await activity(tx, g.s, user, "EVIDENCE_SUBMITTED", `Evidence added to “${g.s.name}”: ${title}`);
+      return { ok: true as const, evidenceId: evidence.id };
+    }),
+  );
+}
+
+type VerifiedFile = { url: string; name: string; mimeType: string; size: number };
+
+async function verifyEvidenceUpload(
+  creativeId: string,
+  input: { uploadKey: string; url: string; fileName: string },
+): Promise<CommandResult<{ existingId: string | null; file: VerifiedFile }>> {
+  const unverified = fail("This upload couldn't be verified. Please upload the file again.");
+  const uploadKey = String(input.uploadKey ?? "");
+  const url = String(input.url ?? "");
+  const name = String(input.fileName ?? "").trim().slice(0, 200);
+  const kind = evidenceKindFor(name);
+  if (!UPLOAD_KEY_PATTERN.test(uploadKey) || !kind || !isPrivateBlobUrl(url)) return unverified;
+
+  const existing = await prisma.evidence.findFirst({ where: { creativeId, fileUrl: url }, select: { id: true } });
+  if (existing) return { ok: true, existingId: existing.id, file: { url, name, mimeType: kind.mimeType, size: 0 } };
+
+  const blob = await headBlob(url);
+  if (!blob) return fail("The uploaded file couldn't be found. Please try again.");
+  // Only the exact path /api/evidence/upload issued for this submission.
+  if (!evidencePathMatches(blob.pathname, creativeId, uploadKey, kind.extension)) return unverified;
+
+  let problem: string | null = null;
+  if (blob.size <= 0 || blob.size > EVIDENCE_MAX_BYTES) problem = "Evidence files can be up to 10 MB.";
+  else if (blob.contentType !== kind.mimeType || !(await contentMatches(url, kind.mimeType).catch(() => false))) {
+    problem = `This file isn't a valid ${kind.label} file.`;
+  }
+  if (problem) {
+    await deleteUnreferencedBlob(url);
+    return fail(problem);
+  }
+  return { ok: true, existingId: null, file: { url, name, mimeType: kind.mimeType, size: blob.size } };
+}
+
+/**
+ * CLIENT withdraws evidence they added. Withdrawal is recorded, never a
+ * delete, and only evidence not yet part of a submitted round can be
+ * withdrawn: anything the team has already received stays as it was.
+ */
+export async function withdrawEvidence(user: CurrentUser, evidenceId: string): Promise<CommandResult> {
+  const evidence = evidenceId
+    ? await prisma.evidence.findUnique({
+        where: { id: String(evidenceId) },
+        select: { id: true, creativeId: true, title: true, origin: true, addedById: true, withdrawnAt: true, createdAt: true },
+      })
+    : null;
+  if (!evidence) return fail("This evidence is no longer available.");
+  const g = await guard(user, "MANAGE_EVIDENCE", evidence.creativeId);
+  if (!g.ok) return g;
+  if (evidence.origin !== "CLIENT_SUBMITTED" || evidence.addedById !== user.id) return fail("You can only withdraw evidence you added.");
+  if (evidence.withdrawnAt) return fail("This evidence was already withdrawn.");
+
+  const lastRound = await prisma.submissionRound.findFirst({
+    where: { creativeId: g.s.id },
+    orderBy: { submittedAt: "desc" },
+    select: { submittedAt: true },
+  });
+  if (evidenceIsFinal(evidence, lastRound?.submittedAt ?? null)) {
+    return fail("This evidence was part of an earlier submission, so it stays in the record. Add new evidence instead.");
+  }
+
+  return run("withdrawEvidence", async () =>
+    prisma.$transaction(async (tx) => {
+      const { count } = await tx.evidence.updateMany({
+        where: { id: evidence.id, withdrawnAt: null, addedById: user.id, creative: { status: g.s.status } },
+        data: { withdrawnAt: new Date(), withdrawnById: user.id },
+      });
+      if (!count) throw new Conflict("This evidence changed meanwhile. Refresh and try again.");
+      if (g.s.status !== "DRAFT") await activity(tx, g.s, user, "OTHER", `Evidence withdrawn from “${g.s.name}”: ${evidence.title}`);
+      return { ok: true as const };
     }),
   );
 }

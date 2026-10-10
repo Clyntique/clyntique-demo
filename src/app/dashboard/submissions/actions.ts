@@ -3,7 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/dal";
-import { createDraft, submitForReview, updateDraft } from "@/lib/workflow/commands";
+import {
+  addEvidence,
+  createDraft,
+  respondToFinding,
+  resubmit,
+  submitForReview,
+  updateDraft,
+  withdrawEvidence,
+  type EvidenceInput,
+} from "@/lib/workflow/commands";
 
 /*
  * Form actions for client submissions. Thin wrappers: each one re-loads the
@@ -96,4 +105,51 @@ export async function submitSubmission(_prev: SubmissionFormState, formData: For
 
   revalidateWorkspaces();
   return { ok: "Submitted for review. It's now in the Clyntique team's review queue." };
+}
+
+/** CLIENT: respond to a published finding. Responses are added, never edited. */
+export async function respondToFindingAction(_prev: SubmissionFormState, formData: FormData): Promise<SubmissionFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: SIGN_IN };
+
+  const values = { message: text(formData, "message"), evidence: list(formData, "evidence") };
+  const result = await respondToFinding(user, { findingId: text(formData, "findingId"), message: values.message, evidenceIds: values.evidence });
+  if (!result.ok) return { error: result.error, values };
+
+  revalidateWorkspaces();
+  return { ok: "Response added." };
+}
+
+/**
+ * CLIENT: add supporting evidence. Called by the evidence form after any file
+ * has been uploaded to private storage; addEvidence re-verifies the file.
+ */
+export async function addEvidenceAction(input: EvidenceInput): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: SIGN_IN };
+  const result = await addEvidence(user, input);
+  if (!result.ok) return result;
+  revalidateWorkspaces();
+  return { ok: true };
+}
+
+/** CLIENT: withdraw evidence added since the last submission (kept in the record as withdrawn). */
+export async function withdrawEvidenceAction(_prev: SubmissionFormState, formData: FormData): Promise<SubmissionFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: SIGN_IN };
+  const result = await withdrawEvidence(user, text(formData, "evidenceId"));
+  if (!result.ok) return { error: result.error };
+  revalidateWorkspaces();
+  return { ok: "Evidence withdrawn." };
+}
+
+/** CLIENT: resubmit after changes were requested (a new review round on the newest version). */
+export async function resubmitSubmission(_prev: SubmissionFormState, formData: FormData): Promise<SubmissionFormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: SIGN_IN };
+  const values = { note: text(formData, "note") };
+  const result = await resubmit(user, text(formData, "creativeId"), values.note);
+  if (!result.ok) return { error: result.error, values };
+  revalidateWorkspaces();
+  return { ok: "Resubmitted. It's back in the Clyntique team's review queue." };
 }

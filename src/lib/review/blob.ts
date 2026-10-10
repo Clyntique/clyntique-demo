@@ -53,6 +53,7 @@ const SIGNATURES: Record<string, (b: Uint8Array) => boolean> = {
   "image/webp": (b) => ascii(b, 0, 4) === "RIFF" && ascii(b, 8, 12) === "WEBP",
   "video/mp4": (b) => ascii(b, 4, 8) === "ftyp",
   "video/webm": (b) => b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3,
+  "application/pdf": (b) => ascii(b, 0, 5) === "%PDF-",
 };
 
 function ascii(bytes: Uint8Array, start: number, end: number) {
@@ -84,12 +85,15 @@ export async function contentMatches(url: string, mimeType: string): Promise<boo
 }
 
 /**
- * Deletes a blob only if no creative version references it. Used for uploads
- * that were rejected or abandoned. Files in the version history are never deleted.
+ * Deletes a blob only if no creative version or evidence item references it. Used for uploads
+ * that were rejected or abandoned. Files in the version or evidence history are never deleted.
  */
 export async function deleteUnreferencedBlob(url: string) {
-  const referenced = await prisma.creativeVersion.findFirst({ where: { fileUrl: url }, select: { id: true } });
-  if (referenced) return false;
+  const [version, evidence] = await Promise.all([
+    prisma.creativeVersion.findFirst({ where: { fileUrl: url }, select: { id: true } }),
+    prisma.evidence.findFirst({ where: { fileUrl: url }, select: { id: true } }),
+  ]);
+  if (version || evidence) return false;
   try {
     await del(url);
     return true;

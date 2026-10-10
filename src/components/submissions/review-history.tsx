@@ -1,11 +1,15 @@
 import type { Role } from "@/generated/prisma/enums";
 import type { DecisionView, EvidenceView } from "@/lib/data/submission-review";
 import { REVIEW_DISCLAIMER, REVIEW_OUTCOME_DESCRIPTION, REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
+import { cn } from "@/lib/cn";
+import { formatBytes } from "@/lib/media";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLinkIcon } from "@/components/ui/icons";
+import { ExternalLinkIcon, FileIcon } from "@/components/ui/icons";
 import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
+import { WithdrawEvidenceForm } from "./client-remediation";
 
-// Decision history and evidence for a submission (read-only, both roles).
+// Decision history and evidence for a submission (both roles). The only
+// control is withdrawing evidence, offered when the loader says it's allowed.
 // The data is already filtered for the viewer by getSubmissionReview.
 
 function formatDateTime(date: Date) {
@@ -45,7 +49,16 @@ export function DecisionHistory({ decisions, role }: { decisions: DecisionView[]
   );
 }
 
-export function EvidenceList({ evidence, role }: { evidence: EvidenceView[]; role: Role }) {
+export function EvidenceList({
+  evidence,
+  role,
+  findingLabels,
+}: {
+  evidence: EvidenceView[];
+  role: Role;
+  /** Finding id → short label ("#1 Unsupported claim"). */
+  findingLabels: Map<string, string>;
+}) {
   if (!evidence.length) {
     return (
       <p className="text-meta">
@@ -55,28 +68,52 @@ export function EvidenceList({ evidence, role }: { evidence: EvidenceView[]; rol
   }
   return (
     <ul className="flex flex-col divide-y divide-line">
-      {evidence.map((e) => (
-        <li key={e.id} className="py-3 first:pt-0 last:pb-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge tone="outline">{EVIDENCE_TYPES[e.type]}</Badge>
-            {e.origin === "REVIEWER_ADDED" && <Badge>Added by reviewer</Badge>}
-            {e.visibility === "INTERNAL" && role === "TEAM" && <Badge>Team only</Badge>}
-            {e.withdrawn && <Badge>Withdrawn</Badge>}
-          </div>
-          <p className="text-card-title mt-1 break-words">{e.title}</p>
-          {e.description && <p className="text-body mt-0.5 break-words whitespace-pre-line text-ink-soft">{e.description}</p>}
-          <p className="text-meta mt-1 flex flex-wrap items-center gap-x-2">
-            {e.source && <span>Source: {e.source}</span>}
-            {e.url && (
-              <a href={e.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
-                Open link <ExternalLinkIcon className="size-3" />
-                <span className="sr-only">(opens in a new tab)</span>
+      {evidence.map((e) => {
+        const supports = e.findingIds.map((id) => findingLabels.get(id)).filter(Boolean);
+        return (
+          <li key={e.id} id={`evidence-${e.id}`} className={cn("scroll-mt-6 py-3 first:pt-0 last:pb-0", e.withdrawn && "opacity-70")}>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge tone="outline">{EVIDENCE_TYPES[e.type]}</Badge>
+              {e.origin === "REVIEWER_ADDED" && <Badge>Added by reviewer</Badge>}
+              {e.visibility === "INTERNAL" && role === "TEAM" && <Badge>Team only</Badge>}
+              {e.versionNumber && <Badge tone="outline">With V{e.versionNumber}</Badge>}
+              {e.withdrawn && <Badge>Withdrawn</Badge>}
+            </div>
+            <p className={cn("text-card-title mt-1 break-words", e.withdrawn && "line-through decoration-faint")}>{e.title}</p>
+            {e.description && <p className="text-body mt-0.5 break-words whitespace-pre-line text-ink-soft">{e.description}</p>}
+            {e.file && (
+              <a
+                href={`/api/media/evidence/${e.id}`}
+                target={e.file.isImage ? "_blank" : undefined}
+                rel="noopener noreferrer"
+                className="mt-2 inline-flex max-w-full items-center gap-2 rounded-md border border-line px-2.5 py-1.5 text-[13px] text-ink hover:border-line-strong hover:bg-subtle"
+              >
+                <FileIcon className="size-3.5 shrink-0 text-muted" />
+                <span className="truncate">{e.file.name}</span>
+                {e.file.sizeBytes != null && <span className="text-meta shrink-0">{formatBytes(e.file.sizeBytes)}</span>}
+                <span className="text-meta shrink-0">{e.file.isImage ? "View" : "Download"}</span>
               </a>
             )}
-            {e.addedByName && <span>Added by {e.addedByName}</span>}
-          </p>
-        </li>
-      ))}
+            <p className="text-meta mt-1 flex flex-wrap items-center gap-x-2">
+              {e.source && <span>Source: {e.source}</span>}
+              {e.url && (
+                <a href={e.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+                  Open link <ExternalLinkIcon className="size-3" />
+                  <span className="sr-only">(opens in a new tab)</span>
+                </a>
+              )}
+              {e.addedByName && <span>Added by {e.addedByName}</span>}
+              <time dateTime={e.createdAt.toISOString()}>{formatDateTime(e.createdAt)}</time>
+            </p>
+            {supports.length > 0 && <p className="text-meta mt-1">Supports: {supports.join(" · ")}</p>}
+            {e.withdrawable && (
+              <div className="mt-2">
+                <WithdrawEvidenceForm evidenceId={e.id} />
+              </div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

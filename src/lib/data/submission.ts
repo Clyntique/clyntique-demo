@@ -26,6 +26,8 @@ export type SubmissionVersion = {
 export type SubmissionRoundSummary = {
   number: number;
   versionNumber: number;
+  /** The client's note to the reviewer when resubmitting. */
+  note: string | null;
   submittedAt: Date;
   submittedByName: string;
 };
@@ -86,7 +88,7 @@ export async function getSubmission(user: CurrentUser, creativeId: string, versi
       },
       rounds: {
         orderBy: [{ cycle: { number: "desc" } }, { number: "desc" }],
-        select: { number: true, submittedAt: true, submittedBy: { select: { name: true } }, version: { select: { versionNumber: true } } },
+        select: { number: true, note: true, submittedAt: true, submittedBy: { select: { name: true } }, version: { select: { versionNumber: true } } },
       },
     },
   });
@@ -128,6 +130,7 @@ export async function getSubmission(user: CurrentUser, creativeId: string, versi
     rounds: row.rounds.map((r) => ({
       number: r.number,
       versionNumber: r.version.versionNumber,
+      note: r.note,
       submittedAt: r.submittedAt,
       submittedByName: r.submittedBy.name,
     })),

@@ -278,6 +278,11 @@ model Evidence {
   // Evidence in a submitted cycle is withdrawn, never deleted.
   withdrawnAt   DateTime?
   withdrawnById String?
+  // Optional uploaded file (private Blob; served only via /api/evidence/[id]).
+  fileUrl       String?
+  fileName      String?
+  mimeType      String?
+  fileSize      Int?
 
   creative    Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
   addedBy     User?             @relation("EvidenceAddedBy", fields: [addedById], references: [id], onDelete: Restrict)

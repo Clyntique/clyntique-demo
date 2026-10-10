@@ -50,6 +50,22 @@ export async function findAccessibleVersion(user: CurrentUser, versionId: string
   });
 }
 
+/**
+ * An evidence file the user may download: the submission must be in their
+ * scope, and a client only ever gets SHARED evidence.
+ */
+export async function findAccessibleEvidenceFile(user: CurrentUser, evidenceId: string) {
+  if (!evidenceId || typeof evidenceId !== "string") return null;
+  return prisma.evidence.findFirst({
+    where: {
+      id: evidenceId,
+      creative: { AND: [{ workflow: "SUBMISSION_REVIEW" }, creativeScope(user)] },
+      ...(user.role === "TEAM" ? {} : { visibility: "SHARED" as const }),
+    },
+    select: { id: true, fileUrl: true, fileName: true, mimeType: true },
+  });
+}
+
 /** The highest version number of a creative, or 0 when it has no file yet. */
 export async function latestVersionNumber(creativeId: string) {
   const latest = await prisma.creativeVersion.findFirst({

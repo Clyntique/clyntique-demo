@@ -97,6 +97,24 @@ export async function dismissFindingAction(_prev: ReviewActionState, formData: F
   return { ok: "Finding dismissed." };
 }
 
+export async function resolveFindingAction(_prev: ReviewActionState, formData: FormData): Promise<ReviewActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: SIGN_IN };
+  const result = await reviewFinding(user, { findingId: text(formData, "findingId"), move: "RESOLVE", note: text(formData, "note") });
+  if (!result.ok) return { error: result.error, values: { note: text(formData, "note") } };
+  revalidateWorkspaces();
+  return { ok: "Finding resolved." };
+}
+
+export async function reopenFindingAction(_prev: ReviewActionState, formData: FormData): Promise<ReviewActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: SIGN_IN };
+  const result = await reviewFinding(user, { findingId: text(formData, "findingId"), move: "REOPEN", note: text(formData, "note") });
+  if (!result.ok) return { error: result.error, values: { note: text(formData, "note") } };
+  revalidateWorkspaces();
+  return { ok: "Finding reopened. The client will see your note when you request changes." };
+}
+
 export async function requestChangesAction(_prev: ReviewActionState, formData: FormData): Promise<ReviewActionState> {
   const user = await getCurrentUser();
   if (!user) return { error: SIGN_IN };

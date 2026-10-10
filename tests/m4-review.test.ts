@@ -106,11 +106,25 @@ describe("finding visibility in the data layer", () => {
       id: "c1",
       number: 1,
       closedAt: null,
-      rounds: [{ id: "r1", number: 1, versionId: "v1", version: { versionNumber: 1 }, decisions: [] }],
+      rounds: [
+        {
+          id: "r1",
+          number: 1,
+          note: null,
+          submittedAt: new Date(),
+          submittedBy: { name: "Client A" },
+          versionId: "v1",
+          version: { id: "v1", versionNumber: 1, mediaType: "IMAGE", fileName: null, changeNotes: null },
+          decisions: [],
+        },
+      ],
     });
     h.prisma.finding.findMany.mockResolvedValue([
       {
         id: "f1",
+        events: [],
+        responses: [],
+        evidence: [],
         issue: "i",
         explanation: "e",
         severity: "HIGH",
