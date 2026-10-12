@@ -102,7 +102,8 @@ describe("adding evidence", () => {
       versionId: "v2",
       fileUrl: null,
     });
-    expect(h.prisma.activity.create.mock.calls[0][0].data).toMatchObject({ type: "EVIDENCE_SUBMITTED", userId: CLIENT_A.id });
+    // Private until resubmission: no activity entry the team could read.
+    expect(h.prisma.activity.create).not.toHaveBeenCalled();
   });
 
   it("is refused for another client, for TEAM, for legacy records and once submitted", async () => {

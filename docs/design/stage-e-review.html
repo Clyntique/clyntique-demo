@@ -1,0 +1,124 @@
+<title>Clyntique Stage E Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; screenshots in wrapping grids (desktop wide, phone narrow). */
+:root {
+  --bg: #F7F6F2; --panel: #FFFFFF; --fg: #17212F; --fg-2: #3B4655; --muted: #6B7480; --line: #E6E3DA; --accent: #4868D8;
+  --ok-bg: #DDE8E2; --ok-fg: #24563F; --wait-bg: #F6EBDD; --wait-fg: #7A4E14;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --wait-bg: #3A2C18; --wait-fg: #EBC48F; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --wait-bg: #3A2C18; --wait-fg: #EBC48F; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.55; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 52px; }
+.prose { max-width: 68ch; }
+h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -0.015em; }
+h1 { font-size: 32px; line-height: 1.15; font-weight: 600; }
+h2 { font-size: 21px; line-height: 1.3; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
+.lede { font-size: 17px; color: var(--fg-2); margin-top: 12px; }
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.shots { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); }
+.shots.phone { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+figcaption { font-size: 13px; color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.done { background: var(--ok-bg); color: var(--ok-fg); }
+.pending { background: var(--wait-bg); color: var(--wait-fg); }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow">Stage E · complete · 12 Oct 2026</p>
+    <h1>Clyntique Stage E review</h1>
+    <p class="lede">The remaining screens now share the design system, the Viewfinder mark is applied everywhere, and the last client-privacy gap is closed. Screenshots are from the local server with TEST data. Vercel Preview checks for Stages A, C, D and E are still to do.</p>
+  </header>
+
+  <section>
+    <h2>Brand mark at 16 px</h2>
+    <p class="prose muted">Rasterised at real size and enlarged without smoothing. The regular drawing (left pair) blurs its corners at 16 px; the small drawing (right pair, heavier strokes at 88% of the tile) keeps four distinct corners and a solid centre. The app now uses the small drawing below 24 px and in the favicon, and the regular one at 28 px and up.</p>
+    <div class="shots"><figure><img src="screens/10-mark-16px-check.jpg" alt="Four enlarged 16-pixel renders of the Viewfinder mark: two regular, two heavier; the heavier ones stay crisp" loading="lazy"><figcaption>16 px renders, enlarged 8×. Regular at 11 and 14 px glyphs, then small at 11 and 14 px.</figcaption></figure></div>
+  </section>
+
+  <section>
+    <h2>Sign-in</h2>
+    <div class="shots"><figure><img src="screens/1-sign-in-desktop.jpg" alt="Sign-in page: left panel with the mark, a one-line description and three steps; right, the sign-in form" loading="lazy"><figcaption>Desktop: what Clyntique does in three steps, the review disclaimer, and the form.</figcaption></figure></div>
+    <div class="shots phone"><figure><img src="screens/2-sign-in-mobile.jpg" alt="Sign-in on a phone" loading="lazy"><figcaption>Phone.</figcaption></figure></div>
+  </section>
+
+  <section>
+    <h2>Client screens</h2>
+    <div class="shots"><figure><img src="screens/3-client-overview-desktop.jpg" alt="Client overview: your action needed, with Clyntique, done, recent activity" loading="lazy"><figcaption>Overview: one finding still to answer on TEST M5S, a draft to continue.</figcaption></figure></div>
+    <div class="shots phone">
+      <figure><img src="screens/4-new-submission-mobile.jpg" alt="New submission on a phone with a three-step indicator" loading="lazy"><figcaption>New submission with the step indicator.</figcaption></figure>
+      <figure><img src="screens/6-client-projects-mobile.jpg" alt="Client projects list on a phone" loading="lazy"><figcaption>Projects.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Team screens</h2>
+    <div class="shots">
+      <figure><img src="screens/5-team-projects-desktop.jpg" alt="Team projects table with progress, status and last activity" loading="lazy"><figcaption>Projects: one table. The TEST project counts 3 submissions for the team; Alex's private draft is excluded.</figcaption></figure>
+      <figure><img src="screens/7-team-submissions-desktop.jpg" alt="Team submissions grid with status filters" loading="lazy"><figcaption>Submissions. M5S shows "Updated 45 minutes ago", the team's own last decision, not Alex's private edit.</figcaption></figure>
+      <figure><img src="screens/8-team-activity-desktop.jpg" alt="Team activity timeline grouped by day" loading="lazy"><figcaption>Activity, grouped by day.</figcaption></figure>
+      <figure><img src="screens/9-legacy-view-desktop.jpg" alt="Legacy creative page with an Earlier workflow marker" loading="lazy"><figcaption>Older client-approval record, now marked "Earlier workflow".</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Privacy fix: submitted details (migration a)</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Step</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Backup</td><td><code>db-backups\clyntique-2026-10-12T18-12-45-125Z</code> (read-only export)</td></tr>
+        <tr><td>Before: status and live-database diff</td><td>Only <code>20261012190000_round_snapshot</code> pending; the diff showed exactly the 3 new columns</td></tr>
+        <tr><td>Applied</td><td><code>prisma migrate deploy</code>; afterwards the schema is up to date and the diff is empty</td></tr>
+        <tr><td>After: every row vs the backup</td><td>All 21 tables unchanged (existing columns compared row by row)</td></tr>
+        <tr><td>Snapshot fill</td><td>5 rounds; 0 empty; 0 differ from what was submitted</td></tr>
+        <tr><td>Legacy check vs 9 Oct</td><td>Unchanged</td></tr>
+        <tr><td>Browser (localhost)</td><td>Alex privately edited TEST M5S's title and description. Alex saw the edit; the team's submission page, overview, submissions list, queue, projects, project page and activity showed only the submitted title and description. The TEST edit was then reverted.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="prose muted">How it works: each submit and resubmit stores the title, description and context on the new round. Team-facing pages read that snapshot; the client always sees and edits the live values. Client edits while changes are requested also no longer move the submission's updated time, so lists and project activity can't hint at private work.</p>
+  </section>
+
+  <section>
+    <h2>Checks</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Automated tests</td><td><span class="pill done">233/233 pass</span></td></tr>
+        <tr><td>TypeScript, lint, production build</td><td><span class="pill done">Pass · 0 problems · pass</span> (favicon served as <code>/icon.svg</code>)</td></tr>
+        <tr><td>Desktop and phone layouts (localhost)</td><td><span class="pill done">No horizontal overflow on the pages shown</span></td></tr>
+        <tr><td>Vercel Preview: Stages A, C, D and E</td><td><span class="pill pending">Pending</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Still pending</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Item</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>Vercel Preview checks (A, C, D, E)</td><td>Needs your push and Vercel sign-in. Stage A items include the real 10 MB server limit with the browser check bypassed, MP4 playback and seeking, and withdrawing a published finding.</td></tr>
+        <tr><td>Function region</td><td>You're checking it; nothing changed. Database round trips from here are about 0.3 s, and the dev server timed out intermittently while testing.</td></tr>
+        <tr><td>Production database</td><td>Both new migrations (evidence files, round snapshot) are applied to the shared Render database that the Preview uses. If Production uses the same database it already has them; both are additive and the deployed code ignores the new columns.</td></tr>
+        <tr><td>TEST records</td><td>TEST M5S (round 1, changes requested) and the earlier TEST submissions remain in the shared database.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>

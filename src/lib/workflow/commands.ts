@@ -49,11 +49,11 @@ async function loadFacts(creativeId: string) {
   if (!creativeId || typeof creativeId !== "string") return null;
   const row = await prisma.creative.findUnique({
     where: { id: creativeId },
-    select: { id: true, name: true, workflow: true, status: true, projectId: true, project: { select: { clientId: true } } },
+    select: { id: true, name: true, workflow: true, status: true, projectId: true, updatedAt: true, project: { select: { clientId: true } } },
   });
   if (!row) return null;
   const facts: SubmissionFacts = { id: row.id, workflow: row.workflow, status: row.status, projectClientId: row.project.clientId };
-  return { ...facts, name: row.name, projectId: row.projectId };
+  return { ...facts, name: row.name, projectId: row.projectId, updatedAt: row.updatedAt };
 }
 
 type Loaded = NonNullable<Awaited<ReturnType<typeof loadFacts>>>;
@@ -202,7 +202,9 @@ export async function updateDraft(user: CurrentUser, creativeId: string, input: 
     prisma.$transaction(async (tx) => {
       const { count } = await tx.creative.updateMany({
         where: { id: g.s.id, workflow: "SUBMISSION_REVIEW", status: g.s.status, project: { clientId: user.id } },
-        data: valid.data,
+        // While changes are requested the client's edits are private until they
+        // resubmit, so the submission's "updated" time doesn't move either.
+        data: isDraft ? valid.data : { ...valid.data, updatedAt: g.s.updatedAt },
       });
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
       if (targeting) {
@@ -215,6 +217,16 @@ export async function updateDraft(user: CurrentUser, creativeId: string, input: 
       return { ok: true as const };
     }),
   );
+}
+
+/**
+ * What the client is submitting: read inside the transaction, after the
+ * status was locked (no edits are possible once submitted). The team reads
+ * these from the round, so later edits stay private until the next round.
+ */
+async function detailsSnapshot(tx: Prisma.TransactionClient, creativeId: string) {
+  const c = await tx.creative.findUniqueOrThrow({ where: { id: creativeId }, select: { name: true, description: true, context: true } });
+  return { submittedName: c.name, submittedDescription: c.description, submittedContext: c.context };
 }
 
 /** CLIENT submits a draft: opens review cycle 1 and round 1 on the newest version. */
@@ -241,7 +253,7 @@ export async function submitForReview(user: CurrentUser, creativeId: string): Pr
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
       const cycle = await tx.reviewCycle.create({ data: { creativeId: g.s.id, number: 1, openedById: user.id }, select: { id: true } });
       const round = await tx.submissionRound.create({
-        data: { creativeId: g.s.id, cycleId: cycle.id, number: 1, versionId: version.id, submittedById: user.id },
+        data: { creativeId: g.s.id, cycleId: cycle.id, number: 1, versionId: version.id, submittedById: user.id, ...(await detailsSnapshot(tx, g.s.id)) },
         select: { id: true },
       });
       await activity(tx, g.s, user, "SUBMISSION_SUBMITTED", `Submitted “${g.s.name}” for review (V${version.versionNumber})`);
@@ -319,7 +331,7 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
   const [version, current] = await Promise.all([latestVersion(g.s.id), currentRound(g.s.id)]);
   if (!version || !current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
 
-  const { gaps } = await loadReadiness(g.s.id, current.cycle.id);
+  const { gaps, requestedAt } = await loadReadiness(g.s.id, current.cycle.id);
   if (gaps.length) return fail(`Address every open finding before resubmitting (${gaps.length} item${gaps.length === 1 ? "" : "s"} outstanding).`);
 
   return run("resubmit", async () =>
@@ -337,10 +349,24 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
           versionId: version.id,
           submittedById: user.id,
           note: cleanNote || null,
+          ...(await detailsSnapshot(tx, g.s.id)),
         },
         select: { id: true },
       });
-      await activity(tx, g.s, user, "RESUBMITTED", `Resubmitted “${g.s.name}” (V${version.versionNumber}, round ${current.round!.number + 1})`);
+      // The client's prepared work becomes visible to the team with this round; summarise it once.
+      const since = requestedAt ?? new Date(0);
+      const [responses, evidence] = await Promise.all([
+        tx.findingResponse.count({ where: { finding: { cycleId: current.cycle.id }, authorId: user.id, createdAt: { gt: since } } }),
+        tx.evidence.count({ where: { creativeId: g.s.id, origin: "CLIENT_SUBMITTED", withdrawnAt: null, createdAt: { gt: since } } }),
+      ]);
+      const extras = [responses ? `${responses} response${responses === 1 ? "" : "s"}` : "", evidence ? `${evidence} evidence item${evidence === 1 ? "" : "s"}` : ""].filter(Boolean);
+      await activity(
+        tx,
+        g.s,
+        user,
+        "RESUBMITTED",
+        `Resubmitted “${g.s.name}” (V${version.versionNumber}, round ${current.round!.number + 1})${extras.length ? ` with ${extras.join(" and ")}` : ""}`,
+      );
       return { ok: true as const, roundId: round.id };
     }),
   );
@@ -430,7 +456,9 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
     prisma.$transaction(async (tx) => {
       const { count } = await tx.creative.updateMany({
         where: { id: g.s.id, workflow: "SUBMISSION_REVIEW", status: g.s.status, project: { clientId: user.id } },
-        data: { updatedAt: new Date() },
+        // A guarded no-op: it locks in the status check without touching the
+        // submission's "updated" time, so the team can't infer private work.
+        data: { updatedAt: g.s.updatedAt },
       });
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
       const evidence = await tx.evidence.create({
@@ -455,8 +483,8 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
       if (findingIds.length) {
         await tx.findingEvidence.createMany({ data: findingIds.map((findingId) => ({ findingId, evidenceId: evidence.id, linkedById: user.id })) });
       }
-      // Drafts are private: activity only once the team can see the submission.
-      if (g.s.status !== "DRAFT") await activity(tx, g.s, user, "EVIDENCE_SUBMITTED", `Evidence added to “${g.s.name}”: ${title}`);
+      // No activity: evidence is private to the client until they (re)submit,
+      // and the resubmission activity summarises it then.
       return { ok: true as const, evidenceId: evidence.id };
     }),
   );
@@ -529,7 +557,7 @@ export async function withdrawEvidence(user: CurrentUser, evidenceId: string): P
         data: { withdrawnAt: new Date(), withdrawnById: user.id },
       });
       if (!count) throw new Conflict("This evidence changed meanwhile. Refresh and try again.");
-      if (g.s.status !== "DRAFT") await activity(tx, g.s, user, "OTHER", `Evidence withdrawn from “${g.s.name}”: ${evidence.title}`);
+      // No activity: this evidence was never submitted, so the team never saw it.
       return { ok: true as const };
     }),
   );

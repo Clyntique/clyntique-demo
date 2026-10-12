@@ -1,0 +1,197 @@
+<title>Clyntique Stage C Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; mark candidates and the workspace plan as panels.
+   Page tokens follow the viewer's theme; brand marks and the mock-up depict the light-only app, so they use fixed app tokens. */
+:root {
+  --bg: #F7F6F2; --panel: #FFFFFF; --fg: #17212F; --fg-2: #3B4655; --muted: #6B7480; --line: #E6E3DA; --accent: #4868D8;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --a-ink: #17212F; --a-ink2: #3B4655; --a-muted: #6B7480; --a-canvas: #F7F6F2; --a-surface: #FFFFFF; --a-stage: #ECEAE4; --a-line: #E6E3DA; --a-line2: #D3CFC4;
+  --a-accent: #4868D8; --a-accent-soft: #E8EDFB; --a-accent-ink: #2B43A0; --a-green: #DDE8E2; --a-green-ink: #24563F; --a-amber-soft: #F6EBDD; --a-amber-ink: #7A4E14; --a-amber: #D6A56B; --a-red: #C2503D;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.55; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 52px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -0.015em; }
+h1 { font-size: 32px; line-height: 1.15; font-weight: 600; }
+h2 { font-size: 21px; line-height: 1.3; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
+.lede { font-size: 17px; color: var(--fg-2); margin-top: 12px; }
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+ul.list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--fg-2); }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.markstage { background: var(--a-canvas); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 16px; color: var(--a-ink); }
+.lockup { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 17px; letter-spacing: -0.015em; }
+.sizes { display: flex; align-items: end; gap: 16px; }
+.tile { width: 28px; height: 28px; border-radius: 6px; background: var(--a-accent); display: grid; place-items: center; }
+.tile.lg { width: 56px; height: 56px; border-radius: 12px; }
+.tile.ink { background: var(--a-ink); }
+.tag { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+.current { display: inline-flex; align-items: center; gap: 8px; }
+/* Workspace mock (light app) */
+.frame { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--a-canvas); color: var(--a-ink); font-size: 13px; line-height: 1.45; }
+.ws { display: grid; grid-template-columns: minmax(0, 1fr) 320px; min-height: 480px; }
+.stage { background: var(--a-stage); display: flex; flex-direction: column; min-width: 0; }
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--a-line2); background: var(--a-canvas); }
+.crumb { font-size: 12px; color: var(--a-muted); }
+.ttl { font-weight: 600; font-size: 15px; }
+.seg { display: inline-flex; border: 1px solid var(--a-line2); border-radius: 6px; overflow: hidden; background: var(--a-surface); }
+.seg span { font-family: var(--mono); font-size: 11px; padding: 3px 8px; color: var(--a-ink2); }
+.seg span.on { background: var(--a-ink); color: #fff; }
+.btn { display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0 12px; border-radius: 6px; font-size: 12.5px; font-weight: 500; white-space: nowrap; border: 1px solid transparent; }
+.btn.p { background: var(--a-accent); color: #fff; } .btn.s { background: var(--a-surface); border-color: var(--a-line2); color: var(--a-ink); } .btn.g { color: var(--a-ink2); }
+.canvas { flex: 1; display: grid; place-items: center; padding: 24px; position: relative; }
+.art { width: min(100%, 190px); aspect-ratio: 9 / 16; border-radius: 6px; background: #2F6F6A; position: relative; box-shadow: 0 6px 24px rgb(23 33 47 / .14); }
+.art::after { content: ""; position: absolute; inset: 13% 0 auto; height: 27%; background: #F2EFE6; }
+.filmstrip { display: flex; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--a-line2); background: var(--a-canvas); align-items: center; flex-wrap: wrap; }
+.film { width: 28px; height: 40px; border-radius: 3px; background: #2F6F6A; box-shadow: inset 0 0 0 1px var(--a-line2); }
+.film.on { box-shadow: 0 0 0 2px var(--a-accent); }
+.panel { border-left: 1px solid var(--a-line); background: var(--a-surface); display: flex; flex-direction: column; min-width: 0; }
+.next { padding: 14px; border-bottom: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 8px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 500; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pa { background: var(--a-accent-soft); color: var(--a-accent-ink); } .pt { background: var(--a-amber-soft); color: var(--a-amber-ink); } .pg { background: var(--a-green); color: var(--a-green-ink); }
+.rec { font-family: var(--mono); font-size: 11px; color: var(--a-muted); }
+.tabs { display: flex; gap: 16px; padding: 0 14px; border-bottom: 1px solid var(--a-line); }
+.tabs span { padding: 9px 0; font-size: 12.5px; color: var(--a-muted); }
+.tabs span.on { color: var(--a-ink); box-shadow: inset 0 -2px 0 var(--a-ink); font-weight: 500; }
+.f { padding: 12px 14px; border-bottom: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 6px; }
+.sev { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; color: var(--a-ink2); }
+.sev::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--a-red); }
+.sev.m::before { background: var(--a-amber); }
+.req { font-size: 12px; background: var(--a-canvas); border-radius: 5px; padding: 6px 8px; color: var(--a-ink2); }
+@media (max-width: 760px) { .ws { grid-template-columns: 1fr; } .panel { border-left: 0; border-top: 1px solid var(--a-line); } h1 { font-size: 27px; } }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow">Stage C · complete · 12 Oct 2026</p>
+    <h1>Clyntique Stage C review</h1>
+    <p class="lede">Design tokens, shared components, the app shell and both dashboards are implemented on the feature branch. The brand mark isn't replaced yet: three candidates are below for your choice. The review workspace is planned, not built.</p>
+  </header>
+
+  <section>
+    <h2>What changed</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Area</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td>Tokens</td><td>The approved palette as semantic tokens: neutrals, accent, and positive / attention / critical tones with soft, line, solid and ink variants. All 162 raw colour classes and 60 of the 63 one-off text sizes are gone. The type scale is 12 · 13 · 14 · 16 · 20 · 28 in Geist, and versions, rounds and counts are set in Geist Mono.</td></tr>
+        <tr><td>Status</td><td>One status pill in four tones. Finding severity is a square marker with a label, not a coloured badge; finding state uses the same four tones.</td></tr>
+        <tr><td>Components</td><td>Button (focus outline, quieter secondary), panel, section header, page header (with an eyebrow and a large dashboard size), breadcrumb, list group and list row, quiet empty state, list-shaped loading skeleton, neutral placeholder frames.</td></tr>
+        <tr><td>Shell</td><td>232 px sidebar with the review-queue count for TEAM; navigation reads Overview · Review queue · Submissions · Projects · Activity (TEAM "Creatives" is now "Submissions"; Projects kept). User block with email and a labelled Sign out. Skip-to-content link. On phones, a Menu button opens a sheet (Escape closes it; focus moves in and back).</td></tr>
+        <tr><td>TEAM dashboard</td><td>Needs review (oldest first, the next one marked), In review (draft-finding counts), Waiting on clients (longest wait first, shared-finding count), Completed this week (outcome, version), recent activity. The stat strip is gone; every number sits beside its list.</td></tr>
+        <tr><td>CLIENT dashboard</td><td>"Your action needed" first (changes requested with the number of findings to answer, then drafts), With Clyntique, Done (with outcome), a link to earlier creatives, a four-step "how a review works" strip, and recent activity. Plain-language statuses throughout.</td></tr>
+        <tr><td>Review queue</td><td>Same list groups; "Resubmitted · R3 · V4 · 2 days ago" in record type; waits over two days marked.</td></tr>
+        <tr><td>Privacy (decision 8)</td><td>Revised versions uploaded while changes are requested are hidden from TEAM until resubmission: version lists, thumbnails, counts and the direct file URL (404). The upload no longer writes a team-visible activity entry. Legacy creatives are unaffected.</td></tr>
+        <tr><td>Consistency fix</td><td>The activity feed now shows clients "Clyntique reviewer" instead of a reviewer's account name, as findings and decisions already did.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Checks</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Automated tests</td><td class="n">226/226 pass (6 new for versions and dashboards)</td></tr>
+        <tr><td>TypeScript · lint · production build</td><td class="n">pass · 0 problems · pass</td></tr>
+        <tr><td>Browser, local only (<code>localhost</code>, same database, read-only viewing)</td><td>TEAM and CLIENT dashboards at 1024, 1280 and 375 px; no horizontal overflow at 375; the mobile sheet opens, closes on Escape and returns focus; client activity anonymised. <strong>Not verified on a Vercel Preview.</strong> Stage A browser verification stays pending until it's done on a Preview.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Brand mark candidates</h2>
+    <p class="prose muted">All three use the approved accent, work at 16 px, and avoid generic AI-product shapes. The current mark (two offset frames) stays in the app until you choose.</p>
+    <div class="grid3">
+      <div class="box">
+        <h3>A · Reviewed sheet</h3>
+        <div class="markstage">
+          <div class="lockup"><span class="tile"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.75h6.5L15 6.25V17.25H5Z"/><path d="M11.5 2.75v3.5H15"/><path d="m7.6 11.3 1.7 1.7 3.2-3.6"/></svg></span>Clyntique</div>
+          <div class="sizes"><span class="tile lg"><svg width="34" height="34" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.75h6.5L15 6.25V17.25H5Z"/><path d="M11.5 2.75v3.5H15"/><path d="m7.6 11.3 1.7 1.7 3.2-3.6"/></svg></span><span class="tile ink"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.75h6.5L15 6.25V17.25H5Z"/><path d="M11.5 2.75v3.5H15"/><path d="m7.6 11.3 1.7 1.7 3.2-3.6"/></svg></span></div>
+        </div>
+        <p class="muted" style="font-size:13.5px">A submission with a check. Most literal: reads "reviewed" instantly, close to the approved mock-up.</p>
+      </div>
+      <div class="box">
+        <h3>B · Viewfinder</h3>
+        <div class="markstage">
+          <div class="lockup"><span class="tile"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13"/><circle cx="10" cy="10" r="2" fill="#fff" stroke="none"/></svg></span>Clyntique</div>
+          <div class="sizes"><span class="tile lg"><svg width="34" height="34" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13"/><circle cx="10" cy="10" r="2" fill="#fff" stroke="none"/></svg></span><span class="tile ink"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M3 7V4.5A1.5 1.5 0 0 1 4.5 3H7M13 3h2.5A1.5 1.5 0 0 1 17 4.5V7M17 13v2.5a1.5 1.5 0 0 1-1.5 1.5H13M7 17H4.5A1.5 1.5 0 0 1 3 15.5V13"/><circle cx="10" cy="10" r="2" fill="#fff" stroke="none"/></svg></span></div>
+        </div>
+        <p class="muted" style="font-size:13.5px">Crop marks around a focal point: a creative under close review. Most distinctive, and ties to the workspace's stage.</p>
+      </div>
+      <div class="box">
+        <h3>C · Open C with a mark</h3>
+        <div class="markstage">
+          <div class="lockup"><span class="tile"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M15 5.6A6.5 6.5 0 1 0 15 14.4"/><circle cx="15.2" cy="10" r="1.6" fill="#fff" stroke="none"/></svg></span>Clyntique</div>
+          <div class="sizes"><span class="tile lg"><svg width="34" height="34" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"><path d="M15 5.6A6.5 6.5 0 1 0 15 14.4"/><circle cx="15.2" cy="10" r="1.6" fill="#fff" stroke="none"/></svg></span><span class="tile ink"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M15 5.6A6.5 6.5 0 1 0 15 14.4"/><circle cx="15.2" cy="10" r="1.6" fill="#fff" stroke="none"/></svg></span></div>
+        </div>
+        <p class="muted" style="font-size:13.5px">A monogram: the C's open side holds a reviewer's mark. Simplest and most "brand"; less descriptive.</p>
+      </div>
+    </div>
+    <p class="muted" style="font-size:13.5px">My recommendation: <strong>B · Viewfinder</strong>. It's the one that says "creative under review" without looking like a generic checklist app. Once you pick, I'll refine the final geometry and update the app, favicon and sign-in page together.</p>
+  </section>
+
+  <section>
+    <h2>Review workspace plan (Stage D, for your review)</h2>
+    <p class="prose muted">The workspace becomes the centrepiece: the creative on a large stage, with everything about it in one panel beside it. Nothing below is built yet.</p>
+    <div class="frame" role="img" aria-label="Plan for the review workspace: stage with toolbar and filmstrip, right panel with next action and tabs">
+      <div class="ws">
+        <div class="stage">
+          <div class="bar">
+            <div><p class="crumb">Acme Health · Spring promo · Round 3</p><p class="ttl">Spring promo story</p></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="seg"><span>V2</span><span>V3</span><span class="on">V4</span></span><span class="btn s">Compare</span></div>
+          </div>
+          <div class="canvas"><div class="art"></div></div>
+          <div class="filmstrip"><span class="rec">Versions</span><span class="film"></span><span class="film"></span><span class="film"></span><span class="film on"></span><span class="rec" style="margin-left:auto">V4 · 1080 × 1920 · uploaded 2 days ago</span></div>
+        </div>
+        <div class="panel">
+          <div class="next">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="pill pa">In review</span><span class="rec">R3 · V4</span></div>
+            <span class="btn p">Complete review</span>
+            <p class="rec" style="font-family:var(--sans);font-size:12px">2 findings await your decision before you can request changes.</p>
+          </div>
+          <div class="tabs"><span class="on">Findings 3</span><span>Evidence 1</span><span>History 9</span></div>
+          <div class="f"><div style="display:flex;gap:8px;align-items:center"><span class="sev">High</span><span class="pill pg">Resolved</span></div><b style="font-weight:500">Unsupported "save 20%" claim</b><p class="rec">Found V2 · resolved V3</p></div>
+          <div class="f"><div style="display:flex;gap:8px;align-items:center"><span class="sev m">Medium</span><span class="pill pa">Responded</span></div><b style="font-weight:500">Gift-card exclusion placement</b><p class="req">"Moved directly under the offer in V4."</p><div style="display:flex;gap:6px"><span class="btn s">Resolve</span><span class="btn g">Reopen</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="box"><h3>Stage</h3><ul class="list"><li>Large preview on the warm-grey stage, true aspect ratio, video with native controls</li><li>Version switcher and a filmstrip; <strong>Compare</strong> splits the stage into the previous round and this one</li><li>Phones: stage on top, panel below</li></ul></div>
+      <div class="box"><h3>Next action</h3><ul class="list"><li>One primary button for the role and state (Start review, Complete review, Respond, Resubmit)</li><li>A plain sentence on what's blocking, taken from the existing server rules</li><li>Status shown once, here, instead of three or four times</li></ul></div>
+      <div class="box"><h3>Panel tabs</h3><ul class="list"><li><strong>Findings:</strong> severity marker, state, required action, responses, controls in place</li><li><strong>Evidence:</strong> files, links, round labels, withdrawal</li><li><strong>History:</strong> one ledger of rounds, decisions, responses and moves</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Decisions for you</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>#</th><th>Decision</th><th>My recommendation</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>Brand mark: A, B or C (or none of these)</td><td>B · Viewfinder</td></tr>
+        <tr><td class="n">2</td><td>Workspace layout as planned: stage, filmstrip and Compare on the left; next action and Findings / Evidence / History tabs on the right</td><td>Approve</td></tr>
+        <tr><td class="n">3</td><td>Panel tabs vs one long scrolling panel. Tabs keep the next action and findings in view; one panel shows everything at once</td><td>Tabs</td></tr>
+        <tr><td class="n">4</td><td>Finding numbers on the preview (#1, #2 markers) would need positions stored per finding, which is a schema change, so I'm leaving it out unless you want it later</td><td>Leave out</td></tr>
+        <tr><td class="n">5</td><td>Small known gap: the "Updated" time on a submission still moves when a client uploads or adds evidence privately (no content is exposed)</td><td>Fix in Stage D</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>

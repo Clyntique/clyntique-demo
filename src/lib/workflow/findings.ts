@@ -59,6 +59,61 @@ export function clientFindingView<T extends FindingEventFact>(events: T[], lastD
   return { status: status === "DRAFT" ? null : status, events: visible };
 }
 
+/**
+ * Client work becomes visible to the team only once it has been formally
+ * submitted: anything the client wrote after the latest submission (responses,
+ * evidence, evidence links) is still being prepared while changes are
+ * requested, and stays private to the client until they resubmit.
+ */
+export function submittedToTeam(createdAt: Date, lastSubmittedAt: Date | null): boolean {
+  return lastSubmittedAt !== null && createdAt <= lastSubmittedAt;
+}
+
+/**
+ * What the team may know about a finding: every reviewer move, but the
+ * client's own moves (responding) only once they were part of a submission.
+ * The mirror image of clientFindingView.
+ */
+export function teamFindingView<T extends FindingEventFact>(events: T[], lastSubmittedAt: Date | null): { status: FindingStatus | null; events: T[] } {
+  const visible = events
+    .filter((e) => !e.byClient || submittedToTeam(e.createdAt, lastSubmittedAt))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+  return { status: visible.length ? visible[visible.length - 1].toStatus : null, events: visible };
+}
+
+/**
+ * Creative versions follow the same rule for the team: a revision uploaded
+ * while changes are requested stays private to the client until they
+ * resubmit. Legacy (team-owned) creatives are not affected.
+ */
+export function teamVisibleVersions<T extends { createdAt: Date }>(
+  versions: T[],
+  creative: { workflow: string; lastSubmittedAt: Date | null },
+): T[] {
+  if (creative.workflow !== "SUBMISSION_REVIEW") return versions;
+  return versions.filter((v) => submittedToTeam(v.createdAt, creative.lastSubmittedAt));
+}
+
+/**
+ * Title, description and campaign context as the team may see them: what the
+ * client submitted with the latest round. The client always sees the live
+ * values (their own edits). Without a round (legacy, or a draft the team
+ * can't see anyway) the live values are used.
+ */
+export function teamVisibleDetails<T extends { name: string; description: string | null; context: string | null }>(
+  live: T,
+  latestRound: { submittedName: string | null; submittedDescription: string | null; submittedContext: string | null } | null | undefined,
+): T {
+  if (!latestRound || latestRound.submittedName === null) return live;
+  return { ...live, name: latestRound.submittedName, description: latestRound.submittedDescription, context: latestRound.submittedContext };
+}
+
+/** The round an item was submitted with: the first round submitted at or after it was created (null: not yet submitted). */
+export function submittedWithRound(createdAt: Date, rounds: { number: number; submittedAt: Date }[]): number | null {
+  const sorted = [...rounds].sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+  return sorted.find((r) => r.submittedAt >= createdAt)?.number ?? null;
+}
+
 /** A client sees SHARED evidence only; INTERNAL evidence is team-only. Withdrawn items stay visible as history. */
 export function evidenceVisibleTo(role: Role, evidence: { visibility: "SHARED" | "INTERNAL" }): boolean {
   return role === "TEAM" || evidence.visibility === "SHARED";

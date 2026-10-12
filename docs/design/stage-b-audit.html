@@ -1,0 +1,383 @@
+<title>Clyntique Design Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column for the audit, widening to full-bleed panels for the screen mock-ups.
+   Page tokens follow the viewer's theme; the mock-ups depict the light-only app, so they use fixed app tokens. */
+:root {
+  --bg: #F7F6F2; --panel: #FFFFFF; --fg: #17212F; --fg-2: #3B4655; --muted: #6B7480; --line: #E6E3DA; --accent: #4868D8; --accent-soft: #E8EDFB;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  /* App tokens (fixed: the app is light-only) */
+  --a-ink: #17212F; --a-ink2: #3B4655; --a-muted: #6B7480; --a-faint: #9AA1AA;
+  --a-canvas: #F7F6F2; --a-surface: #FFFFFF; --a-stage: #ECEAE4; --a-line: #E6E3DA; --a-line2: #D3CFC4;
+  --a-accent: #4868D8; --a-accent-ink: #2B43A0; --a-accent-soft: #E8EDFB;
+  --a-green: #DDE8E2; --a-green-ink: #24563F; --a-green-dot: #3F8A65;
+  --a-amber: #D6A56B; --a-amber-soft: #F6EBDD; --a-amber-ink: #7A4E14;
+  --a-red-soft: #F6E1DD; --a-red-ink: #8F2F23; --a-red: #C2503D;
+  --a-neutral: #EFEDE7;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; --accent-soft: #222C45; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; --accent-soft: #222C45; color-scheme: dark }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.55; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 56px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { text-wrap: balance; letter-spacing: -0.015em; margin: 0; }
+h1 { font-size: 34px; line-height: 1.15; font-weight: 600; }
+h2 { font-size: 22px; line-height: 1.3; font-weight: 600; }
+h3 { font-size: 15px; line-height: 1.4; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
+.lede { font-size: 17px; color: var(--fg-2); margin-top: 12px; }
+section { display: flex; flex-direction: column; gap: 18px; }
+.muted { color: var(--muted); }
+ul.list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--fg-2); }
+ul.list li { padding-left: 2px; }
+code, .m { font-family: var(--mono); font-size: 0.86em; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-family: var(--mono); font-size: 12.5px; white-space: nowrap; color: var(--muted); }
+
+/* Swatches */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.sw { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.sw i { display: block; height: 56px; border-bottom: 1px solid var(--line); }
+.sw div { padding: 8px 10px; font-size: 12.5px; display: flex; flex-direction: column; gap: 1px; }
+.sw b { font-weight: 500; }
+.sw span { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+
+/* App mock-ups */
+.frame { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--a-canvas); color: var(--a-ink); font-size: 13px; line-height: 1.45; }
+.frame-cap { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.app { display: grid; grid-template-columns: 196px minmax(0, 1fr); min-height: 420px; }
+.side { border-right: 1px solid var(--a-line); padding: 14px 10px; display: flex; flex-direction: column; gap: 2px; background: var(--a-canvas); }
+.logo { display: flex; align-items: center; gap: 8px; padding: 2px 8px 14px; font-weight: 600; letter-spacing: -0.01em; font-size: 14px; }
+.logo svg { width: 20px; height: 20px; }
+.nav { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px; border-radius: 6px; color: var(--a-ink2); }
+.nav.on { background: var(--a-surface); color: var(--a-ink); box-shadow: inset 0 0 0 1px var(--a-line); font-weight: 500; }
+.nav em { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--a-muted); }
+.navlabel { font-size: 11px; color: var(--a-faint); padding: 12px 8px 4px; }
+.main { padding: 18px 22px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.topbar { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.crumb { font-size: 12px; color: var(--a-muted); }
+.ptitle { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 6px; font-size: 12.5px; font-weight: 500; border: 1px solid transparent; white-space: nowrap; }
+.btn.p { background: var(--a-accent); color: #fff; }
+.btn.s { background: var(--a-surface); border-color: var(--a-line2); color: var(--a-ink); }
+.btn.g { color: var(--a-ink2); }
+.group { display: flex; flex-direction: column; border: 1px solid var(--a-line); border-radius: 8px; background: var(--a-surface); overflow: hidden; }
+.ghead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 9px 12px; border-bottom: 1px solid var(--a-line); }
+.ghead b { font-weight: 600; font-size: 12.5px; }
+.ghead span { font-family: var(--mono); font-size: 11px; color: var(--a-muted); }
+.row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--a-line); }
+.row:last-child { border-bottom: 0; }
+.thumb { width: 34px; height: 44px; border-radius: 4px; background: linear-gradient(160deg, #2F6F6A 0 55%, #F2EFE6 55% 70%, #2F6F6A 70%); }
+.thumb.b { background: linear-gradient(160deg, #3A3F58 0 40%, #E9D9BE 40% 62%, #3A3F58 62%); }
+.thumb.c { background: linear-gradient(160deg, #8A4B3A 0 50%, #F4E9DA 50%); }
+.rt { min-width: 0; }
+.rt p:first-child { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rt p:last-child { color: var(--a-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tag { font-family: var(--mono); font-size: 11px; color: var(--a-ink2); background: var(--a-neutral); border-radius: 4px; padding: 1px 5px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85; }
+.st-neutral { background: var(--a-neutral); color: var(--a-ink2); }
+.st-accent { background: var(--a-accent-soft); color: var(--a-accent-ink); }
+.st-attn { background: var(--a-amber-soft); color: var(--a-amber-ink); }
+.st-done { background: var(--a-green); color: var(--a-green-ink); }
+.sev { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 500; color: var(--a-ink2); }
+.sev::before { content: ""; width: 8px; height: 8px; border-radius: 2px; }
+.sev.h::before { background: var(--a-red); } .sev.md::before { background: var(--a-amber); } .sev.l::before { background: var(--a-ink2); opacity: .45; } .sev.a::before { box-shadow: inset 0 0 0 1.5px var(--a-faint); }
+.age { font-family: var(--mono); font-size: 11px; color: var(--a-muted); }
+.age.late { color: var(--a-amber-ink); }
+.cols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 14px; }
+.note { font-size: 12px; color: var(--a-muted); }
+
+/* Workspace mock */
+.ws { display: grid; grid-template-columns: minmax(0, 1fr) 300px; min-height: 470px; }
+.stage { background: var(--a-stage); display: flex; flex-direction: column; min-width: 0; }
+.stagebar { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 12px; border-bottom: 1px solid var(--a-line2); background: var(--a-canvas); }
+.seg { display: inline-flex; border: 1px solid var(--a-line2); border-radius: 6px; overflow: hidden; background: var(--a-surface); }
+.seg span { font-family: var(--mono); font-size: 11px; padding: 3px 8px; color: var(--a-ink2); }
+.seg span.on { background: var(--a-ink); color: #fff; }
+.canvas { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding: 22px; align-items: center; justify-items: center; }
+.art { width: min(100%, 150px); aspect-ratio: 9 / 16; border-radius: 6px; box-shadow: 0 6px 24px rgb(23 33 47 / .14); position: relative; overflow: hidden; background: #2F6F6A; }
+.art::after { content: ""; position: absolute; left: 0; right: 0; top: 14%; height: 20%; background: #F2EFE6; }
+.art.v4::after { height: 27%; }
+.pin { position: absolute; z-index: 1; width: 18px; height: 18px; border-radius: 50%; background: var(--a-accent); color: #fff; font: 600 10px/18px var(--sans); text-align: center; box-shadow: 0 0 0 2px #fff; }
+.artcap { font-family: var(--mono); font-size: 11px; color: var(--a-ink2); margin-top: 8px; text-align: center; }
+.panel { border-left: 1px solid var(--a-line); background: var(--a-surface); display: flex; flex-direction: column; min-width: 0; }
+.next { padding: 12px; border-bottom: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 8px; }
+.next small { font-size: 11px; color: var(--a-muted); }
+.tabs { display: flex; gap: 14px; padding: 0 12px; border-bottom: 1px solid var(--a-line); }
+.tabs span { padding: 8px 0; font-size: 12.5px; color: var(--a-muted); }
+.tabs span.on { color: var(--a-ink); box-shadow: inset 0 -2px 0 var(--a-ink); font-weight: 500; }
+.finding { padding: 11px 12px; border-bottom: 1px solid var(--a-line); display: flex; flex-direction: column; gap: 5px; }
+.finding .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.finding b { font-weight: 500; }
+.req { font-size: 12px; color: var(--a-ink2); background: var(--a-canvas); border-radius: 5px; padding: 6px 8px; }
+.ledger { font-family: var(--mono); font-size: 11px; color: var(--a-muted); display: flex; flex-direction: column; gap: 2px; }
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; } .side { display: none; }
+  .cols { grid-template-columns: 1fr; }
+  .ws { grid-template-columns: 1fr; } .panel { border-left: 0; border-top: 1px solid var(--a-line); }
+  .canvas { padding: 14px; gap: 10px; }
+  h1 { font-size: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow">Stage B · for approval · 12 Oct 2026</p>
+    <h1>Clyntique design direction</h1>
+    <p class="lede">An audit of today's interface and a proposed visual system for the YC demo on 23 October. Nothing here is implemented yet. Stage C starts only after you approve the decisions at the end.</p>
+  </header>
+
+  <section>
+    <h2>What looks generic or inconsistent today</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Area</th><th>What I found</th><th>Evidence</th></tr></thead>
+      <tbody>
+        <tr><td>Colour</td><td>Every status, severity and finding state picks its own Tailwind hue, so screens read as a rainbow, and amber means three different things (changes requested, medium severity, open finding).</td><td class="n">162 raw colour classes · 50 shades · 20 files</td></tr>
+        <tr><td>Brand</td><td>A saturated violet accent with a stacked-rectangles mark. It's the default look of many AI-built SaaS products and says nothing about advertising compliance.</td><td class="n">brand-600 #5A41D1</td></tr>
+        <tr><td>Type</td><td>One face, but sizes are set ad hoc in components instead of from a scale; uppercase micro-labels repeat everywhere.</td><td class="n">63 one-off px sizes</td></tr>
+        <tr><td>Hierarchy</td><td>A submission's state is shown three or four times on one screen (status badge, stepper, tinted banner, "awaiting" pills) while the next action sits far down the page.</td><td class="n">submission-view.tsx</td></tr>
+        <tr><td>Review workspace</td><td>A long single column with a sidebar of up to eight stacked cards. The creative isn't the centre of attention, and findings sit below the fold, away from the image they refer to.</td><td class="n">30 Card uses app-wide</td></tr>
+        <tr><td>Dashboards</td><td>Both open with a three-number strip, a common analytics pattern that answers "how many" instead of "what next". The client dashboard still uses the old approval wording ("Awaiting your review", "Approved").</td><td class="n">dashboard-view.tsx</td></tr>
+        <tr><td>Badges</td><td>A finding card can carry six badges (severity, status, version, two markets, platform), which crowds out the finding itself.</td><td class="n">24 Badge uses</td></tr>
+        <tr><td>Mobile</td><td>Navigation is a horizontally scrolling tab strip whose last item is cut off; the sign-out control is an unlabelled icon.</td><td class="n">app-shell.tsx</td></tr>
+        <tr><td>Naming</td><td>TEAM navigation says "Creatives", clients say "Submissions", and the page title says "Creative review" for the same object.</td><td class="n">nav-links.tsx</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Design principles</h2>
+    <div class="grid2">
+      <div class="box"><h3>The creative is the stage</h3><p class="muted">The ad itself is the largest thing on its screen. Findings, evidence and history sit beside it, never above it.</p></div>
+      <div class="box"><h3>One next action</h3><p class="muted">Every screen makes the single next step for the viewer's role obvious, worded in plain language: "Respond to 2 findings", "Start review".</p></div>
+      <div class="box"><h3>Four tones, one meaning each</h3><p class="muted">Neutral, with Clyntique, needs the client, done. Severity uses a separate visual form, so colour never carries two meanings.</p></div>
+      <div class="box"><h3>Record, not decoration</h3><p class="muted">Version and round markers (<code>V3 · R2</code>) are set in mono as a recurring signature, the way a review ledger reads. Every decision shows who, when and on which version.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Colour</h2>
+    <p class="prose muted">Your proposed palette, refined into roles. I added a muted red, used only for High severity and errors. Amber text on white fails contrast, so amber is a fill and marker colour, with a dark amber for text. Accent text passes WCAG AA on both white (4.9:1) and the canvas (4.6:1).</p>
+    <div class="swatches">
+      <div class="sw"><i style="background:#17212F"></i><div><b>Ink</b><span>#17212F · text</span></div></div>
+      <div class="sw"><i style="background:#F7F6F2"></i><div><b>Canvas</b><span>#F7F6F2 · page</span></div></div>
+      <div class="sw"><i style="background:#FFFFFF"></i><div><b>Surface</b><span>#FFFFFF · panels</span></div></div>
+      <div class="sw"><i style="background:#ECEAE4"></i><div><b>Stage</b><span>#ECEAE4 · behind creatives</span></div></div>
+      <div class="sw"><i style="background:#E6E3DA"></i><div><b>Line</b><span>#E6E3DA · borders</span></div></div>
+      <div class="sw"><i style="background:#4868D8"></i><div><b>Accent</b><span>#4868D8 · actions, with Clyntique</span></div></div>
+      <div class="sw"><i style="background:#DDE8E2"></i><div><b>Done</b><span>#DDE8E2 / ink #24563F</span></div></div>
+      <div class="sw"><i style="background:#D6A56B"></i><div><b>Needs client</b><span>#D6A56B / ink #7A4E14</span></div></div>
+      <div class="sw"><i style="background:#C2503D"></i><div><b>Critical (new)</b><span>#C2503D · High, errors</span></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Status and severity</h2>
+    <div class="grid2">
+      <div class="box">
+        <h3>Submission status: four tones</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;padding-block:6px">
+          <span class="pill st-neutral">Draft</span>
+          <span class="pill st-accent">Submitted</span>
+          <span class="pill st-accent">In review</span>
+          <span class="pill st-attn">Changes requested</span>
+          <span class="pill st-done">Review complete</span>
+        </div>
+        <p class="muted" style="font-size:13.5px">Clients see plain wording: "With Clyntique", "Your changes needed", "Done".</p>
+      </div>
+      <div class="box">
+        <h3>Finding severity: a marker, not a colour block</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;padding-block:6px">
+          <span class="sev h">High</span><span class="sev md">Medium</span><span class="sev l">Low</span><span class="sev a">Advisory</span>
+        </div>
+        <p class="muted" style="font-size:13.5px">Finding state (Open, Responded, Resolved) reuses the four status tones, so a finding and its submission speak the same language.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Typography</h2>
+    <div class="grid2">
+      <div class="box">
+        <p class="eyebrow">UI and headings · Geist</p>
+        <p style="font-size:28px;font-weight:600;letter-spacing:-0.02em;line-height:1.15">Spring promo story</p>
+        <p style="font-size:16px;font-weight:600">Findings</p>
+        <p style="font-size:14px;color:var(--fg-2)">The headline promises 20% off but gives no reference price or offer dates.</p>
+      </div>
+      <div class="box">
+        <p class="eyebrow">Record · Geist Mono</p>
+        <p style="font-family:var(--mono);font-size:14px">V4 · R3 · 10 Oct 18:43</p>
+        <p style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">Resolved on V3 · by Clyntique Team</p>
+        <p class="muted" style="font-size:13.5px">Both are already loaded by the app, so this adds no font weight. The type scale is 12 · 13 · 14 · 16 · 20 · 28, with weights 400, 500 and 600.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="frame-cap"><h2 style="color:var(--fg)">Screens 1–2 · Shell and TEAM dashboard</h2><span>Desktop; sidebar collapses to a menu sheet on phones</span></div>
+    <div class="frame" role="img" aria-label="Mock-up of the redesigned team dashboard">
+      <div class="app">
+        <div class="side">
+          <div class="logo"><svg viewBox="0 0 20 20" fill="none" stroke="#17212F" stroke-width="1.6"><rect x="2.5" y="4.5" width="9" height="12" rx="1.5"/><path d="M8.5 2.5h7a2 2 0 0 1 2 2v9" /><path d="m6 10.5 2 2 3.5-4" stroke="#4868D8"/></svg>Clyntique</div>
+          <span class="nav on">Overview</span>
+          <span class="nav">Review queue <em>2</em></span>
+          <span class="nav">Submissions</span>
+          <span class="nav">Clients &amp; projects</span>
+          <span class="nav">Activity</span>
+          <span class="navlabel">Signed in as Clyntique Team</span>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <div><p class="crumb">Team workspace</p><p class="ptitle">Good afternoon</p></div>
+            <span class="btn s">New client project</span>
+          </div>
+          <div class="cols">
+            <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+              <div class="group">
+                <div class="ghead"><b>Needs review</b><span>2 · oldest first</span></div>
+                <div class="row"><i class="thumb"></i><div class="rt"><p>TEST — Spring promo story</p><p>Alex Morgan · US, CA, AE · Meta, TikTok</p></div><span class="age late">R3 · 2d</span></div>
+                <div class="row"><i class="thumb b"></i><div class="rt"><p>Autumn launch carousel</p><p>Alex Morgan · US · Meta</p></div><span class="age">R1 · 3h</span></div>
+              </div>
+              <div class="group">
+                <div class="ghead"><b>In review</b><span>1</span></div>
+                <div class="row"><i class="thumb c"></i><div class="rt"><p>Clinic open-day video</p><p>2 draft findings · started by you</p></div><span class="btn g">Continue</span></div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+              <div class="group">
+                <div class="ghead"><b>Waiting on clients</b><span>1</span></div>
+                <div class="row" style="grid-template-columns:minmax(0,1fr) auto"><div class="rt"><p>Summer sale story</p><p>3 findings to answer · since 1d</p></div><span class="pill st-attn">Changes</span></div>
+              </div>
+              <div class="group">
+                <div class="ghead"><b>Completed this week</b><span>2</span></div>
+                <div class="row" style="grid-template-columns:minmax(0,1fr) auto"><div class="rt"><p>TEST — Spring promo story</p><p>Issues resolved · V4</p></div><span class="pill st-done">Done</span></div>
+              </div>
+            </div>
+          </div>
+          <p class="note">Example rows for illustration. No counts are invented: each group shows the live list the queue already loads.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="frame-cap"><h2 style="color:var(--fg)">Screen 3 · CLIENT dashboard</h2><span>Answers "do you need anything from me?" first</span></div>
+    <div class="frame" role="img" aria-label="Mock-up of the redesigned client dashboard">
+      <div class="main" style="padding:20px 24px">
+        <div class="topbar"><div><p class="crumb">Alex Morgan · Acme Health</p><p class="ptitle">Welcome back, Alex</p></div><span class="btn p">New submission</span></div>
+        <div class="group" style="border-color:var(--a-amber)">
+          <div class="ghead" style="background:var(--a-amber-soft)"><b style="color:var(--a-amber-ink)">Your action needed</b><span>1</span></div>
+          <div class="row"><i class="thumb"></i><div class="rt"><p>Summer sale story</p><p>The reviewer asked for changes: answer 3 findings, then resubmit.</p></div><span class="btn p">Respond</span></div>
+        </div>
+        <div class="cols">
+          <div class="group"><div class="ghead"><b>With Clyntique</b><span>2</span></div>
+            <div class="row"><i class="thumb b"></i><div class="rt"><p>Autumn launch carousel</p><p>Submitted 3h ago · waiting for a reviewer</p></div><span class="pill st-accent">Submitted</span></div>
+            <div class="row"><i class="thumb c"></i><div class="rt"><p>Clinic open-day video</p><p>Being reviewed</p></div><span class="pill st-accent">In review</span></div>
+          </div>
+          <div class="group"><div class="ghead"><b>Done</b><span>1</span></div>
+            <div class="row" style="grid-template-columns:minmax(0,1fr) auto"><div class="rt"><p>Spring promo story</p><p>Issues resolved · 3 rounds</p></div><span class="pill st-done">Done</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="frame-cap"><h2 style="color:var(--fg)">Screen 4 · Review workspace</h2><span>Stage on the left, one panel on the right; Compare splits the stage</span></div>
+    <div class="frame" role="img" aria-label="Mock-up of the redesigned review workspace with side-by-side comparison">
+      <div class="ws">
+        <div class="stage">
+          <div class="stagebar">
+            <div><p class="crumb">Acme Health · Spring promo</p><p style="font-weight:600">TEST — Spring promo story</p></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <span class="seg"><span>V2</span><span>V3</span><span class="on">V4</span></span>
+              <span class="btn s">Compare R2 ↔ R3</span>
+            </div>
+          </div>
+          <div class="canvas">
+            <div><div class="art"><span class="pin" style="top:18%;left:58%">2</span></div><p class="artcap">V3 · R2 · changes requested</p></div>
+            <div><div class="art v4"><span class="pin" style="top:22%;left:20%">3</span></div><p class="artcap">V4 · R3 · under review</p></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="next">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span class="pill st-accent">In review</span><span class="age">R3 · V4</span></div>
+            <span class="btn p" style="justify-content:center">Complete review</span>
+            <small>2 findings await your decision before you can request changes.</small>
+          </div>
+          <div class="tabs"><span class="on">Findings 3</span><span>Evidence 1</span><span>History</span></div>
+          <div class="finding">
+            <div class="top"><span class="sev h">High</span><span class="pill st-done">Resolved</span></div>
+            <b>Unsupported "save 20%" claim</b>
+            <p class="ledger">Found V2 · resolved V3 · Clyntique Team</p>
+          </div>
+          <div class="finding">
+            <div class="top"><span class="sev l">Low</span><span class="pill st-accent">Responded</span></div>
+            <b>Small print legibility</b>
+            <p class="req">"Small print increased to 30 px equivalent in V4."</p>
+            <div style="display:flex;gap:6px"><span class="btn s">Resolve</span><span class="btn g">Reopen</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="prose muted" style="font-size:13.5px">The numbered markers show where a finding applies. They would come from the existing finding order; pinning findings to exact coordinates on the image would be a new feature, so it isn't part of this redesign unless you ask for it.</p>
+  </section>
+
+  <section>
+    <h2>Components that change</h2>
+    <div class="grid2">
+      <div class="box"><h3>Foundation (Stage C)</h3><ul class="list"><li>Tokens in <code>globals.css</code> replace all raw palette classes</li><li>Button, Field, Input, Select, Textarea, Checkbox chips</li><li>StatusPill (four tones) and SeverityMarker</li><li>PageHeader, Breadcrumb, SectionHeader</li><li>EmptyState, Skeleton, ErrorState, toast-free inline confirmations</li><li>AppShell: sidebar, mobile menu sheet, labelled sign-out</li></ul></div>
+      <div class="box"><h3>Review experience (Stage D)</h3><ul class="list"><li>Workspace layout: Stage + Panel with tabs</li><li>Version switcher and Compare mode on the stage</li><li>Finding item, response thread and decision ledger</li><li>Evidence list and upload form</li><li>Next-action block per role and state</li><li>Submission and remediation forms with a step indicator</li></ul></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Page-by-page plan</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Stage</th><th>Pages</th><th>Main change</th></tr></thead>
+      <tbody>
+        <tr><td class="n">C1</td><td>Tokens and primitives</td><td>One token set; components consume tokens only; contrast-checked focus rings.</td></tr>
+        <tr><td class="n">C2</td><td>Shell and navigation</td><td>Compact sidebar with queue count; mobile menu sheet; breadcrumbs in the page header; consistent naming ("Submissions").</td></tr>
+        <tr><td class="n">C3</td><td>TEAM dashboard</td><td>Stage-grouped lists (Needs review, In review, Waiting on clients, Completed) replace the stat strip.</td></tr>
+        <tr><td class="n">C4</td><td>CLIENT dashboard</td><td>"Your action needed" first; plain-language statuses; legacy approvals shown as "Earlier work".</td></tr>
+        <tr><td class="n">D1–D3</td><td>Review workspace, comparison</td><td>Stage + Panel; compare on the stage; one next action; findings, evidence and history as tabs.</td></tr>
+        <tr><td class="n">D4</td><td>New submission, remediation</td><td>Step indicator (Details → File → Targeting → Submit); per-finding respond flow; resubmit checklist.</td></tr>
+        <tr><td class="n">E</td><td>Projects, lists, activity, login, legacy creative view</td><td>Same system; tables for lists; activity as a ledger; quiet login with the new mark; tablet and keyboard pass.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Decisions for you</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>#</th><th>Decision</th><th>My recommendation</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>Palette as refined above, including the added muted red for High severity and errors</td><td>Approve</td></tr>
+        <tr><td class="n">2</td><td>Typography: Geist for UI with Geist Mono for versions, rounds and timestamps; no serif display face</td><td>Approve</td></tr>
+        <tr><td class="n">3</td><td>Workspace: light warm-grey stage with a right-hand panel; dark viewer stage as the alternative</td><td>Light stage</td></tr>
+        <tr><td class="n">4</td><td>Mobile navigation: menu sheet (instead of a bottom tab bar)</td><td>Menu sheet</td></tr>
+        <tr><td class="n">5</td><td>Rename TEAM "Creatives" to "Submissions" and use "Clients &amp; projects" for projects</td><td>Approve</td></tr>
+        <tr><td class="n">6</td><td>New brand mark (a submission sheet with a check), replacing the violet stacked frames</td><td>Approve; final mark refined in C2</td></tr>
+        <tr><td class="n">7</td><td>Light theme only for the demo; dark mode later</td><td>Light only</td></tr>
+        <tr><td class="n">8</td><td>From Stage A: revised versions uploaded during changes-requested hidden from the team until resubmission</td><td>Your call; affects M3 behaviour</td></tr>
+      </tbody>
+    </table></div>
+    <p class="prose muted">No new dependencies, no schema changes and no new features beyond what's in the app today. Each stage ends with tests, typecheck, lint, build and a desktop, tablet and phone check.</p>
+  </section>
+</div>

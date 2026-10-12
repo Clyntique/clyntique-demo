@@ -2,6 +2,7 @@ import "server-only";
 import type { CreativeFormat, CreativeStatus, MarketKind, MediaType } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
+import { teamVisibleDetails, teamVisibleVersions } from "@/lib/workflow/findings";
 import { creativeScope } from "./workspace";
 
 /*
@@ -88,13 +89,29 @@ export async function getSubmission(user: CurrentUser, creativeId: string, versi
       },
       rounds: {
         orderBy: [{ cycle: { number: "desc" } }, { number: "desc" }],
-        select: { number: true, note: true, submittedAt: true, submittedBy: { select: { name: true } }, version: { select: { versionNumber: true } } },
+        select: {
+          number: true,
+          note: true,
+          submittedAt: true,
+          submittedName: true,
+          submittedDescription: true,
+          submittedContext: true,
+          submittedBy: { select: { name: true } },
+          version: { select: { versionNumber: true } },
+        },
       },
     },
   });
   if (!row) return null;
 
-  const versions = row.versions.map((v) => ({
+  // TEAM sees the title, description and context as last submitted; the
+  // client's later edits stay private until they resubmit.
+  const details = user.role === "TEAM" ? teamVisibleDetails(row, row.rounds[0]) : row;
+
+  // TEAM never sees a revision the client hasn't resubmitted yet (same rule as responses and evidence).
+  const lastSubmittedAt = row.rounds.reduce<Date | null>((max, r) => (!max || r.submittedAt > max ? r.submittedAt : max), null);
+  const visible = user.role === "TEAM" ? teamVisibleVersions(row.versions, { workflow: "SUBMISSION_REVIEW", lastSubmittedAt }) : row.versions;
+  const versions = visible.map((v) => ({
     id: v.id,
     versionNumber: v.versionNumber,
     fileName: v.fileName,
@@ -112,9 +129,9 @@ export async function getSubmission(user: CurrentUser, creativeId: string, versi
 
   return {
     id: row.id,
-    name: row.name,
-    description: row.description,
-    context: row.context,
+    name: details.name,
+    description: details.description,
+    context: details.context,
     format: row.format,
     status: row.status,
     createdAt: row.createdAt,

@@ -1,19 +1,22 @@
-// Finds creative files in Vercel Blob that no CreativeVersion references:
-// uploads abandoned before they were saved as a version (tab closed, network
-// lost). Lists them by default; deletes only with --delete.
+// Finds uploaded files in Vercel Blob that nothing references: creative
+// uploads abandoned before they were saved as a version, and evidence uploads
+// abandoned before the evidence was saved (tab closed, network lost).
+// Lists them by default; deletes only with --delete.
 //
 //   npm run blob:orphans            # dry run
 //   npm run blob:orphans -- --delete
 //
-// Safety: only blobs under creatives/ that are older than 24 hours and not
-// referenced by any version are considered. Version history files are never
-// touched. Never prints tokens or connection strings.
+// Safety (src/lib/review/orphans.ts): only blobs under creatives/ or
+// evidence/, older than 24 hours, and referenced by no CreativeVersion and no
+// Evidence row (withdrawn evidence keeps its reference) are considered.
+// References are re-checked right before deleting. Version and evidence
+// history files are never touched. Never prints tokens or connection strings.
 import "dotenv/config";
 import { del, list } from "@vercel/blob";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { ORPHAN_PREFIXES, selectOrphans, type StoredBlob } from "../src/lib/review/orphans";
 
-const MIN_AGE_MS = 24 * 60 * 60 * 1000;
 const shouldDelete = process.argv.includes("--delete");
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set.");
@@ -23,37 +26,34 @@ if (!process.env.BLOB_READ_WRITE_TOKEN && !process.env.BLOB_STORE_ID) {
 
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
 
-async function main() {
-  const referenced = new Set(
-    (await prisma.creativeVersion.findMany({ select: { fileUrl: true } })).map((v) => v.fileUrl),
-  );
-  const cutoff = Date.now() - MIN_AGE_MS;
-  const orphans: { url: string; pathname: string; size: number }[] = [];
+async function referencedUrls(urls?: string[]) {
+  const where = urls ? { fileUrl: { in: urls } } : { fileUrl: { not: null } };
+  const [versions, evidence] = await Promise.all([
+    prisma.creativeVersion.findMany({ where: urls ? { fileUrl: { in: urls } } : {}, select: { fileUrl: true } }),
+    prisma.evidence.findMany({ where, select: { fileUrl: true } }),
+  ]);
+  return new Set([...versions.map((v) => v.fileUrl), ...evidence.map((e) => e.fileUrl!).filter(Boolean)]);
+}
 
-  let cursor: string | undefined;
-  do {
-    const page = await list({ prefix: "creatives/", cursor, limit: 1000 });
-    for (const blob of page.blobs) {
-      if (!referenced.has(blob.url) && blob.uploadedAt.getTime() < cutoff) {
-        orphans.push({ url: blob.url, pathname: blob.pathname, size: blob.size });
-      }
-    }
-    cursor = page.hasMore ? page.cursor : undefined;
-  } while (cursor);
+async function main() {
+  const referenced = await referencedUrls();
+  const blobs: StoredBlob[] = [];
+  for (const prefix of ORPHAN_PREFIXES) {
+    let cursor: string | undefined;
+    do {
+      const page = await list({ prefix, cursor, limit: 1000 });
+      blobs.push(...page.blobs.map((b) => ({ url: b.url, pathname: b.pathname, size: b.size, uploadedAt: b.uploadedAt })));
+      cursor = page.hasMore ? page.cursor : undefined;
+    } while (cursor);
+  }
+  const orphans = selectOrphans(blobs, referenced, Date.now());
 
   for (const o of orphans) console.log(`${o.pathname} (${Math.round(o.size / 1024)} KB)`);
-  console.log(`${orphans.length} unreferenced file(s) older than 24 hours.`);
+  console.log(`${blobs.length} stored file(s) checked; ${orphans.length} unreferenced and older than 24 hours.`);
 
   if (shouldDelete && orphans.length) {
-    // Re-check right before deleting, in case a version was saved meanwhile.
-    const stillReferenced = new Set(
-      (
-        await prisma.creativeVersion.findMany({
-          where: { fileUrl: { in: orphans.map((o) => o.url) } },
-          select: { fileUrl: true },
-        })
-      ).map((v) => v.fileUrl),
-    );
+    // Re-check right before deleting, in case a version or evidence item was saved meanwhile.
+    const stillReferenced = await referencedUrls(orphans.map((o) => o.url));
     const toDelete = orphans.map((o) => o.url).filter((url) => !stillReferenced.has(url));
     for (let i = 0; i < toDelete.length; i += 100) await del(toDelete.slice(i, i + 100));
     console.log(`Deleted ${toDelete.length} file(s).`);

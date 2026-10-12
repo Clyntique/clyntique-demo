@@ -39,10 +39,10 @@ export async function CreativesView({ role, searchParams }: { role: Role; search
   return (
     <>
       <PageHeader
-        title={role === "TEAM" ? "Creatives" : "Submissions"}
+        title="Submissions"
         description={
           role === "TEAM"
-            ? "Submitted work across your projects, plus earlier creatives. Client drafts stay private until submitted."
+            ? "Submitted work across every client, plus earlier creatives. Client drafts stay private until they're submitted."
             : "Your submissions and drafts, and where each one is in review."
         }
         action={
@@ -64,14 +64,12 @@ export async function CreativesView({ role, searchParams }: { role: Role; search
                   href={t.value ? `${href}?status=${t.value}` : href}
                   aria-current={selected ? "page" : undefined}
                   className={cn(
-                    "-mb-px flex h-10 items-center gap-2 border-b-2 px-3 text-[13px] font-medium whitespace-nowrap transition-colors",
-                    selected
-                      ? "border-brand-600 text-ink"
-                      : "border-transparent text-muted hover:text-ink",
+                    "-mb-px flex h-10 items-center gap-2 border-b-2 px-3 text-small font-medium whitespace-nowrap transition-colors",
+                    selected ? "border-ink text-ink" : "border-transparent text-muted hover:text-ink",
                   )}
                 >
                   {t.label}
-                  <span className="rounded-sm bg-subtle px-1.5 text-[11px] text-muted tabular-nums">{t.count}</span>
+                  <span className="text-record text-muted">{t.count}</span>
                 </Link>
               </li>
             );
@@ -80,7 +78,7 @@ export async function CreativesView({ role, searchParams }: { role: Role; search
       </nav>
 
       {creatives.length ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {creatives.map((c) => (
             <CreativeCard key={c.id} creative={c} role={role} now={now} />
           ))}

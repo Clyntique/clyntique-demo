@@ -3,6 +3,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { ActivityType, CreativeFormat, CreativeStatus, CreativeWorkflow, MediaType } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
+import { teamVisibleDetails, teamVisibleVersions } from "@/lib/workflow/findings";
 
 /*
  * Read queries for the workspace pages.
@@ -84,19 +85,26 @@ const projectSelect = (user: CurrentUser) =>
     client: { select: { name: true } },
     creatives: {
       where: draftPrivacy(user),
-      select: { status: true, updatedAt: true },
+      select: {
+        status: true,
+        updatedAt: true,
+        workflow: true,
+        rounds: { orderBy: { submittedAt: "desc" }, take: 1, select: { submittedAt: true } },
+        decisions: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
+      },
     },
     activities: { select: { createdAt: true }, orderBy: { createdAt: "desc" }, take: 1 },
   }) satisfies Prisma.ProjectSelect;
 
 type ProjectRow = Prisma.ProjectGetPayload<{ select: ReturnType<typeof projectSelect> }>;
 
-function toProjectSummary(p: ProjectRow): ProjectSummary {
+function toProjectSummary(p: ProjectRow, team: boolean): ProjectSummary {
   const statusCounts: StatusCounts = {};
   let last = p.updatedAt.getTime();
   for (const c of p.creatives) {
     statusCounts[c.status] = (statusCounts[c.status] ?? 0) + 1;
-    last = Math.max(last, c.updatedAt.getTime());
+    const visible = team && c.workflow === "SUBMISSION_REVIEW" ? teamVisibleTime(c.rounds[0]?.submittedAt, c.decisions[0]?.createdAt, c.updatedAt) : c.updatedAt;
+    last = Math.max(last, visible.getTime());
   }
   if (p.activities[0]) last = Math.max(last, p.activities[0].createdAt.getTime());
 
@@ -125,7 +133,7 @@ export async function getProjects(user: CurrentUser, query?: string): Promise<Pr
     select: projectSelect(user),
   });
   return rows
-    .map(toProjectSummary)
+    .map((row) => toProjectSummary(row, user.role === "TEAM"))
     .sort((a, b) => b.lastActivityAt.getTime() - a.lastActivityAt.getTime());
 }
 
@@ -135,7 +143,7 @@ export async function getProject(user: CurrentUser, projectId: string): Promise<
     where: { AND: [{ id: projectId }, projectScope(user)] },
     select: projectSelect(user),
   });
-  return row ? toProjectSummary(row) : null;
+  return row ? toProjectSummary(row, user.role === "TEAM") : null;
 }
 
 export async function getCreatives(
@@ -154,28 +162,44 @@ export async function getCreatives(
       workflow: true,
       updatedAt: true,
       project: { select: { id: true, name: true, client: { select: { name: true } } } },
-      _count: { select: { versions: true } },
       versions: {
         orderBy: { versionNumber: "desc" },
-        take: 1,
-        select: { id: true, versionNumber: true, mediaType: true },
+        select: { id: true, versionNumber: true, mediaType: true, createdAt: true },
       },
+      rounds: { orderBy: { submittedAt: "desc" }, take: 1, select: { submittedAt: true, submittedName: true, submittedDescription: true, submittedContext: true } },
+      decisions: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
     },
   });
-  return rows.map((c) => ({
+  const items = rows.map((c) => {
+    // TEAM: the title and description as last submitted (client edits stay private until resubmission).
+    const shown = user.role === "TEAM" ? teamVisibleDetails({ name: c.name, description: c.description, context: null }, c.rounds[0]) : c;
+    // TEAM: a revision the client hasn't resubmitted yet is not shown (thumbnail or count).
+    const versions =
+      user.role === "TEAM" ? teamVisibleVersions(c.versions, { workflow: c.workflow, lastSubmittedAt: c.rounds[0]?.submittedAt ?? null }) : c.versions;
+    const latest = versions[0];
+    return {
     id: c.id,
-    name: c.name,
-    description: c.description,
+    name: shown.name,
+    description: shown.description,
     format: c.format,
     status: c.status,
     workflow: c.workflow,
     projectId: c.project.id,
     projectName: c.project.name,
     clientName: c.project.client.name,
-    versionCount: c._count.versions,
-    latestVersion: c.versions[0] ?? null,
-    updatedAt: c.updatedAt,
-  }));
+    versionCount: versions.length,
+    latestVersion: latest ? { id: latest.id, versionNumber: latest.versionNumber, mediaType: latest.mediaType } : null,
+    // TEAM: for client submissions, "updated" means the last submission or
+    // decision, never the row's own timestamp (which private client work moves).
+    updatedAt: user.role === "TEAM" && c.workflow === "SUBMISSION_REVIEW" ? teamVisibleTime(c.rounds[0]?.submittedAt, c.decisions[0]?.createdAt, c.updatedAt) : c.updatedAt,
+    };
+  });
+  return user.role === "TEAM" ? items.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()) : items;
+}
+
+function teamVisibleTime(submittedAt: Date | undefined, decidedAt: Date | undefined, fallback: Date) {
+  const times = [submittedAt, decidedAt].filter((t): t is Date => Boolean(t)).map((t) => t.getTime());
+  return times.length ? new Date(Math.max(...times)) : fallback;
 }
 
 /** Creative counts per status, within the user's scope. */
@@ -202,7 +226,7 @@ export async function getActivity(
       message: true,
       createdAt: true,
       project: { select: { id: true, name: true } },
-      user: { select: { name: true } },
+      user: { select: { name: true, role: true } },
     },
   });
   return rows.map((a) => ({
@@ -211,7 +235,8 @@ export async function getActivity(
     message: a.message,
     projectId: a.project.id,
     projectName: a.project.name,
-    actorName: a.user?.name ?? "Clyntique",
+    // Clients see reviewers as "Clyntique reviewer", as on findings and decisions.
+    actorName: !a.user ? "Clyntique" : user.role === "CLIENT" && a.user.role === "TEAM" ? "Clyntique reviewer" : a.user.name,
     createdAt: a.createdAt,
   }));
 }

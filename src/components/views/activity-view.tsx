@@ -19,12 +19,12 @@ export async function ActivityView({ role }: { role: Role }) {
         title="Activity"
         description={
           role === "TEAM"
-            ? "Uploads, feedback, and approvals across all projects."
-            : "The latest progress on your projects."
+            ? "Submissions, reviews and decisions across every client, newest first."
+            : "What has happened on your submissions, newest first."
         }
       />
       {items.length ? (
-        <Card className="max-w-3xl p-6">
+        <Card className="max-w-3xl p-5 sm:p-6">
           <ActivityTimeline items={items} now={now} />
         </Card>
       ) : (

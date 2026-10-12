@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 const sizes = {
-  sm: "size-6 text-[10px]",
+  sm: "size-6 text-micro",
   md: "size-8 text-xs",
 };
 

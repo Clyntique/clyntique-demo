@@ -46,7 +46,7 @@ export async function getReviewQueue(user: CurrentUser): Promise<QueueItem[]> {
       rounds: {
         orderBy: { submittedAt: "desc" },
         take: 1,
-        select: { number: true, submittedAt: true, submittedBy: { select: { name: true } }, version: { select: { versionNumber: true } } },
+        select: { number: true, submittedAt: true, submittedName: true, submittedBy: { select: { name: true } }, version: { select: { versionNumber: true } } },
       },
       versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { id: true, versionNumber: true, mediaType: true } },
       _count: { select: { findings: { where: { status: "DRAFT" } } } },
@@ -60,7 +60,8 @@ export async function getReviewQueue(user: CurrentUser): Promise<QueueItem[]> {
       const byOrder = <T extends { sortOrder: number; name: string }>(items: T[]) => items.sort((a, b) => a.sortOrder - b.sortOrder).map((i) => i.name);
       return {
         id: r.id,
-        name: r.name,
+        // The title as submitted with this round.
+        name: round.submittedName ?? r.name,
         status: r.status,
         format: r.format,
         projectId: r.project.id,

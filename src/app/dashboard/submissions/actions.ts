@@ -92,7 +92,7 @@ export async function updateSubmission(_prev: SubmissionFormState, formData: For
   if (!result.ok) return { error: result.error, values };
 
   revalidateWorkspaces();
-  return { ok: "Draft saved." };
+  return { ok: "Details saved. The reviewer sees them once you submit or resubmit." };
 }
 
 /** CLIENT: submit a complete draft for review. */
@@ -147,7 +147,8 @@ export async function withdrawEvidenceAction(_prev: SubmissionFormState, formDat
 export async function resubmitSubmission(_prev: SubmissionFormState, formData: FormData): Promise<SubmissionFormState> {
   const user = await getCurrentUser();
   if (!user) return { error: SIGN_IN };
-  const values = { note: text(formData, "note") };
+  // "readiness" is only echoed back so the form can tell whether an error is still current.
+  const values = { note: text(formData, "note"), readiness: text(formData, "readiness") };
   const result = await resubmit(user, text(formData, "creativeId"), values.note);
   if (!result.ok) return { error: result.error, values };
   revalidateWorkspaces();

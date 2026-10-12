@@ -27,8 +27,8 @@ export async function ProjectsView({ role, searchParams }: { role: Role; searchP
         title="Projects"
         description={
           role === "TEAM"
-            ? "Manage campaigns and review activity in one place."
-            : "Every campaign you're reviewing, and where each one stands."
+            ? "Every client project, how far its submissions have got, and when anything last happened."
+            : "Your campaigns and where each one's submissions stand."
         }
         action={
           role === "TEAM" && (
@@ -39,12 +39,12 @@ export async function ProjectsView({ role, searchParams }: { role: Role; searchP
         }
       />
 
-      <form role="search" className="mb-6 flex max-w-sm gap-2">
+      <form role="search" className="mb-5 flex max-w-md gap-2">
         <Input
           type="search"
           name="q"
           defaultValue={query}
-          placeholder="Search projects or clients"
+          placeholder={role === "TEAM" ? "Search projects or clients" : "Search projects"}
           aria-label="Search projects"
           icon={<SearchIcon />}
           className="flex-1"
@@ -73,7 +73,7 @@ export async function ProjectsView({ role, searchParams }: { role: Role; searchP
           title="No projects yet."
           description={
             role === "TEAM"
-              ? "Create a project for a client to start sharing creatives."
+              ? "Create a project for a client. They can then submit creatives into it."
               : "Projects shared with you will appear here."
           }
           action={

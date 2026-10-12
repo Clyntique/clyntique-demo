@@ -42,9 +42,7 @@ export function ReviewProgress({
             );
           })}
         </div>
-        <span className="w-9 text-right text-xs font-medium text-ink-soft tabular-nums">
-          {percent}%
-        </span>
+        <span className="text-record w-9 text-right text-ink-soft">{percent}%</span>
       </div>
       {showLegend && (
         <ul className="flex flex-wrap gap-x-4 gap-y-1">
@@ -52,7 +50,7 @@ export function ReviewProgress({
             const n = counts[status] ?? 0;
             if (!n) return null;
             return (
-              <li key={status} className="flex items-center gap-1.5 text-xs text-ink-soft">
+              <li key={status} className="text-caption flex items-center gap-1.5 text-ink-soft">
                 <span aria-hidden className={cn("size-1.5 rounded-full", STATUS_STYLES[status].dot)} />
                 <span className="tabular-nums">{n}</span>
                 <span className="text-muted">{STATUS_STYLES[status].label.toLowerCase()}</span>

@@ -78,6 +78,15 @@ describe("client uploads (finalizeVersion)", () => {
     expect(h.prisma.creativeVersion.create).not.toHaveBeenCalled();
   });
 
+  it("a revision while changes are requested stays private: no activity and no change to the updated time", async () => {
+    h.user = CLIENT_A;
+    setCurrent("CHANGES_REQUESTED");
+    // Reuse the owner's draft fixture; the transaction reads the live status above.
+    expect(await review.finalizeVersion(upload("sub-a-draft"))).toMatchObject({ ok: true });
+    expect(h.prisma.creative.update).not.toHaveBeenCalled();
+    expect(h.prisma.activity.create).not.toHaveBeenCalled();
+  });
+
   it("refuses if the submission was submitted while the file was uploading", async () => {
     h.user = CLIENT_A;
     setCurrent("SUBMITTED");
@@ -164,13 +173,13 @@ describe("submission form actions", () => {
     h.prisma.creative.findUnique.mockResolvedValue({ id: "sub-a-draft", name: "A", workflow: "SUBMISSION_REVIEW", status: "DRAFT", projectId: "p-a", project: { clientId: CLIENT_A.id } });
     h.prisma.creative.updateMany.mockResolvedValue({ count: 1 });
     const withoutTargeting = form({ creativeId: "sub-a-draft", name: "Renamed", format: "FEED" });
-    expect(await submissions.updateSubmission(undefined, withoutTargeting)).toEqual({ ok: "Draft saved." });
+    expect(await submissions.updateSubmission(undefined, withoutTargeting)).toEqual({ ok: "Details saved. The reviewer sees them once you submit or resubmit." });
     expect(h.prisma.submissionMarket.deleteMany).not.toHaveBeenCalled();
 
     h.prisma.market.findMany.mockResolvedValue([{ code: "CA" }]);
     const withTargeting = form({ creativeId: "sub-a-draft", name: "Renamed", format: "FEED", targeting: "1" });
     withTargeting.append("markets", "CA");
-    expect(await submissions.updateSubmission(undefined, withTargeting)).toEqual({ ok: "Draft saved." });
+    expect(await submissions.updateSubmission(undefined, withTargeting)).toEqual({ ok: "Details saved. The reviewer sees them once you submit or resubmit." });
     expect(h.prisma.submissionMarket.createMany.mock.calls[0][0].data).toEqual([{ creativeId: "sub-a-draft", marketCode: "CA" }]);
   });
 

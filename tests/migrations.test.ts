@@ -16,8 +16,22 @@ const sql = (folder: string) => readFileSync(join(dir, folder, "migration.sql"),
 const statements = (folder: string) => sql(folder).replace(/--.*$/gm, "");
 
 describe("prisma/migrations", () => {
-  it("starts with the 0_init baseline, followed by the submission-workflow and evidence-files migrations", () => {
-    expect(folders).toEqual(["0_init", "20261009180000_submission_workflow", "20261011090000_evidence_files"]);
+  it("starts with the 0_init baseline, followed by the submission-workflow, evidence-files and round-snapshot migrations", () => {
+    expect(folders).toEqual(["0_init", "20261009180000_submission_workflow", "20261011090000_evidence_files", "20261012190000_round_snapshot"]);
+  });
+
+  it("the round-snapshot migration adds three nullable columns and only fills those new columns", () => {
+    const body = statements("20261012190000_round_snapshot");
+    for (const col of ["submittedName", "submittedDescription", "submittedContext"]) {
+      expect(body).toContain(`ALTER TABLE "SubmissionRound" ADD COLUMN "${col}" TEXT;`);
+    }
+    const updates = body.match(/UPDATE "SubmissionRound"[\s\S]*?;/g) ?? [];
+    expect(updates).toHaveLength(1);
+    const update = updates[0] ?? "";
+    const setClause = update.slice(update.indexOf("SET"), update.indexOf("FROM"));
+    const assigned = [...setClause.matchAll(/"(\w+)" = c\./g)].map((m) => m[1]);
+    expect(assigned).toEqual(["submittedName", "submittedDescription", "submittedContext"]);
+    expect(update).toContain('r."submittedName" IS NULL');
   });
 
   it("the evidence-files migration only adds four nullable columns to Evidence", () => {
@@ -33,9 +47,10 @@ describe("prisma/migrations", () => {
     ]);
   });
 
-  it("contains no destructive statements", () => {
+  it("contains no destructive statements (the round-snapshot backfill is checked separately above)", () => {
     for (const folder of folders) {
-      expect(statements(folder)).not.toMatch(/\b(DROP|RENAME|TRUNCATE|DELETE\s+FROM|UPDATE\s+"|ALTER\s+COLUMN\s+"\w+"\s+(SET\s+DATA\s+)?TYPE)\b/i);
+      const body = folder === "20261012190000_round_snapshot" ? statements(folder).replace(/UPDATE "SubmissionRound"[\s\S]*?;/, "") : statements(folder);
+      expect(body).not.toMatch(/\b(DROP|RENAME|TRUNCATE|DELETE\s+FROM|UPDATE\s+"|ALTER\s+COLUMN\s+"\w+"\s+(SET\s+DATA\s+)?TYPE)\b/i);
     }
   });
 

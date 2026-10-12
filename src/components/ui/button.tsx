@@ -5,18 +5,17 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "sm" | "md";
 
 const base =
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4";
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:pointer-events-none disabled:opacity-45 [&_svg]:size-4";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand-600 text-white shadow-card hover:bg-brand-700 active:bg-brand-900",
-  secondary:
-    "border border-line bg-surface text-ink shadow-card hover:border-line-strong hover:bg-subtle",
+  primary: "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800",
+  secondary: "border border-line-strong bg-surface text-ink hover:bg-subtle active:bg-stage",
   ghost: "text-ink-soft hover:bg-subtle hover:text-ink",
 };
 
 const sizes: Record<Size, string> = {
-  sm: "h-8 px-3 text-[13px]",
-  md: "h-9 px-4 text-sm",
+  sm: "h-8 px-3 text-small",
+  md: "h-9 px-3.5 text-small",
 };
 
 // Shared so links can look like buttons without nesting <a> in <button>.

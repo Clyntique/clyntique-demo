@@ -1,200 +1,304 @@
 import Link from "next/link";
 import type { Role } from "@/generated/prisma/enums";
-import { requireRole } from "@/lib/auth/dal";
-import { getReviewQueue, getReviewSummary } from "@/lib/data/review-queue";
-import { getActivity, getCreatives, getCreativeStatusCounts, getProjects, type StatusCounts } from "@/lib/data/workspace";
+import { requireRole, type CurrentUser } from "@/lib/auth/dal";
+import { getClientOverview, getTeamOverview, type ClientItem } from "@/lib/data/overview";
+import type { QueueItem } from "@/lib/data/review-queue";
+import { getActivity } from "@/lib/data/workspace";
+import { cn } from "@/lib/cn";
 import { formatRelative, greetingFor, pluralize, requestTime } from "@/lib/format";
-import { basePathFor } from "@/lib/navigation";
+import { REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonClasses } from "@/components/ui/button";
-import { Card, SectionHeader } from "@/components/ui/card";
-import { ArrowRightIcon, FolderIcon, PlusIcon } from "@/components/ui/icons";
-import { EmptyState } from "@/components/ui/states";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { PlusIcon } from "@/components/ui/icons";
+import { ListGroup, ListRow, QuietLink } from "@/components/ui/list-group";
+import { StatusBadge, TonePill } from "@/components/ui/status-badge";
 import { ActivityList } from "@/components/workspace/activity-feed";
-import { reviewStateLabel } from "@/components/workspace/copy";
 import { CreativeThumb } from "@/components/workspace/creative-card";
-import { ProjectTable } from "@/components/workspace/project-list";
-import { StatRow, type Stat } from "@/components/workspace/stat-row";
-import { QueueRow } from "./review-queue-view";
+
+/*
+ * Dashboards (Stage C). Each answers its viewer's questions in order, with
+ * every count taken from the list beside it (src/lib/data/overview.ts):
+ * TEAM: what needs review, what's in review, which clients owe changes, what
+ * was completed. CLIENT: what needs me, what's with Clyntique, what's done.
+ */
+
+const DAY = 24 * 60 * 60 * 1000;
+
+function Thumb({ item }: { item: Parameters<typeof CreativeThumb>[0]["creative"] }) {
+  return <CreativeThumb creative={item} fill className="h-12 w-10 shrink-0 rounded-sm" />;
+}
+
+/** Round and age in the record style; waits over two days are marked. */
+function Age({ round, since, now }: { round?: number; since: Date | null; now: number }) {
+  const late = since !== null && now - since.getTime() > 2 * DAY;
+  return (
+    <span className={cn("text-record whitespace-nowrap", late ? "text-attention-ink" : "text-muted")}>
+      {round ? `R${round} · ` : ""}
+      {since ? formatRelative(since, now).replace(" ago", "") : "–"}
+    </span>
+  );
+}
 
 export async function DashboardView({ role }: { role: Role }) {
   const user = await requireRole(role);
-  const base = basePathFor(role);
-  const team = role === "TEAM";
+  return role === "TEAM" ? <TeamDashboard user={user} /> : <ClientDashboard user={user} />;
+}
 
-  // What this person should act on next. TEAM: the internal review queue
-  // (submission workflow). CLIENT: unchanged until the M6 dashboard pass.
-  const [projects, counts, attention, activity, queue, summary] = await Promise.all([
-    getProjects(user),
-    team ? Promise.resolve<StatusCounts>({}) : getCreativeStatusCounts(user),
-    team ? Promise.resolve([]) : getCreatives(user, { status: "IN_REVIEW" }),
-    getActivity(user, { take: 6 }),
-    team ? getReviewQueue(user) : Promise.resolve([]),
-    team ? getReviewSummary(user) : Promise.resolve(null),
-  ]);
+// ---------------------------------------------------------------------------
+// TEAM
+
+async function TeamDashboard({ user }: { user: CurrentUser }) {
+  const [overview, activity] = await Promise.all([getTeamOverview(user), getActivity(user, { take: 6 })]);
   const now = requestTime();
+  const { needsReview, inReview, waitingOnClients, completed } = overview;
+  const oldest = needsReview[0];
 
-  const stats: Stat[] = team
-    ? [
-        { label: "Waiting for review", value: summary?.waiting ?? 0, hint: "Submitted, not yet started", highlight: true },
-        { label: "In review", value: summary?.inReview ?? 0, hint: "Decision pending" },
-        { label: "Changes requested", value: summary?.changesRequested ?? 0, hint: "Waiting on the client" },
-      ]
-    : [
-        { label: "Projects", value: projects.length, hint: "Shared with you" },
-        { label: "Awaiting your review", value: counts.IN_REVIEW ?? 0, hint: "Ready for your feedback", highlight: true },
-        { label: "Approved", value: counts.APPROVED ?? 0, hint: "Signed off and final" },
-      ];
-
-  const firstName = user.name.split(" ")[0];
+  const summary = oldest
+    ? `${pluralize(needsReview.length, "submission")} ${needsReview.length === 1 ? "needs" : "need"} review. The oldest has waited ${formatRelative(oldest.submittedAt, now).replace(" ago", "").toLowerCase()}.`
+    : inReview.length
+      ? `Nothing new is waiting. ${pluralize(inReview.length, "review")} in progress.`
+      : "Nothing is waiting for review.";
 
   return (
     <>
       <PageHeader
-        title={team ? `${greetingFor()}, ${user.name}` : `Welcome back, ${firstName}`}
-        description={
-          team
-            ? `Internal review of client submissions.${summary?.completedThisWeek ? ` ${pluralize(summary.completedThisWeek, "review")} completed in the last 7 days.` : ""}`
-            : "Your creative review overview."
-        }
+        size="lg"
+        eyebrow="Team workspace"
+        title={greetingFor()}
+        description={summary}
         action={
-          team ? (
-            <Link href="/admin/projects/new" className={buttonClasses()}>
+          <>
+            <Link href="/admin/projects/new" className={buttonClasses({ variant: "secondary" })}>
               <PlusIcon /> New project
             </Link>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              <Link href={`${base}/projects`} className={buttonClasses({ variant: "secondary" })}>
-                View projects
-              </Link>
-              <Link href="/dashboard/submissions/new" className={buttonClasses()}>
-                <PlusIcon /> New submission
-              </Link>
-            </div>
-          )
+            <Link href="/admin/review" className={buttonClasses({ variant: needsReview.length ? "primary" : "secondary" })}>
+              Open review queue
+            </Link>
+          </>
         }
       />
 
-      <div className="flex flex-col gap-10">
-        <StatRow stats={stats} />
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <ListGroup
+            title="Needs review"
+            count={needsReview.length}
+            meta="Oldest first"
+            action={needsReview.length > 5 ? <QuietLink href="/admin/review">All {needsReview.length}</QuietLink> : undefined}
+            empty="New client submissions appear here as soon as they're submitted."
+          >
+            {needsReview.slice(0, 5).map((item, i) => (
+              <QueueListRow key={item.id} item={item} now={now} next={i === 0} />
+            ))}
+          </ListGroup>
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-8">
-          <div className="flex min-w-0 flex-col gap-10 lg:col-span-2">
-            {team ? (
-              <section className="flex flex-col gap-4">
-                <SectionHeader
-                  title="Review queue"
-                  description="Oldest submission first."
-                  action={
-                    <Link href="/admin/review" className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 hover:text-brand-900">
-                      Open queue ({queue.length}) <ArrowRightIcon className="size-3.5" />
-                    </Link>
-                  }
-                />
-                {queue.length ? (
-                  <Card className="divide-y divide-line">
-                    {queue.slice(0, 5).map((item) => (
-                      <QueueRow key={item.id} item={item} now={now} compact />
-                    ))}
-                  </Card>
-                ) : (
-                  <EmptyState title="The review queue is clear." description="New client submissions appear here as soon as they are submitted." />
-                )}
-              </section>
-            ) : (
-            <section className="flex flex-col gap-4">
-              <SectionHeader
-                title="Waiting for your review"
-                description="Creatives the team has shared for your feedback."
+          <ListGroup title="In review" count={inReview.length} empty="No reviews in progress.">
+            {inReview.map((item) => (
+              <QueueListRow key={item.id} item={item} now={now} />
+            ))}
+          </ListGroup>
+        </div>
+
+        <div className="flex min-w-0 flex-col gap-6">
+          <ListGroup title="Waiting on clients" count={waitingOnClients.length} meta="Longest wait first" empty="No client owes changes right now.">
+            {waitingOnClients.map((w) => (
+              <ListRow
+                key={w.id}
+                href={`/admin/creatives/${w.id}`}
+                thumb={<Thumb item={w} />}
+                title={w.name}
+                subtitle={`${w.clientName} · ${pluralize(w.sharedFindings, "finding")} shared`}
+                aside={<Age round={w.roundNumber} since={w.requestedAt} now={now} />}
               />
-              {attention.length ? (
-                <Card className="divide-y divide-line">
-                  {attention.map((c) => (
-                    <Link
-                      key={c.id}
-                      href={`${base}/creatives/${c.id}`}
-                      className="flex items-center gap-4 p-3 pr-5 transition-colors hover:bg-canvas/60"
-                    >
-                      <CreativeThumb creative={c} className="size-14 shrink-0 rounded-md" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-card-title truncate">{c.name}</p>
-                        <p className="text-meta mt-0.5 truncate">
-                          {team ? `${c.clientName} — ${c.projectName}` : c.projectName} · {formatRelative(c.updatedAt, now)}
-                        </p>
-                      </div>
-                      <span className="hidden text-xs font-medium text-brand-700 sm:block">
-                        {reviewStateLabel(role, c.workflow, c.status)}
-                      </span>
-                      <StatusBadge status={c.status} className="sm:hidden" />
-                    </Link>
-                  ))}
-                </Card>
-              ) : (
-                <EmptyState title="You're all caught up." description="Nothing is waiting for your review." />
-              )}
-            </section>
-            )}
+            ))}
+          </ListGroup>
 
-            <section className="flex flex-col gap-4">
-              <SectionHeader
-                title={team ? "Recent projects" : "Your projects"}
-                action={
-                  projects.length > 0 && (
-                    <Link
-                      href={`${base}/projects`}
-                      className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 hover:text-brand-900"
-                    >
-                      All projects <ArrowRightIcon className="size-3.5" />
-                    </Link>
-                  )
-                }
+          <ListGroup title="Completed this week" count={completed.length} empty="Completed reviews from the last 7 days appear here.">
+            {completed.map((c) => (
+              <ListRow
+                key={`${c.id}-${c.completedAt.toISOString()}`}
+                href={`/admin/creatives/${c.id}`}
+                thumb={<Thumb item={c} />}
+                title={c.name}
+                subtitle={`${c.clientName} · ${c.outcome ? REVIEW_OUTCOME_LABEL[c.outcome] : "Completed"} · V${c.versionNumber} · ${formatRelative(c.completedAt, now).toLowerCase()}`}
               />
-              {projects.length ? (
-                <ProjectTable projects={projects.slice(0, 5)} role={role} now={now} />
-              ) : (
-                <EmptyState
-                  icon={<FolderIcon />}
-                  title="No projects yet."
-                  description={
-                    team
-                      ? "Create a project for a client to start sharing creatives."
-                      : "Projects the team shares with you will appear here."
-                  }
-                  action={
-                    team && (
-                      <Link href="/admin/projects/new" className={buttonClasses({ size: "sm" })}>
-                        <PlusIcon /> New project
-                      </Link>
-                    )
-                  }
-                />
-              )}
-            </section>
-          </div>
+            ))}
+          </ListGroup>
 
-          <section className="flex flex-col gap-4">
-            <SectionHeader
-              title="Recent activity"
-              action={
-                <Link
-                  href={`${base}/activity`}
-                  className="inline-flex items-center gap-1 text-[13px] font-medium text-brand-700 hover:text-brand-900"
-                >
-                  View all <ArrowRightIcon className="size-3.5" />
-                </Link>
-              }
-            />
-            <Card className="p-5">
-              {activity.length ? (
-                <ActivityList items={activity} now={now} />
-              ) : (
-                <p className="text-meta">No activity yet.</p>
-              )}
-            </Card>
-          </section>
+          <RecentActivity items={activity} href="/admin/activity" now={now} />
         </div>
       </div>
     </>
+  );
+}
+
+function QueueListRow({ item, now, next = false }: { item: QueueItem; now: number; next?: boolean }) {
+  const targets = [...item.markets, ...item.platforms];
+  const drafts = item.draftFindings;
+  return (
+    <ListRow
+      href={`/admin/creatives/${item.id}`}
+      thumb={<Thumb item={item} />}
+      title={item.name}
+      subtitle={
+        item.status === "IN_REVIEW"
+          ? `${item.clientName} · ${drafts ? `${pluralize(drafts, "draft finding")}` : "no findings yet"}`
+          : `${item.clientName} · ${targets.join(", ") || item.projectName}`
+      }
+      aside={
+        <>
+          {next && <TonePill tone="accent">Next</TonePill>}
+          <Age round={item.roundNumber} since={item.submittedAt} now={now} />
+        </>
+      }
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CLIENT
+
+async function ClientDashboard({ user }: { user: CurrentUser }) {
+  const [overview, activity] = await Promise.all([getClientOverview(user), getActivity(user, { take: 5 })]);
+  const now = requestTime();
+  const { actionNeeded, withClyntique, done, earlierWork } = overview;
+  const firstName = user.name.split(" ")[0];
+  const changes = actionNeeded.filter((i) => i.status === "CHANGES_REQUESTED").length;
+
+  const summary = changes
+    ? `The Clyntique team needs something from you on ${pluralize(changes, "submission")}.`
+    : actionNeeded.length
+      ? "You have a draft that hasn't been submitted yet."
+      : withClyntique.length
+        ? `Nothing needs you right now. ${pluralize(withClyntique.length, "submission")} ${withClyntique.length === 1 ? "is" : "are"} with Clyntique.`
+        : "Submit an ad and the Clyntique team will review it for the markets and platforms you choose.";
+
+  return (
+    <>
+      <PageHeader
+        size="lg"
+        eyebrow="Client workspace"
+        title={`Welcome back, ${firstName}`}
+        description={summary}
+        action={
+          <Link href="/dashboard/submissions/new" className={buttonClasses()}>
+            <PlusIcon /> New submission
+          </Link>
+        }
+      />
+
+      <HowItWorks />
+
+      <div className="mt-6 flex flex-col gap-6">
+        <ListGroup
+          title="Your action needed"
+          count={actionNeeded.length}
+          tone={actionNeeded.length ? "attention" : "default"}
+          empty="Nothing needs your attention. We'll show feedback here as soon as the team asks for changes."
+        >
+          {actionNeeded.map((item) => (
+            <ClientRow key={item.id} item={item} now={now} />
+          ))}
+        </ListGroup>
+
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <ListGroup title="With Clyntique" count={withClyntique.length} empty="Submissions you send for review appear here.">
+            {withClyntique.map((item) => (
+              <ClientRow key={item.id} item={item} now={now} />
+            ))}
+          </ListGroup>
+          <ListGroup
+            title="Done"
+            count={done.length}
+            action={earlierWork ? <QuietLink href="/dashboard/creatives">{pluralize(earlierWork, "earlier creative")}</QuietLink> : undefined}
+            empty="Completed reviews appear here, with the reviewer's outcome."
+          >
+            {done.map((item) => (
+              <ClientRow key={item.id} item={item} now={now} />
+            ))}
+          </ListGroup>
+        </div>
+
+        <RecentActivity items={activity} href="/dashboard/activity" now={now} />
+      </div>
+    </>
+  );
+}
+
+function ClientRow({ item, now }: { item: ClientItem; now: number }) {
+  const href = `/dashboard/creatives/${item.id}`;
+  const thumb = <Thumb item={item} />;
+  switch (item.status) {
+    case "CHANGES_REQUESTED":
+      return (
+        <ListRow
+          href={href}
+          thumb={thumb}
+          title={item.name}
+          subtitle={
+            item.findingsToAnswer
+              ? `The reviewer asked for changes: ${pluralize(item.findingsToAnswer, "finding")} to answer, then resubmit.`
+              : "Every finding is answered. Resubmit when you're ready."
+          }
+          aside={<span className={buttonClasses({ size: "sm" })}>{item.findingsToAnswer ? "Respond" : "Resubmit"}</span>}
+        />
+      );
+    case "DRAFT":
+      return (
+        <ListRow
+          href={href}
+          thumb={thumb}
+          title={item.name}
+          subtitle={`Draft in ${item.projectName} · not submitted yet`}
+          aside={<span className={buttonClasses({ size: "sm", variant: "secondary" })}>Continue</span>}
+        />
+      );
+    case "REVIEW_COMPLETE":
+      return (
+        <ListRow
+          href={href}
+          thumb={thumb}
+          title={item.name}
+          subtitle={`${item.outcome ? REVIEW_OUTCOME_LABEL[item.outcome] : "Review complete"}${item.completedAt ? ` · ${formatRelative(item.completedAt, now)}` : ""}`}
+
+        />
+      );
+    default:
+      return (
+        <ListRow
+          href={href}
+          thumb={thumb}
+          title={item.name}
+          subtitle={`${item.status === "IN_REVIEW" ? "Being reviewed" : "Waiting for a reviewer"}${item.submittedAt ? ` · sent ${formatRelative(item.submittedAt, now).toLowerCase()}` : ""}`}
+          aside={<StatusBadge status={item.status} />}
+        />
+      );
+  }
+}
+
+/** The four steps in plain language, so a first-time client knows what happens next. */
+function HowItWorks() {
+  const steps = ["Submit your ad, with where it will run", "Clyntique reviews it", "Answer any findings and resubmit", "Get the review outcome"];
+  return (
+    <ol aria-label="How a review works" className="grid grid-cols-2 gap-x-6 gap-y-2 border-y border-line py-3 sm:grid-cols-4">
+      {steps.map((s, i) => (
+        <li key={s} className="text-small flex items-baseline gap-2 text-ink-soft">
+          <span className="text-record text-faint">{i + 1}</span>
+          {s}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function RecentActivity({ items, href, now }: { items: Awaited<ReturnType<typeof getActivity>>; href: string; now: number }) {
+  return (
+    <section aria-label="Recent activity" className="flex min-w-0 flex-col gap-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-small font-semibold text-ink">Recent activity</h2>
+        <QuietLink href={href}>View all</QuietLink>
+      </div>
+      {items.length ? <ActivityList items={items} now={now} /> : <p className="text-small text-muted">No activity yet.</p>}
+    </section>
   );
 }

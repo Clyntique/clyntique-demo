@@ -28,14 +28,14 @@ import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
 function Ok({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+    <p role="status" className="rounded-md bg-positive-soft px-3 py-2 text-small text-positive-ink">
       {message}
     </p>
   );
 }
 
 const chip =
-  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-2.5 py-1 text-[12px] font-medium text-ink-soft has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-900";
+  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-2.5 py-1 text-caption font-medium text-ink-soft has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-900";
 
 export type Choice = { id: string; label: string };
 
@@ -76,7 +76,7 @@ export function RespondForm({ findingId, evidence, hint }: { findingId: string; 
       </Field>
       {evidence.length > 0 && (
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1 text-[13px] font-medium text-ink-soft">Link evidence (optional)</legend>
+          <legend className="mb-1 text-small font-medium text-ink-soft">Link evidence (optional)</legend>
           <div className="flex flex-wrap gap-1.5">
             {evidence.map((e) => (
               <label key={e.id} className={chip}>
@@ -116,16 +116,32 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
   const [, startTransition] = useTransition();
   const busy = phase.name === "uploading" || phase.name === "saving";
 
+  // An upload that reached storage but wasn't saved yet: reused on retry, so
+  // fixing a form error never uploads (and orphans) the same file twice.
+  const uploadedRef = useRef<{ file: File; value: { uploadKey: string; url: string; fileName: string } } | null>(null);
+
   function chooseFile(next: File | null) {
     setFile(next);
+    // B1: errors about the previous file no longer apply; the new one is checked now.
+    setError(null);
     setFileError(next ? checkEvidenceFile(next) : null);
   }
 
   async function submit(formData: FormData) {
     if (busy) return;
     setError(null);
+    // Check the fields first, so a file is uploaded only when the form can be saved.
+    const title = String(formData.get("title") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
+    const link = String(formData.get("url") ?? "").trim();
+    if (title.length < 2) return setError("Give the evidence a title (2–120 characters).");
+    if (!formData.get("type")) return setError("Choose the type of evidence.");
+    if (!file && !link && !description) return setError("Attach a file, add a link, or describe the evidence.");
+
     let uploaded: { uploadKey: string; url: string; fileName: string } | null = null;
-    if (file) {
+    if (file && uploadedRef.current?.file === file) {
+      uploaded = uploadedRef.current.value;
+    } else if (file) {
       const problem = checkEvidenceFile(file);
       const kind = evidenceKindFor(file.name);
       if (problem || !kind) return setFileError(problem ?? "Unsupported file type.");
@@ -140,6 +156,7 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
           onUploadProgress: ({ percentage }) => setPhase({ name: "uploading", percent: Math.round(percentage) }),
         });
         uploaded = { uploadKey, url: blob.url, fileName: file.name };
+        uploadedRef.current = { file, value: uploaded };
       } catch (e) {
         setPhase({ name: "idle" });
         const message = e instanceof Error ? e.message.replace(/^Vercel Blob:\s*/i, "") : "";
@@ -168,6 +185,7 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
       return setError(result.error);
     }
     setPhase({ name: "done" });
+    uploadedRef.current = null;
     setFile(null);
     formRef.current?.reset();
     setOpen(false);
@@ -236,12 +254,12 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
               <UploadIcon />
             </span>
             <span className="flex min-w-0 flex-col">
-              <span className="truncate text-[13px] font-medium text-ink">{file ? file.name : "Attach a file (optional)"}</span>
+              <span className="truncate text-small font-medium text-ink">{file ? file.name : "Attach a file (optional)"}</span>
               <span className="text-meta">{file ? formatBytes(file.size) : EVIDENCE_FILE_HINT}</span>
             </span>
           </label>
           {fileError && (
-            <p role="alert" className="mt-1.5 text-[12px] text-red-600">
+            <p role="alert" className="mt-1.5 text-caption text-critical-ink">
               {fileError}
             </p>
           )}
@@ -261,7 +279,7 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
 
       {findings.length > 0 && (
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1 text-[13px] font-medium text-ink-soft">Supports finding</legend>
+          <legend className="mb-1 text-small font-medium text-ink-soft">Supports finding</legend>
           <div className="flex flex-wrap gap-1.5">
             {findings.map((f) => (
               <label key={f.id} className={chip}>
@@ -327,17 +345,22 @@ export type ChecklistItem = { key: string; label: string; done: boolean };
 export function ResubmitPanel({ creativeId, items, nextRound }: { creativeId: string; items: ChecklistItem[]; nextRound: number }) {
   const [state, action, pending] = useActionState<SubmissionFormState, FormData>(resubmitSubmission, undefined);
   const ready = items.every((i) => i.done);
+  // B2: a server error is shown only while the checklist is as it was when the
+  // error was returned; once the client completes an item it no longer applies.
+  const readiness = items.map((i) => `${i.key}:${i.done ? 1 : 0}`).join(",");
+  const error = state?.error && state.values?.readiness === readiness ? state.error : undefined;
   return (
     <form action={action} className="flex flex-col gap-4">
       <input type="hidden" name="creativeId" value={creativeId} />
+      <input type="hidden" name="readiness" value={readiness} />
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
-          <li key={item.key} className="flex items-start gap-2.5 text-[13px]">
+          <li key={item.key} className="flex items-start gap-2.5 text-small">
             <span
               aria-hidden
               className={cn(
                 "mt-px flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:size-3",
-                item.done ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-surface text-transparent ring-line-strong",
+                item.done ? "bg-positive-soft text-positive-ink ring-positive-line" : "bg-surface text-transparent ring-line-strong",
               )}
             >
               <CheckIcon />
@@ -350,7 +373,7 @@ export function ResubmitPanel({ creativeId, items, nextRound }: { creativeId: st
       <Field label="Note to the reviewer (optional)">
         <Textarea name="note" maxLength={2000} className="min-h-16" defaultValue={(state?.values?.note as string) ?? ""} placeholder="A short summary of what changed." />
       </Field>
-      <FormError message={state?.error} />
+      <FormError message={error} />
       <Ok message={state?.ok} />
       <Button type="submit" disabled={!ready || pending} className="w-full">
         {pending ? "Resubmitting…" : `Resubmit for review (round ${nextRound})`}

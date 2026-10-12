@@ -40,12 +40,12 @@ const OUTCOMES: ReviewOutcome[] = ["NO_ISSUES_IDENTIFIED", "ISSUES_RESOLVED", "C
 const optionCard =
   "flex cursor-pointer flex-col gap-0.5 rounded-md border border-line bg-surface px-3 py-2 shadow-card transition-colors hover:border-line-strong has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-brand-100 has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50";
 const chip =
-  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-2.5 py-1 text-[12px] font-medium text-ink-soft has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-900";
+  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-2.5 py-1 text-caption font-medium text-ink-soft has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-900";
 
 function Ok({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+    <p role="status" className="rounded-md bg-positive-soft px-3 py-2 text-small text-positive-ink">
       {message}
     </p>
   );
@@ -91,12 +91,12 @@ function FindingFields({ d, markets, platforms, idPrefix }: { d: FindingDefaults
         <Textarea name="explanation" defaultValue={d.explanation} maxLength={4000} className="min-h-20" required />
       </Field>
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1 text-[13px] font-medium text-ink-soft">Severity</legend>
+        <legend className="mb-1 text-small font-medium text-ink-soft">Severity</legend>
         <div className="grid grid-cols-2 gap-2">
           {SEVERITIES.map((s) => (
             <label key={s} className={optionCard} title={SEVERITY_DESCRIPTION[s]}>
               <input type="radio" name="severity" value={s} defaultChecked={d.severity === s} className="sr-only" id={`${idPrefix}-sev-${s}`} />
-              <span className="text-[13px] font-medium text-ink">{SEVERITY_LABEL[s]}</span>
+              <span className="text-small font-medium text-ink">{SEVERITY_LABEL[s]}</span>
               <span className="text-meta leading-snug">{SEVERITY_DESCRIPTION[s]}</span>
             </label>
           ))}
@@ -120,7 +120,7 @@ function FindingFields({ d, markets, platforms, idPrefix }: { d: FindingDefaults
       </Field>
       {(markets.length > 0 || platforms.length > 0) && (
         <fieldset className="flex flex-col gap-1.5">
-          <legend className="mb-1 text-[13px] font-medium text-ink-soft">Relevant to (optional)</legend>
+          <legend className="mb-1 text-small font-medium text-ink-soft">Relevant to (optional)</legend>
           <div className="flex flex-wrap gap-1.5">
             {markets.map((m) => (
               <label key={m.code} className={chip}>
@@ -287,7 +287,7 @@ export function RequestChangesForm({ target, drafts, open, awaiting }: { target:
       <input type="hidden" name="roundId" value={target.roundId} />
       <input type="hidden" name="versionId" value={target.versionId} />
       <TargetLine t={target} />
-      <p className="text-[13px] text-ink-soft">
+      <p className="text-small text-ink-soft">
         {awaiting > 0
           ? `Resolve or reopen the ${awaiting} finding${awaiting === 1 ? "" : "s"} the client responded to first.`
           : canRequest
@@ -337,7 +337,7 @@ export function CompleteReviewForm({
       <TargetLine t={target} />
 
       {drafts > 0 && (
-        <div className="rounded-md bg-amber-50 px-3 py-2.5 text-[13px] text-amber-900">
+        <div className="rounded-md bg-attention-soft px-3 py-2.5 text-small text-attention-ink">
           <p>
             {drafts} draft finding{drafts === 1 ? " is" : "s are"} unresolved. Dismiss {drafts === 1 ? "it" : "them"}, or share{" "}
             {drafts === 1 ? "it" : "them"} with the client as part of this outcome.
@@ -357,13 +357,13 @@ export function CompleteReviewForm({
       )}
 
       <fieldset className="flex flex-col gap-2" disabled={blockedByDrafts}>
-        <legend className="mb-1 text-[13px] font-medium text-ink-soft">Outcome</legend>
+        <legend className="mb-1 text-small font-medium text-ink-soft">Outcome</legend>
         {OUTCOMES.map((o) => {
           const a = map[o];
           return (
             <label key={o} className={optionCard}>
               <input type="radio" name="outcome" value={o} disabled={!a.ok} defaultChecked={v?.outcome === o} className="sr-only" />
-              <span className="text-[13px] font-medium text-ink">{REVIEW_OUTCOME_LABEL[o]}</span>
+              <span className="text-small font-medium text-ink">{REVIEW_OUTCOME_LABEL[o]}</span>
               <span className="text-meta leading-snug">{a.ok ? REVIEW_OUTCOME_DESCRIPTION[o] : a.reason}</span>
             </label>
           );

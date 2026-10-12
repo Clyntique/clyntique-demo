@@ -1,9 +1,9 @@
-import type { FindingSeverity, FindingStatus, Role } from "@/generated/prisma/enums";
+import type { Role } from "@/generated/prisma/enums";
 import type { EvidenceView, FindingEntry, FindingView } from "@/lib/data/submission-review";
 import type { Unmet } from "@/lib/workflow/findings";
 import { cn } from "@/lib/cn";
-import { FINDING_STATUS_LABEL, REQUIRED_ACTION_LABEL, SEVERITY_CAPTION, SEVERITY_LABEL } from "@/lib/workflow/labels";
-import { Badge } from "@/components/ui/badge";
+import { REQUIRED_ACTION_LABEL, SEVERITY_CAPTION } from "@/lib/workflow/labels";
+import { FindingStatusPill, SeverityMarker } from "@/components/ui/severity";
 import { RespondForm, type Choice } from "./client-remediation";
 import { DraftFindingControls, PublishedFindingControls, type TargetChoice } from "./review-panel";
 
@@ -12,19 +12,12 @@ import { DraftFindingControls, PublishedFindingControls, type TargetChoice } fro
 // unpublished findings, nor reviewer moves made after the latest decision,
 // so nothing here decides visibility.
 
-export const SEVERITY_STYLE: Record<FindingSeverity, string> = {
-  HIGH: "bg-red-50 text-red-800 ring-red-200",
-  MEDIUM: "bg-amber-50 text-amber-800 ring-amber-200",
-  LOW: "bg-sky-50 text-sky-800 ring-sky-200",
-  ADVISORY: "bg-zinc-50 text-zinc-700 ring-zinc-200",
-};
-
-const STATUS_STYLE: Record<FindingStatus, string> = {
-  DRAFT: "border border-dashed border-line-strong text-muted",
-  OPEN: "bg-amber-50 text-amber-800",
-  RESPONDED: "bg-violet-50 text-violet-800",
-  RESOLVED: "bg-emerald-50 text-emerald-800",
-  DISMISSED: "bg-subtle text-muted",
+// Plain-language versions of the required actions, for clients.
+const CLIENT_ACTION_LABEL: Record<FindingView["requiredAction"], string> = {
+  REVISE_CONTENT: "change the creative and upload a new version",
+  PROVIDE_EVIDENCE: "send evidence that supports the claim",
+  CLARIFY: "answer the reviewer's question",
+  ACKNOWLEDGE: "confirm you've read this",
 };
 
 const GAP_LABEL: Record<Unmet["missing"], string> = {
@@ -82,40 +75,33 @@ export function FindingsList({
           <li
             key={f.id}
             className={cn(
-              "rounded-lg border bg-surface p-4 shadow-card",
-              f.status === "DRAFT" ? "border-dashed border-line-strong" : "border-line",
-              (f.status === "DISMISSED" || f.status === "RESOLVED") && "bg-surface/60",
+              "rounded-lg border bg-surface p-4",
+              f.status === "DRAFT" ? "border-dashed border-line-strong" : gaps.length ? "border-attention-line" : "border-line",
             )}
           >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-meta tabular-nums">#{i + 1}</span>
-              <span
-                title={SEVERITY_CAPTION}
-                className={cn("inline-flex h-5 items-center rounded-sm px-1.5 text-[11px] font-semibold ring-1 ring-inset", SEVERITY_STYLE[f.severity])}
-              >
-                {SEVERITY_LABEL[f.severity]}
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              <span className="text-record text-muted">#{i + 1}</span>
+              <SeverityMarker severity={f.severity} />
+              <FindingStatusPill status={f.status} />
+              <span className="text-record text-muted">
+                Found V{f.versionNumber ?? "–"}
+                {f.resolvedInVersionNumber ? ` · resolved V${f.resolvedInVersionNumber}` : ""}
               </span>
-              <span className={cn("inline-flex h-5 items-center rounded-sm px-1.5 text-[11px] font-medium", STATUS_STYLE[f.status])}>
-                {f.status === "DRAFT" ? "Draft · team only" : FINDING_STATUS_LABEL[f.status]}
-              </span>
-              {f.versionNumber && <Badge tone="outline">Found on V{f.versionNumber}</Badge>}
-              {f.resolvedInVersionNumber && <Badge tone="outline">Resolved on V{f.resolvedInVersionNumber}</Badge>}
-              {[...f.markets, ...f.platforms].map((t) => (
-                <Badge key={t} tone="outline">
-                  {t}
-                </Badge>
-              ))}
+              {[...f.markets, ...f.platforms].length > 0 && <span className="text-caption text-muted">{[...f.markets, ...f.platforms].join(" · ")}</span>}
             </div>
 
-            <h3 className={cn("text-card-title mt-2 break-words", f.status === "DISMISSED" && "line-through decoration-faint")}>{f.issue}</h3>
-            <p className="text-body mt-1 break-words whitespace-pre-line text-ink-soft">{f.explanation}</p>
+            <h3 className={cn("text-body mt-2 font-semibold break-words text-ink", f.status === "DISMISSED" && "line-through decoration-faint")}>{f.issue}</h3>
+            {role === "CLIENT" && <p className="text-label mt-2">Why it matters</p>}
+            <p className={cn("text-body break-words whitespace-pre-line text-ink-soft", role === "CLIENT" ? "mt-0.5" : "mt-1")}>{f.explanation}</p>
 
-            <div className="mt-3 rounded-md bg-subtle px-3 py-2.5">
-              <p className="text-label mb-0.5">Required action · {REQUIRED_ACTION_LABEL[f.requiredAction]}</p>
+            <div className={cn("mt-3 rounded-md px-3 py-2.5", gaps.length ? "bg-attention-soft/60" : "bg-subtle")}>
+              <p className="text-label mb-0.5">
+                {role === "CLIENT" ? `What you need to do · ${CLIENT_ACTION_LABEL[f.requiredAction]}` : `Required action · ${REQUIRED_ACTION_LABEL[f.requiredAction]}`}
+              </p>
               <p className="text-body break-words whitespace-pre-line text-ink">{f.actionDetails}</p>
             </div>
 
-            <p className="text-meta mt-2">
+            <p className="text-record mt-2 text-muted">
               {role === "TEAM" ? `Recorded by ${f.reviewerName}` : "Clyntique reviewer"} · {formatDate(f.publishedAt ?? f.createdAt)}
               <span className="sr-only"> · {SEVERITY_CAPTION}</span>
             </p>
@@ -123,8 +109,9 @@ export function FindingsList({
             {(f.entries.length > 0 || linked.length > 0) && <FindingTimeline entries={f.entries} linked={linked} role={role} />}
 
             {gaps.length > 0 && (
-              <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-                Needed before you resubmit: {gaps.map((g) => GAP_LABEL[g.missing]).join(", ")}.
+              <p className="text-small mt-3 flex items-center gap-2 text-attention-ink">
+                <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-attention-solid" />
+                Still needed before you resubmit: {gaps.map((g) => GAP_LABEL[g.missing]).join(", ")}.
               </p>
             )}
 
@@ -171,10 +158,10 @@ function FindingTimeline({ entries, linked, role }: { entries: FindingEntry[]; l
             key={e.id}
             className={cn(
               "rounded-md px-3 py-2",
-              e.move === "RESOLVED" ? "bg-emerald-50 text-emerald-900" : e.move === "REOPENED" ? "bg-amber-50 text-amber-900" : "bg-subtle text-ink-soft",
+              e.move === "RESOLVED" ? "bg-positive-soft text-positive-ink" : e.move === "REOPENED" ? "bg-attention-soft text-attention-ink" : "bg-subtle text-ink-soft",
             )}
           >
-            <p className="text-[12px] font-medium">
+            <p className="text-caption font-medium">
               {e.move === "RESOLVED" ? "Resolved" : e.move === "REOPENED" ? "Reopened" : "Withdrawn"} by {e.actorName} ·{" "}
               <time dateTime={e.createdAt.toISOString()}>{formatDateTime(e.createdAt)}</time>
             </p>

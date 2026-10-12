@@ -8,14 +8,14 @@ export function LogoutButton({ compact = false }: { compact?: boolean }) {
     <form action={logout}>
       <button
         type="submit"
-        title="Log out"
+        title="Sign out"
         className={cn(
-          "inline-flex items-center gap-2 rounded-md text-[13px] font-medium text-muted transition-colors hover:bg-black/[0.04] hover:text-ink",
-          compact ? "size-8 justify-center" : "h-8 w-full px-2.5",
+          "inline-flex items-center gap-2 rounded-md text-small font-medium text-muted transition-colors hover:bg-subtle hover:text-ink",
+          compact ? "size-8 justify-center" : "h-8 w-full px-2",
         )}
       >
         <LogOutIcon className="size-4" />
-        <span className={compact ? "sr-only" : undefined}>Log out</span>
+        <span className={compact ? "sr-only" : undefined}>Sign out</span>
       </button>
     </form>
   );

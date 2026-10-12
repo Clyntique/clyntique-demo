@@ -20,7 +20,7 @@ export async function NewProjectView() {
   return (
     <div className="max-w-2xl">
       <Breadcrumb trail={[{ label: "Projects", href: "/admin/projects" }]} current="New project" />
-      <PageHeader title="New project" description="Set up a campaign and choose the client who reviews it." />
+      <PageHeader title="New project" description="Set up a campaign for a client. They submit their creatives into it, and your team reviews them." />
       {clients.length ? (
         <Card className="p-6">
           <ProjectForm clients={clients} />

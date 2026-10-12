@@ -12,7 +12,7 @@ export function createPrismaMock() {
   const model = () => ({
     findFirst: vi.fn().mockResolvedValue(null),
     findUnique: vi.fn().mockResolvedValue(null),
-    findUniqueOrThrow: vi.fn(),
+    findUniqueOrThrow: vi.fn().mockResolvedValue({}),
     findMany: vi.fn().mockResolvedValue([]),
     count: vi.fn().mockResolvedValue(0),
     create: vi.fn().mockResolvedValue({ id: "new-id" }),
@@ -147,6 +147,9 @@ export function installCreativeStore(prisma: PrismaMock) {
       const creative = CREATIVES.find((c) => c.id === v.creativeId)!;
       return where.creative === undefined || matchesCreative(where.creative as Where, creative);
     });
-    return row ?? null;
+    if (!row) return null;
+    const creative = CREATIVES.find((c) => c.id === row.creativeId)!;
+    // createdAt before any round mock; tests that need a later revision override this.
+    return { ...row, createdAt: new Date("2026-01-01T00:00:00Z"), creative: { workflow: creative.workflow } };
   });
 }

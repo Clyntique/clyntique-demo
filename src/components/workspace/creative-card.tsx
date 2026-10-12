@@ -16,9 +16,10 @@ const FRAME: Record<CreativeFormat, string> = {
   VIDEO: "aspect-video w-[78%]",
 };
 
-// Soft tints so placeholder previews are distinguishable. Picked from the id,
-// so a creative keeps its tint everywhere.
-const TINTS = ["#e9e4f8", "#e2eef0", "#f6eadf", "#e6ebf5", "#eef0e4", "#f3e6ec", "#e8f0e8", "#efe4dc"];
+// Placeholder frames use close variations of the stage neutral, so a list of
+// creatives without files still reads as one calm surface. Picked from the id,
+// so a creative keeps its frame everywhere.
+const TINTS = ["#e7e5de", "#e3e1da", "#ebe9e3", "#e5e3dc"];
 
 function tintFor(id: string) {
   let hash = 0;
@@ -32,11 +33,22 @@ function tintFor(id: string) {
 export function CreativeThumb({
   creative,
   className,
+  fill = false,
 }: {
   creative: Pick<CreativeSummary, "id" | "format" | "latestVersion">;
   className?: string;
+  /** Small list thumbnails: the image fills the box instead of floating in a frame. */
+  fill?: boolean;
 }) {
   const latest = creative.latestVersion;
+  if (latest?.mediaType === "IMAGE" && fill) {
+    return (
+      <div className={cn("overflow-hidden bg-stage ring-1 ring-line ring-inset", className)} aria-hidden>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={`/api/media/${latest.id}`} alt="" loading="lazy" className="size-full object-cover" />
+      </div>
+    );
+  }
   if (latest?.mediaType === "IMAGE") {
     return (
       <div className={cn("flex items-center justify-center overflow-hidden bg-subtle p-3", className)} aria-hidden>
@@ -63,9 +75,9 @@ export function CreativeThumb({
         style={{ backgroundColor: tintFor(creative.id) }}
       >
         {latest?.mediaType === "VIDEO" ? (
-          <PlayIcon className="size-6 text-black/30" />
+          <PlayIcon className="size-6 text-ink/30" />
         ) : (
-          <ImageIcon className="size-5 text-black/20" />
+          <ImageIcon className="size-5 text-ink/20" />
         )}
       </div>
     </div>
@@ -87,11 +99,11 @@ export function CreativeCard({
   const legacy = creative.workflow === "LEGACY_CLIENT_APPROVAL";
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface shadow-card transition-shadow focus-within:ring-3 focus-within:ring-brand-100 hover:shadow-pop">
+    <article className="group relative flex flex-col overflow-hidden rounded-lg border border-line bg-surface transition-[border-color,box-shadow] focus-within:ring-2 focus-within:ring-brand-600 hover:border-line-strong hover:shadow-card">
       <div className="relative">
         <CreativeThumb creative={creative} className="aspect-[4/3]" />
         {creative.versionCount > 0 && (
-          <span className="absolute top-2.5 left-2.5 rounded-sm bg-surface/90 px-1.5 py-0.5 text-[11px] font-semibold text-ink-soft tabular-nums ring-1 ring-line">
+          <span className="text-record absolute top-2.5 left-2.5 rounded-sm bg-surface/90 px-1.5 py-0.5 text-ink-soft ring-1 ring-line">
             V{creative.versionCount}
           </span>
         )}
@@ -122,7 +134,7 @@ export function CreativeCard({
               {legacy && (
                 <span
                   title="Created before the compliance review workflow"
-                  className="rounded-sm px-1.5 py-0.5 text-[10px] font-medium tracking-wide text-muted uppercase ring-1 ring-line ring-inset"
+                  className="text-record rounded-sm px-1.5 py-0.5 text-muted ring-1 ring-line ring-inset"
                 >
                   Legacy
                 </span>
@@ -131,7 +143,7 @@ export function CreativeCard({
             <span className="text-meta">{FORMATS[creative.format].label}</span>
           </div>
           <div className="flex items-center justify-between gap-2 text-xs">
-            <span className={needsYou ? "font-medium text-brand-700" : "text-ink-soft"}>
+            <span className={needsYou ? "font-medium text-attention-ink" : "text-ink-soft"}>
               {reviewStateLabel(role, creative.workflow, creative.status)}
             </span>
             <span className="text-faint">Updated {formatRelative(creative.updatedAt, now).toLowerCase()}</span>

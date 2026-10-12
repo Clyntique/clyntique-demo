@@ -1,43 +1,74 @@
 @import "tailwindcss";
 
 /*
- * Clyntique design tokens.
- * The app is light-only for the MVP; every color the UI uses is defined here
- * so the palette can be tuned in one place.
+ * Clyntique design tokens (Stage C, approved 12 Oct 2026).
+ * The app is light-only for the demo; every colour the UI uses is defined
+ * here, and components use these tokens only (no raw palette classes).
  */
 @theme {
-  /* Neutrals */
-  --color-canvas: #f7f7f5;
+  /*
+   * Neutrals: warm, faintly blue-biased greys around the ink colour.
+   * canvas = page, surface = panels, subtle = quiet fills, stage = the area
+   * behind a creative preview.
+   */
+  --color-canvas: #f7f6f2;
   --color-surface: #ffffff;
-  --color-subtle: #f2f1ee;
-  --color-line: #e7e5e0;
-  --color-line-strong: #d6d3cc;
-  --color-ink: #18181b;
-  --color-ink-soft: #3f3f46;
-  --color-muted: #71717a;
-  --color-faint: #a1a1aa;
+  --color-subtle: #f0eee8;
+  --color-stage: #eceae4;
+  --color-line: #e6e3da;
+  --color-line-strong: #d3cfc4;
+  --color-ink: #17212f;
+  --color-ink-soft: #3b4655;
+  --color-muted: #6b7480;
+  --color-faint: #9aa1aa;
 
-  /* Brand: a deep, slightly warm violet */
-  --color-brand-50: #f4f2fe;
-  --color-brand-100: #e9e5fc;
-  --color-brand-200: #d4ccf8;
-  --color-brand-500: #6a52e0;
-  --color-brand-600: #5a41d1;
-  --color-brand-700: #4a33b3;
-  --color-brand-900: #2a1d66;
+  /* Accent: actions, focus, links, and "with Clyntique" states. */
+  --color-brand-50: #f1f4fd;
+  --color-brand-100: #e8edfb;
+  --color-brand-200: #cdd8f6;
+  --color-brand-500: #5a77de;
+  --color-brand-600: #4868d8;
+  --color-brand-700: #3a55be;
+  --color-brand-800: #2b43a0;
+  --color-brand-900: #1e3178;
 
-  /* Typography */
+  /*
+   * Semantic tones. Each has one meaning across the app:
+   * positive = done / resolved, attention = the client needs to act,
+   * critical = high severity and errors. soft = fill, line = border,
+   * solid = dots and markers, strong = filled buttons, ink = text on soft.
+   */
+  --color-positive-soft: #dde8e2;
+  --color-positive-line: #c3d7cb;
+  --color-positive-solid: #3f8a65;
+  --color-positive-strong: #2e6b4d;
+  --color-positive-ink: #24563f;
+
+  --color-attention-soft: #f6ebdd;
+  --color-attention-line: #e9d3b5;
+  --color-attention-solid: #d6a56b;
+  --color-attention-strong: #a2681f;
+  --color-attention-ink: #7a4e14;
+
+  --color-critical-soft: #f6e1dd;
+  --color-critical-line: #ebc4bd;
+  --color-critical-solid: #c2503d;
+  --color-critical-strong: #a63f2e;
+  --color-critical-ink: #8f2f23;
+
+  /* Typography: Geist for the interface, Geist Mono for the review record (versions, rounds, times). */
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
 
-  /* Elevation: kept very soft on purpose */
-  --shadow-card: 0 1px 2px rgb(24 24 27 / 0.04);
-  --shadow-pop: 0 4px 16px rgb(24 24 27 / 0.06), 0 1px 3px rgb(24 24 27 / 0.06);
+  /* Elevation: hairline borders do most of the work; shadows stay faint. */
+  --shadow-card: 0 1px 2px rgb(23 33 47 / 0.04);
+  --shadow-pop: 0 8px 24px rgb(23 33 47 / 0.08), 0 1px 3px rgb(23 33 47 / 0.06);
+  --shadow-art: 0 6px 24px rgb(23 33 47 / 0.14);
 }
 
 @layer base {
@@ -49,11 +80,20 @@
     background: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-feature-settings: "cv11", "ss01";
+    font-feature-settings: "ss01";
   }
 
   ::selection {
     background: var(--color-brand-100);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
   }
 
   :focus-visible {
@@ -62,30 +102,55 @@
   }
 }
 
-/* Typography scale: application sizes, not marketing sizes. */
+/*
+ * Typography scale (12 · 13 · 14 · 16 · 20 · 28). Components use these
+ * utilities instead of one-off pixel sizes.
+ */
+@utility text-display {
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
 @utility text-page-title {
-  font-size: 1.5rem;
-  line-height: 2rem;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
   font-weight: 600;
   letter-spacing: -0.015em;
 }
 
 @utility text-section-title {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   line-height: 1.5rem;
   font-weight: 600;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 
 @utility text-card-title {
   font-size: 0.875rem;
   line-height: 1.25rem;
-  font-weight: 550;
+  font-weight: 500;
 }
 
 @utility text-body {
   font-size: 0.875rem;
   line-height: 1.375rem;
+}
+
+@utility text-small {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+@utility text-caption {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+@utility text-micro {
+  font-size: 0.6875rem;
+  line-height: 0.875rem;
 }
 
 @utility text-meta {
@@ -94,11 +159,19 @@
   color: var(--color-muted);
 }
 
+/* Field and group labels: sentence case, quiet weight. */
 @utility text-label {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--color-muted);
+}
+
+/* The review record: versions, rounds, timestamps (V3 · R2). */
+@utility text-record {
+  font-family: var(--font-mono);
   font-size: 0.6875rem;
   line-height: 1rem;
-  font-weight: 550;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--color-muted);
+  letter-spacing: 0.01em;
+  font-variant-numeric: tabular-nums;
 }

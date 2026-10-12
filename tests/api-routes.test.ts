@@ -130,7 +130,19 @@ describe("GET /api/media/[versionId]", () => {
     h.user = TEAM;
     expect((await mediaRequest("v-sub-a-draft-1")).status).toBe(404);
     expect(h.readBlob).not.toHaveBeenCalled();
+    // A submitted file is served once it was part of a round.
+    h.prisma.submissionRound.findFirst.mockResolvedValue({ submittedAt: new Date("2026-02-01T00:00:00Z") });
     expect((await mediaRequest("v-sub-a-submitted-1")).status).toBe(200);
+  });
+
+  it("never serves TEAM a revision the client hasn't resubmitted yet", async () => {
+    h.user = TEAM;
+    // Version created 2026-01-01 (store default); the latest round is older.
+    h.prisma.submissionRound.findFirst.mockResolvedValue({ submittedAt: new Date("2025-12-01T00:00:00Z") });
+    expect((await mediaRequest("v-sub-a-submitted-1")).status).toBe(404);
+    expect(h.readBlob).not.toHaveBeenCalled();
+    // Legacy creatives are unaffected.
+    expect((await mediaRequest("v-a-1")).status).toBe(200);
   });
 
   it("serves a client their own draft submission file, but not another client's (file ownership)", async () => {

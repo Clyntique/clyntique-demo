@@ -230,19 +230,10 @@ export async function finalizeVersion(input: {
           if (current.status !== "DRAFT" && current.status !== "CHANGES_REQUESTED") {
             throw new ActionConflict("This submission was submitted meanwhile, so uploads are closed.");
           }
-          await tx.creative.update({ where: { id: creative.id }, data: { updatedAt: new Date() } });
-          // Private drafts get no activity; a revision after changes were requested does.
-          if (current.status === "CHANGES_REQUESTED") {
-            await tx.activity.create({
-              data: {
-                projectId: creative.projectId,
-                creativeId: creative.id,
-                userId: user.id,
-                type: "VERSION_UPLOADED",
-                message: `${versionLabel(next)} of “${creative.name}” uploaded as a revision`,
-              },
-            });
-          }
+          // Drafts are the client's own, so their "updated" time moves. A revision
+          // while changes are requested is private until resubmission: neither
+          // the time nor any activity changes (the resubmission names the version).
+          if (current.status === "DRAFT") await tx.creative.update({ where: { id: creative.id }, data: { updatedAt: new Date() } });
           return next;
         }
 

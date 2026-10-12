@@ -134,7 +134,7 @@ export function VersionUploader({
     return (
       <p className="text-meta rounded-md bg-subtle px-3 py-2.5">
         File uploads aren&apos;t set up in this environment yet. Connect a private Vercel Blob store and set
-        <code className="mx-1 font-mono text-[11px]">BLOB_READ_WRITE_TOKEN</code>
+        <code className="mx-1 font-mono text-micro">BLOB_READ_WRITE_TOKEN</code>
         (see the README), then reload.
       </p>
     );
@@ -169,7 +169,7 @@ export function VersionUploader({
           </span>
         </label>
         {fileError && (
-          <p role="alert" className="mt-1.5 text-[12px] text-red-600">
+          <p role="alert" className="mt-1.5 text-caption text-critical-ink">
             {fileError}
           </p>
         )}
@@ -214,7 +214,7 @@ export function VersionUploader({
       )}
       {(phase.name === "failed" || phase.name === "save-failed") && <FormError message={phase.error} />}
       {phase.name === "done" && (
-        <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+        <p role="status" className="rounded-md bg-positive-soft px-3 py-2 text-small text-positive-ink">
           V{phase.versionNumber} uploaded.{" "}
           {doneHint ?? (isDraft ? "Share it when you're ready for the client to review." : "The client can review it now.")}
         </p>

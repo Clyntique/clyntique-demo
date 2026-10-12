@@ -1,79 +1,99 @@
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import type { Role } from "@/generated/prisma/enums";
-import { requireRole } from "@/lib/auth/dal";
+import { requireRole, type CurrentUser } from "@/lib/auth/dal";
+import { getReviewSummary } from "@/lib/data/review-queue";
 import { basePathFor, ROLE_LABEL } from "@/lib/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/states";
 import { Brand } from "./brand";
 import { LogoutButton } from "./logout-button";
-import { NavLinks, NavList } from "./nav-links";
+import { MobileMenu } from "./mobile-menu";
+import { NavLinks, NavList, type NavCounts } from "./nav-links";
 
 const WORKSPACE_LABEL: Record<Role, string> = {
   TEAM: "Team workspace",
-  CLIENT: "Client review portal",
+  CLIENT: "Client workspace",
 };
 
 // Authenticated application layout shared by the TEAM and CLIENT areas.
-// Only the user section reads the session, so the rest of the shell is static.
+// Only the user section and the TEAM queue count read the session/database,
+// so the rest of the shell is static and renders immediately.
 export function AppShell({ role, children }: { role: Role; children: ReactNode }) {
   const home = basePathFor(role);
 
   return (
-    <div className="flex min-h-dvh flex-1 flex-col md:pl-60">
+    <div className="flex min-h-dvh flex-1 flex-col md:pl-58">
+      <a
+        href="#main"
+        className="text-small sr-only z-50 rounded-md bg-surface px-3 py-2 font-medium text-ink ring-1 ring-line focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+      >
+        Skip to content
+      </a>
+
       {/* Desktop / tablet sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-60 flex-col border-r border-line bg-canvas md:flex">
-        <div className="flex h-16 items-center px-5">
+      <aside className="fixed inset-y-0 left-0 hidden w-58 flex-col border-r border-line bg-canvas md:flex">
+        <div className="flex h-15 items-center px-4">
           <Link href={home} className="rounded-md">
             <Brand />
           </Link>
         </div>
-        <p className="text-label px-5 pb-2">{WORKSPACE_LABEL[role]}</p>
-        <nav aria-label="Main" className="flex-1 px-3">
+        <p className="text-caption px-4 pb-2 text-faint">{WORKSPACE_LABEL[role]}</p>
+        <nav aria-label="Main" className="flex-1 px-2.5">
           <Suspense fallback={<NavList role={role} layout="sidebar" pathname={null} />}>
-            <NavLinks role={role} layout="sidebar" />
+            <SidebarNav role={role} />
           </Suspense>
         </nav>
-        <div className="border-t border-line p-3">
+        <div className="border-t border-line p-2.5">
           <Suspense fallback={<UserSkeleton />}>
             <SidebarUser role={role} />
           </Suspense>
         </div>
       </aside>
 
-      {/* Mobile top bar with scrollable tabs */}
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas/95 backdrop-blur md:hidden">
-        <div className="flex h-14 items-center justify-between px-4">
-          <Link href={home}>
-            <Brand />
-          </Link>
-          <Suspense fallback={<Skeleton className="size-8 rounded-full" />}>
-            <MobileUser role={role} />
-          </Suspense>
-        </div>
-        <nav aria-label="Main" className="-mb-px overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
-          <Suspense fallback={<NavList role={role} layout="tabs" pathname={null} />}>
-            <NavLinks role={role} layout="tabs" />
-          </Suspense>
-        </nav>
+      {/* Phone top bar with a menu sheet */}
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-canvas/95 px-4 backdrop-blur md:hidden">
+        <Link href={home} className="rounded-md">
+          <Brand />
+        </Link>
+        <Suspense fallback={<Skeleton className="h-9 w-20" />}>
+          <PhoneMenu role={role} />
+        </Suspense>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-10">
+      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-9 has-[[data-wide]]:max-w-[1440px]">
         {children}
       </main>
     </div>
   );
 }
 
-async function SidebarUser({ role }: { role: Role }) {
+async function navCounts(user: CurrentUser): Promise<NavCounts> {
+  if (user.role !== "TEAM") return {};
+  // A navigation badge must never take the page down: without it the link still works.
+  try {
+    const summary = await getReviewSummary(user);
+    return { "/review": summary.waiting };
+  } catch {
+    return {};
+  }
+}
+
+async function SidebarNav({ role }: { role: Role }) {
   const user = await requireRole(role);
+  return <NavLinks role={role} layout="sidebar" counts={await navCounts(user)} />;
+}
+
+function UserBlock({ user }: { user: CurrentUser }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2.5 px-2.5 py-1.5">
+      <div className="flex items-center gap-2.5 px-2 py-1.5">
         <Avatar name={user.name} />
         <div className="min-w-0">
-          <p className="truncate text-[13px] font-medium text-ink">{user.name}</p>
-          <p className="text-meta">{ROLE_LABEL[user.role]}</p>
+          <p className="text-small truncate font-medium text-ink">{user.name}</p>
+          <p className="text-caption truncate text-muted">
+            {ROLE_LABEL[user.role]} · {user.email}
+          </p>
         </div>
       </div>
       <LogoutButton />
@@ -81,22 +101,19 @@ async function SidebarUser({ role }: { role: Role }) {
   );
 }
 
-async function MobileUser({ role }: { role: Role }) {
+async function SidebarUser({ role }: { role: Role }) {
   const user = await requireRole(role);
-  return (
-    <div className="flex items-center gap-1">
-      <span className="sr-only">
-        Signed in as {user.name}, {ROLE_LABEL[user.role]}
-      </span>
-      <Avatar name={user.name} />
-      <LogoutButton compact />
-    </div>
-  );
+  return <UserBlock user={user} />;
+}
+
+async function PhoneMenu({ role }: { role: Role }) {
+  const user = await requireRole(role);
+  return <MobileMenu role={role} counts={await navCounts(user)} footer={<UserBlock user={user} />} />;
 }
 
 function UserSkeleton() {
   return (
-    <div className="flex items-center gap-2.5 px-2.5 py-1.5">
+    <div className="flex items-center gap-2.5 px-2 py-1.5">
       <Skeleton className="size-8 rounded-full" />
       <div className="flex flex-col gap-1.5">
         <Skeleton className="h-3 w-24" />

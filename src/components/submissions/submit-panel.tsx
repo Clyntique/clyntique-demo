@@ -29,12 +29,12 @@ export function SubmitPanel({ creativeId, readiness }: { creativeId: string; rea
         {ITEMS.map(({ key, label }) => {
           const done = readiness[key];
           return (
-            <li key={key} className="flex items-center gap-2.5 text-[13px]">
+            <li key={key} className="flex items-center gap-2.5 text-small">
               <span
                 aria-hidden
                 className={cn(
                   "flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:size-3",
-                  done ? "bg-emerald-50 text-emerald-700 ring-emerald-200" : "bg-surface text-transparent ring-line-strong",
+                  done ? "bg-positive-soft text-positive-ink ring-positive-line" : "bg-surface text-transparent ring-line-strong",
                 )}
               >
                 <CheckIcon />
@@ -47,7 +47,7 @@ export function SubmitPanel({ creativeId, readiness }: { creativeId: string; rea
       </ul>
       <FormError message={state?.error} />
       {state?.ok && (
-        <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+        <p role="status" className="rounded-md bg-positive-soft px-3 py-2 text-small text-positive-ink">
           {state.ok}
         </p>
       )}

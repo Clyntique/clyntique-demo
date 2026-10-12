@@ -4,33 +4,33 @@ import { cn } from "@/lib/cn";
 import { formatDayLabel, formatRelative } from "@/lib/format";
 
 const DOT: Record<ActivityType, string> = {
-  CREATIVE_UPLOADED: "bg-zinc-400",
+  CREATIVE_UPLOADED: "bg-faint",
   VERSION_UPLOADED: "bg-brand-500",
-  FEEDBACK_RECEIVED: "bg-sky-500",
-  CHANGES_REQUESTED: "bg-amber-500",
-  CREATIVE_APPROVED: "bg-emerald-500",
-  OTHER: "bg-zinc-300",
-  // Submission-review workflow events (schema M1A). Not written by any code yet.
-  SUBMISSION_SUBMITTED: "bg-violet-500",
-  EVIDENCE_SUBMITTED: "bg-zinc-400",
-  REVIEW_STARTED: "bg-sky-500",
-  FINDING_RECORDED: "bg-amber-500",
-  RESUBMITTED: "bg-violet-500",
-  REVIEW_COMPLETED: "bg-teal-500",
+  FEEDBACK_RECEIVED: "bg-brand-500",
+  CHANGES_REQUESTED: "bg-attention-solid",
+  CREATIVE_APPROVED: "bg-positive-solid",
+  OTHER: "bg-line-strong",
+  // Submission-review workflow events.
+  SUBMISSION_SUBMITTED: "bg-brand-500",
+  EVIDENCE_SUBMITTED: "bg-faint",
+  REVIEW_STARTED: "bg-brand-500",
+  FINDING_RECORDED: "bg-attention-solid",
+  RESUBMITTED: "bg-brand-500",
+  REVIEW_COMPLETED: "bg-positive-solid",
 };
 
-function Entry({ item, now, compact, last }: { item: ActivityItem; now: number; compact: boolean; last: boolean }) {
+function Entry({ item, now, last }: { item: ActivityItem; now: number; last: boolean }) {
   return (
     <li className="relative flex gap-3 pb-5 last:pb-0">
       {/* Timeline rail */}
       {!last && <span aria-hidden className="absolute top-4 bottom-0 left-[4.5px] w-px bg-line" />}
       <span aria-hidden className={cn("relative mt-1.5 size-2.5 shrink-0 rounded-full ring-4 ring-surface", DOT[item.type])} />
       <div className="min-w-0 flex-1">
-        <p className="text-card-title">{item.message}</p>
-        <p className="text-meta mt-0.5 truncate">
+        <p className="text-small break-words text-ink">{item.message}</p>
+        <p className="text-caption mt-0.5 truncate text-muted">
           {item.projectName} · {item.actorName}
-          {compact ? <span className="block">{formatRelative(item.createdAt, now)}</span> : <> · {formatRelative(item.createdAt, now)}</>}
         </p>
+        <p className="text-record mt-0.5 text-faint">{formatRelative(item.createdAt, now)}</p>
       </div>
     </li>
   );
@@ -41,7 +41,7 @@ export function ActivityList({ items, now }: { items: ActivityItem[]; now: numbe
   return (
     <ol>
       {items.map((item, i) => (
-        <Entry key={item.id} item={item} now={now} compact last={i === items.length - 1} />
+        <Entry key={item.id} item={item} now={now} last={i === items.length - 1} />
       ))}
     </ol>
   );
@@ -59,10 +59,10 @@ export function ActivityTimeline({ items, now }: { items: ActivityItem[]; now: n
     <div className="flex flex-col gap-8">
       {[...groups].map(([label, dayItems]) => (
         <section key={label} aria-label={label}>
-          <h2 className="text-label mb-4">{label}</h2>
+          <h2 className="text-small mb-4 font-semibold text-ink">{label}</h2>
           <ol>
             {dayItems.map((item, i) => (
-              <Entry key={item.id} item={item} now={now} compact={false} last={i === dayItems.length - 1} />
+              <Entry key={item.id} item={item} now={now} last={i === dayItems.length - 1} />
             ))}
           </ol>
         </section>

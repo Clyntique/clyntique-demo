@@ -24,9 +24,9 @@ export function DecisionHistory({ decisions, role }: { decisions: DecisionView[]
         <li key={d.id} className="rounded-md border border-line px-3 py-2.5">
           <div className="flex flex-wrap items-center gap-2">
             {d.kind === "FINAL" && d.outcome ? (
-              <Badge className="bg-teal-50 text-teal-800">{REVIEW_OUTCOME_LABEL[d.outcome]}</Badge>
+              <Badge className="bg-positive-soft text-positive-ink">{REVIEW_OUTCOME_LABEL[d.outcome]}</Badge>
             ) : (
-              <Badge className="bg-amber-50 text-amber-800">Changes requested</Badge>
+              <Badge className="bg-attention-soft text-attention-ink">Changes requested</Badge>
             )}
             <span className="text-meta">
               V{d.versionNumber} · round {d.roundNumber}
@@ -67,16 +67,20 @@ export function EvidenceList({
     );
   }
   return (
-    <ul className="flex flex-col divide-y divide-line">
+    <ul className="flex flex-col gap-3">
       {evidence.map((e) => {
         const supports = e.findingIds.map((id) => findingLabels.get(id)).filter(Boolean);
         return (
-          <li key={e.id} id={`evidence-${e.id}`} className={cn("scroll-mt-6 py-3 first:pt-0 last:pb-0", e.withdrawn && "opacity-70")}>
+          <li key={e.id} id={`evidence-${e.id}`} className={cn("scroll-mt-6 rounded-lg border border-line bg-surface p-4", e.withdrawn && "bg-subtle/60")}>
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone="outline">{EVIDENCE_TYPES[e.type]}</Badge>
               {e.origin === "REVIEWER_ADDED" && <Badge>Added by reviewer</Badge>}
               {e.visibility === "INTERNAL" && role === "TEAM" && <Badge>Team only</Badge>}
-              {e.versionNumber && <Badge tone="outline">With V{e.versionNumber}</Badge>}
+              {e.submittedWithRound ? (
+                <Badge tone="outline">Submitted with round {e.submittedWithRound}</Badge>
+              ) : (
+                role === "CLIENT" && <Badge tone="outline">Not yet submitted</Badge>
+              )}
               {e.withdrawn && <Badge>Withdrawn</Badge>}
             </div>
             <p className={cn("text-card-title mt-1 break-words", e.withdrawn && "line-through decoration-faint")}>{e.title}</p>
@@ -86,7 +90,7 @@ export function EvidenceList({
                 href={`/api/media/evidence/${e.id}`}
                 target={e.file.isImage ? "_blank" : undefined}
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex max-w-full items-center gap-2 rounded-md border border-line px-2.5 py-1.5 text-[13px] text-ink hover:border-line-strong hover:bg-subtle"
+                className="text-small mt-2 inline-flex max-w-full items-center gap-2 rounded-md border border-line-strong bg-canvas px-2.5 py-1.5 text-ink hover:bg-subtle"
               >
                 <FileIcon className="size-3.5 shrink-0 text-muted" />
                 <span className="truncate">{e.file.name}</span>
@@ -106,6 +110,11 @@ export function EvidenceList({
               <time dateTime={e.createdAt.toISOString()}>{formatDateTime(e.createdAt)}</time>
             </p>
             {supports.length > 0 && <p className="text-meta mt-1">Supports: {supports.join(" · ")}</p>}
+            {e.withdrawal && (
+              <p className="text-meta mt-1">
+                Withdrawn by {e.withdrawal.byName ?? "the client"} · <time dateTime={e.withdrawal.at.toISOString()}>{formatDateTime(e.withdrawal.at)}</time>
+              </p>
+            )}
             {e.withdrawable && (
               <div className="mt-2">
                 <WithdrawEvidenceForm evidenceId={e.id} />

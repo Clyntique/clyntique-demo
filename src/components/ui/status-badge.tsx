@@ -1,75 +1,52 @@
 import type { CreativeStatus } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 
-// One definition per status: label, tint, and dot color. The label is always
-// shown, so status never depends on color alone.
-export const STATUS_STYLES: Record<
-  CreativeStatus,
-  { label: string; badge: string; dot: string; bar: string }
-> = {
-  DRAFT: {
-    label: "Draft",
-    badge: "bg-zinc-100 text-zinc-700 ring-zinc-200",
-    dot: "bg-zinc-400",
-    bar: "bg-zinc-300",
-  },
-  IN_REVIEW: {
-    label: "In Review",
-    badge: "bg-sky-50 text-sky-800 ring-sky-200",
-    dot: "bg-sky-500",
-    bar: "bg-sky-400",
-  },
-  CHANGES_REQUESTED: {
-    label: "Changes Requested",
-    badge: "bg-amber-50 text-amber-800 ring-amber-200",
-    dot: "bg-amber-500",
-    bar: "bg-amber-400",
-  },
-  APPROVED: {
-    label: "Approved",
-    badge: "bg-emerald-50 text-emerald-800 ring-emerald-200",
-    dot: "bg-emerald-500",
-    bar: "bg-emerald-500",
-  },
-  ARCHIVED: {
-    label: "Archived",
-    badge: "bg-white text-zinc-500 ring-zinc-200",
-    dot: "border border-zinc-400 bg-transparent",
-    bar: "bg-zinc-200",
-  },
-  // Submission-review workflow statuses (schema M1A). Not set by any code yet.
-  SUBMITTED: {
-    label: "Submitted",
-    badge: "bg-violet-50 text-violet-800 ring-violet-200",
-    dot: "bg-violet-500",
-    bar: "bg-violet-400",
-  },
-  REVIEW_COMPLETE: {
-    label: "Review complete",
-    badge: "bg-teal-50 text-teal-800 ring-teal-200",
-    dot: "bg-teal-500",
-    bar: "bg-teal-500",
-  },
+/*
+ * Status uses four tones, each with one meaning across the app:
+ * - neutral:   not started, or no longer active (draft, archived)
+ * - accent:    with Clyntique (submitted, in review; legacy "in review")
+ * - attention: the client needs to act (changes requested)
+ * - positive:  done (review complete; legacy approved)
+ * The label is always shown, so status never depends on colour alone.
+ */
+export type Tone = "neutral" | "accent" | "attention" | "positive";
+
+export const TONE_STYLES: Record<Tone, { pill: string; dot: string; bar: string }> = {
+  neutral: { pill: "bg-subtle text-ink-soft", dot: "bg-faint", bar: "bg-line-strong" },
+  accent: { pill: "bg-brand-100 text-brand-800", dot: "bg-brand-600", bar: "bg-brand-500" },
+  attention: { pill: "bg-attention-soft text-attention-ink", dot: "bg-attention-solid", bar: "bg-attention-solid" },
+  positive: { pill: "bg-positive-soft text-positive-ink", dot: "bg-positive-solid", bar: "bg-positive-solid" },
 };
 
-export function StatusBadge({
-  status,
-  className,
-}: {
-  status: CreativeStatus;
-  className?: string;
-}) {
+export const STATUS_STYLES: Record<CreativeStatus, { label: string; tone: Tone; badge: string; dot: string; bar: string }> = Object.fromEntries(
+  (
+    [
+      ["DRAFT", "Draft", "neutral"],
+      ["SUBMITTED", "Submitted", "accent"],
+      ["IN_REVIEW", "In review", "accent"],
+      ["CHANGES_REQUESTED", "Changes requested", "attention"],
+      ["REVIEW_COMPLETE", "Review complete", "positive"],
+      ["APPROVED", "Approved", "positive"],
+      ["ARCHIVED", "Archived", "neutral"],
+    ] as const
+  ).map(([status, label, tone]) => [status, { label, tone, badge: TONE_STYLES[tone].pill, dot: TONE_STYLES[tone].dot, bar: TONE_STYLES[tone].bar }]),
+) as Record<CreativeStatus, { label: string; tone: Tone; badge: string; dot: string; bar: string }>;
+
+/** A rounded pill with a dot: the one way status is shown. */
+export function TonePill({ tone, children, className }: { tone: Tone; children: React.ReactNode; className?: string }) {
+  return (
+    <span className={cn("inline-flex h-[22px] items-center gap-1.5 rounded-full px-2 text-caption font-medium whitespace-nowrap", TONE_STYLES[tone].pill, className)}>
+      <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", TONE_STYLES[tone].dot)} />
+      {children}
+    </span>
+  );
+}
+
+export function StatusBadge({ status, label, className }: { status: CreativeStatus; label?: string; className?: string }) {
   const style = STATUS_STYLES[status];
   return (
-    <span
-      className={cn(
-        "inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset",
-        style.badge,
-        className,
-      )}
-    >
-      <span aria-hidden className={cn("size-1.5 rounded-full", style.dot)} />
-      {style.label}
-    </span>
+    <TonePill tone={style.tone} className={className}>
+      {label ?? style.label}
+    </TonePill>
   );
 }

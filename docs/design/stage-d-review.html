@@ -1,0 +1,144 @@
+<title>Clyntique Stage D Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; screenshot groups as wrapping grids (desktop wide, phone narrow). */
+:root {
+  --bg: #F7F6F2; --panel: #FFFFFF; --fg: #17212F; --fg-2: #3B4655; --muted: #6B7480; --line: #E6E3DA; --accent: #4868D8;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+  --app-accent: #4868D8; --app-ink: #17212F; --app-canvas: #F7F6F2;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #12161D; --panel: #1A2029; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #8E97A3; --line: #2A313C; --accent: #8AA2F0; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.55; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 52px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { margin: 0; text-wrap: balance; letter-spacing: -0.015em; }
+h1 { font-size: 32px; line-height: 1.15; font-weight: 600; }
+h2 { font-size: 21px; line-height: 1.3; font-weight: 600; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
+.lede { font-size: 17px; color: var(--fg-2); margin-top: 12px; }
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-family: var(--mono); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.shots { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 480px), 1fr)); }
+.shots.phone { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+figcaption { font-size: 13px; color: var(--muted); }
+.marks { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: var(--app-canvas); color: var(--app-ink); }
+.tile { display: grid; place-items: center; border-radius: 6px; background: var(--app-accent); color: #fff; }
+.tile.ink { background: var(--app-ink); }
+.lockup { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 18px; letter-spacing: -0.015em; }
+.size { font-family: var(--mono); font-size: 11px; color: #6B7480; text-align: center; margin-top: 4px; }
+ul.list { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--fg-2); }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow">Stage D · complete · 12 Oct 2026</p>
+    <h1>Clyntique Stage D review</h1>
+    <p class="lede">The review workspace is rebuilt around the creative: a large stage with version switching and side-by-side comparison, and a panel with one next action above Findings, Evidence and History. Screenshots are from the local server with TEST data; nothing here is verified on a Vercel Preview yet.</p>
+  </header>
+
+  <section>
+    <h2>TEAM review workspace</h2>
+    <div class="shots">
+      <figure><img src="screens/1-team-review-desktop.jpg" alt="Team workspace during a review: large preview on the left; next step with Request changes and Complete review, then Findings tab with two draft findings, on the right" loading="lazy"><figcaption>Desktop, 1440 px. Round 1 in review with two team-only draft findings.</figcaption></figure>
+    </div>
+    <div class="shots phone">
+      <figure><img src="screens/2-team-review-mobile-top.jpg" alt="Team workspace on a phone: title, status and the creative preview" loading="lazy"><figcaption>Phone, 375 px: the creative first.</figcaption></figure>
+      <figure><img src="screens/3-team-review-mobile-panel.jpg" alt="Team workspace on a phone: next step and findings below the preview" loading="lazy"><figcaption>Then the next action and findings.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>CLIENT remediation</h2>
+    <div class="shots">
+      <figure><img src="screens/4-client-remediation-desktop.jpg" alt="Client view after changes were requested: 'Your changes needed' with the reviewer's summary, a checklist per finding and the resubmit button" loading="lazy"><figcaption>"Your changes needed": the reviewer's summary, a checklist per finding, resubmit.</figcaption></figure>
+      <figure><img src="screens/5-client-remediation-findings-desktop.jpg" alt="Client findings: 'Why it matters', 'What you need to do', the client's response and what is still needed; revised-version upload on the left" loading="lazy"><figcaption>Plain-language findings, the client's response and "Still needed".</figcaption></figure>
+    </div>
+    <div class="shots phone">
+      <figure><img src="screens/6-client-remediation-mobile.jpg" alt="Client remediation checklist on a phone" loading="lazy"><figcaption>Checklist on a phone.</figcaption></figure>
+      <figure><img src="screens/7-client-respond-mobile.jpg" alt="Respond form on a phone" loading="lazy"><figcaption>Respond form.</figcaption></figure>
+      <figure><img src="screens/8-client-evidence-mobile.jpg" alt="Add evidence form on a phone" loading="lazy"><figcaption>Evidence form.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Version comparison</h2>
+    <div class="shots">
+      <figure><img src="screens/9-compare-team-desktop.jpg" alt="Team compare view: V3 (changes requested, round 2) beside V4 (issues resolved, round 3), each with notes" loading="lazy"><figcaption>TEAM: V3 (round 2, changes requested) beside V4 (round 3, issues resolved).</figcaption></figure>
+      <figure><img src="screens/10-compare-client-desktop.jpg" alt="Client compare view of the same versions" loading="lazy"><figcaption>CLIENT: the same comparison.</figcaption></figure>
+    </div>
+    <div class="shots phone">
+      <figure><img src="screens/11-compare-mobile.jpg" alt="Compare view on a phone with both versions side by side" loading="lazy"><figcaption>Phone: still side by side, rows aligned.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>What changed</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Area</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td>Stage</td><td>The creative is the largest element: warm-grey stage, true aspect ratio, a version switcher (V1…Vn) and a context badge (round and how it ended). Links keep it shareable: <code>?v=</code> selects a version, <code>?compare=</code> turns on comparison.</td></tr>
+        <tr><td>Compare</td><td>Splits the stage into the earlier and the selected version, each labelled with its round and outcome, upload details and notes. "Compared with" picks the earlier side. Two columns on every width; rows align across both sides.</td></tr>
+        <tr><td>Next action</td><td>One block per role and status: Start review; Request changes / Complete review (as expandable forms, the right one highlighted); Waiting on the client; Submit; Your changes needed with the checklist and Resubmit; outcome with the disclaimer.</td></tr>
+        <tr><td>Tabs</td><td>Findings, Evidence and History. Findings opens first whenever findings need action. Panels stay mounted, so drafts survive tab switches. Arrow keys, Home and End move between tabs.</td></tr>
+        <tr><td>Findings</td><td>For clients: "Why it matters" and "What you need to do · change the creative and upload a new version" (and similar plain wording), plus "Still needed before you resubmit". For the team: the same card with Edit / Dismiss on drafts and Resolve / Reopen / Withdraw on responses.</td></tr>
+        <tr><td>Evidence</td><td>Each item in its own panel: type, "Submitted with round n" or "Not yet submitted", file chip (download or view), link, supported findings, "Withdrawn by … · date".</td></tr>
+        <tr><td>History</td><td>One chronological ledger: uploads, (re)submissions with notes, decisions with summaries, responses, resolve / reopen / withdraw notes, evidence added or withdrawn.</td></tr>
+        <tr><td>Responsive</td><td>Two columns from 1280 px; below that the order is stage, next action and tabs, then upload and details (the same order in the page source, so keyboard and screen-reader order match).</td></tr>
+        <tr><td>Privacy</td><td>A client's private work (evidence, revised versions) no longer moves the submission's "Updated" time; the team's header shows the last submission time. In the browser, the team's page contained none of Alex's unsubmitted response.</td></tr>
+        <tr><td>Robustness</td><td>The sidebar's queue count can no longer break a page when one database query times out.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Final brand mark (not applied yet)</h2>
+    <p class="prose muted">Option B, refined: four crop corners on a 20-unit grid with a solid focal point, sized so the corners stay distinct at 16 px. It's built as a component (<code>ViewfinderMark</code>) and replaces the current mark, favicon and sign-in logo together once you approve.</p>
+    <div class="marks" role="img" aria-label="Viewfinder mark at 56, 28 and 16 pixels, in accent and ink, with the Clyntique wordmark">
+      <div><span class="tile" style="width:56px;height:56px;border-radius:12px"><svg width="35" height="35" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.25V4.5A1.5 1.5 0 0 1 4.5 3h2.75M12.75 3h2.75A1.5 1.5 0 0 1 17 4.5v2.75M17 12.75v2.75a1.5 1.5 0 0 1-1.5 1.5h-2.75M7.25 17H4.5A1.5 1.5 0 0 1 3 15.5v-2.75"/><circle cx="10" cy="10" r="2.1" fill="currentColor" stroke="none"/></svg></span><p class="size">56</p></div>
+      <div><span class="tile" style="width:28px;height:28px"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.25V4.5A1.5 1.5 0 0 1 4.5 3h2.75M12.75 3h2.75A1.5 1.5 0 0 1 17 4.5v2.75M17 12.75v2.75a1.5 1.5 0 0 1-1.5 1.5h-2.75M7.25 17H4.5A1.5 1.5 0 0 1 3 15.5v-2.75"/><circle cx="10" cy="10" r="2.1" fill="currentColor" stroke="none"/></svg></span><p class="size">28</p></div>
+      <div><span class="tile" style="width:16px;height:16px;border-radius:4px"><svg width="11" height="11" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.25V4.5A1.5 1.5 0 0 1 4.5 3h2.75M12.75 3h2.75A1.5 1.5 0 0 1 17 4.5v2.75M17 12.75v2.75a1.5 1.5 0 0 1-1.5 1.5h-2.75M7.25 17H4.5A1.5 1.5 0 0 1 3 15.5v-2.75"/><circle cx="10" cy="10" r="2.4" fill="currentColor" stroke="none"/></svg></span><p class="size">16</p></div>
+      <div><span class="tile ink" style="width:28px;height:28px"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.25V4.5A1.5 1.5 0 0 1 4.5 3h2.75M12.75 3h2.75A1.5 1.5 0 0 1 17 4.5v2.75M17 12.75v2.75a1.5 1.5 0 0 1-1.5 1.5h-2.75M7.25 17H4.5A1.5 1.5 0 0 1 3 15.5v-2.75"/><circle cx="10" cy="10" r="2.1" fill="currentColor" stroke="none"/></svg></span><p class="size">ink</p></div>
+      <div class="lockup"><span class="tile" style="width:28px;height:28px"><svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.25V4.5A1.5 1.5 0 0 1 4.5 3h2.75M12.75 3h2.75A1.5 1.5 0 0 1 17 4.5v2.75M17 12.75v2.75a1.5 1.5 0 0 1-1.5 1.5h-2.75M7.25 17H4.5A1.5 1.5 0 0 1 3 15.5v-2.75"/><circle cx="10" cy="10" r="2.1" fill="currentColor" stroke="none"/></svg></span>Clyntique</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Checks</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Automated tests</td><td class="n">228/228 pass</td></tr>
+        <tr><td>TypeScript · lint · production build</td><td class="n">pass · 0 problems · pass</td></tr>
+        <tr><td>Legacy records (read-only check vs 9 Oct backup)</td><td class="n">unchanged</td></tr>
+        <tr><td>Browser (localhost, shared database, TEST data)</td><td>Team review flow (start, two draft findings, request changes), client remediation (one response), privacy of the unsubmitted response, compare on desktop and phone, tab keyboard navigation, no horizontal overflow at 375 px on the workspace, response and evidence forms. <strong>Stage A, C and D verification on a Vercel Preview is still pending.</strong></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Notes and decisions for you</h2>
+    <ul class="list prose">
+      <li><strong>Approve the final mark?</strong> If yes, I'll apply it to the sidebar, phone header, favicon and sign-in page in Stage E.</li>
+      <li><strong>Remaining privacy gap:</strong> while changes are requested, a client can still edit the title, description and campaign context, and the team sees those edits at once. Keeping them private without a schema change would mean locking those fields after the first submission, the same way markets and platforms are locked. I recommend locking them; your call.</li>
+      <li><strong>TEST data added (approved):</strong> "TEST M5S — Remediation demo" in the TEST project, round 1, two findings, changes requested, one client response. Nothing existing was changed.</li>
+      <li><strong>Local testing note:</strong> this machine's connection to the Render database times out now and then (each round trip is about 0.3 s from India). The pages retry fine, but this is the same latency the demo will feel unless the function region moves near the database (see the Stage A report).</li>
+      <li>Stage E (projects, lists, activity, sign-in, legacy creative view, final polish) waits for your approval.</li>
+    </ul>
+  </section>
+</div>

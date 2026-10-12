@@ -64,15 +64,16 @@ export async function CreativeReviewView({
   searchParams: SearchParams;
 }) {
   const user = await requireRole(role);
-  const [{ creativeId }, { v, created }] = await Promise.all([params, searchParams]);
+  const [{ creativeId }, { v, created, compare }] = await Promise.all([params, searchParams]);
   const requested = typeof v === "string" && /^\d{1,4}$/.test(v) ? Number(v) : undefined;
+  const compareWith = typeof compare === "string" && /^\d{1,4}$/.test(compare) ? Number(compare) : undefined;
 
   // Scoped lookup: a client gets a 404 for drafts and for other clients' work.
   const review = await getCreativeReview(user, creativeId, requested);
   if (!review) notFound();
   // Client-owned submissions have their own page; this view stays for legacy records.
   if (review.workflow === "SUBMISSION_REVIEW") {
-    return <SubmissionView role={role} creativeId={review.id} versionNumber={requested} created={created === "1"} />;
+    return <SubmissionView role={role} creativeId={review.id} versionNumber={requested} compareWith={compareWith} created={created === "1"} />;
   }
 
   const now = requestTime();
@@ -114,6 +115,9 @@ export async function CreativeReviewView({
 
       <div className="-mt-4 mb-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-meta">
         <StatusBadge status={review.status} />
+        <span title="Created before the compliance review workflow" className="text-record rounded-sm px-1.5 py-0.5 text-muted ring-1 ring-line ring-inset">
+          Earlier workflow
+        </span>
         {current ? (
           <Badge tone="brand">V{current.versionNumber} current</Badge>
         ) : (
@@ -127,7 +131,7 @@ export async function CreativeReviewView({
       </div>
 
       {team && created === "1" && (
-        <p role="status" className="mb-3 rounded-md bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800 ring-1 ring-emerald-200 ring-inset">
+        <p role="status" className="mb-3 rounded-md bg-positive-soft px-4 py-2.5 text-small text-positive-ink ring-1 ring-positive-line ring-inset">
           Creative created as a draft.
         </p>
       )}
@@ -137,7 +141,7 @@ export async function CreativeReviewView({
         <div className="flex min-w-0 flex-col gap-8">
           <section aria-label="Creative preview" className="flex flex-col gap-3">
             {viewingOld && selected && current && (
-              <p className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-subtle px-4 py-2.5 text-[13px] text-ink-soft">
+              <p className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-subtle px-4 py-2.5 text-small text-ink-soft">
                 <span>
                   You&apos;re viewing <strong className="font-semibold text-ink">V{selected.versionNumber}</strong>, an
                   earlier version. V{current.versionNumber} is current.
@@ -285,13 +289,13 @@ function StatusBanner({ review, role }: { review: CreativeReview; role: Role }) 
       message = current
         ? `V${current.versionNumber} is with the client for review.`
         : "Shared with the client, but no file is uploaded yet. Upload one so they can review it.";
-      tone = "bg-sky-50 text-sky-900";
+      tone = "bg-brand-50 text-brand-900";
     } else if (review.status === "CHANGES_REQUESTED") {
       message = "The client requested changes. Address the feedback and upload a new version.";
-      tone = "bg-amber-50 text-amber-900";
+      tone = "bg-attention-soft text-attention-ink";
     } else if (review.status === "APPROVED") {
       message = `The client approved V${current?.versionNumber ?? "?"}. Uploading a new version sends it back for review.`;
-      tone = "bg-emerald-50 text-emerald-900";
+      tone = "bg-positive-soft text-positive-ink";
     } else {
       message = REVIEW_STATE.TEAM[review.status];
     }
@@ -303,17 +307,17 @@ function StatusBanner({ review, role }: { review: CreativeReview; role: Role }) 
       message = "The team is preparing the file for this creative.";
     } else if (review.status === "CHANGES_REQUESTED") {
       message = "You requested changes. The team is working on the next version.";
-      tone = "bg-amber-50 text-amber-900";
+      tone = "bg-attention-soft text-attention-ink";
     } else if (review.status === "APPROVED") {
       message = `You approved V${current?.versionNumber ?? "?"}.`;
-      tone = "bg-emerald-50 text-emerald-900";
+      tone = "bg-positive-soft text-positive-ink";
     } else {
       message = REVIEW_STATE.CLIENT[review.status];
     }
   }
 
   return (
-    <p role="status" className={cn("mb-6 rounded-md px-4 py-2.5 text-[13px]", tone)}>
+    <p role="status" className={cn("mb-6 rounded-md px-4 py-2.5 text-small", tone)}>
       {message}
     </p>
   );
@@ -367,8 +371,8 @@ function VersionHistory({ review, base, now }: { review: CreativeReview; base: s
                   <Badge
                     className={
                       version.decision.status === "APPROVED"
-                        ? "bg-emerald-50 text-emerald-800"
-                        : "bg-amber-50 text-amber-800"
+                        ? "bg-positive-soft text-positive-ink"
+                        : "bg-attention-soft text-attention-ink"
                     }
                   >
                     {DECISION_LABEL[version.decision.status]}
@@ -422,10 +426,10 @@ function Thread({ entries, now }: { entries: ThreadEntry[]; now: number }) {
             key={entry.id}
             className={cn(
               "rounded-md px-4 py-3 ring-1 ring-inset",
-              entry.status === "APPROVED" ? "bg-emerald-50 ring-emerald-200" : "bg-amber-50 ring-amber-200",
+              entry.status === "APPROVED" ? "bg-positive-soft ring-positive-line" : "bg-attention-soft ring-attention-line",
             )}
           >
-            <p className={cn("text-card-title", entry.status === "APPROVED" ? "text-emerald-900" : "text-amber-900")}>
+            <p className={cn("text-card-title", entry.status === "APPROVED" ? "text-positive-ink" : "text-attention-ink")}>
               {entry.authorName} {entry.status === "APPROVED" ? "approved this version" : "requested changes"}
               <span className="text-meta ml-2 font-normal">{formatDateTime(entry.createdAt)}</span>
             </p>

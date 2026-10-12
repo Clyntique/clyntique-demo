@@ -53,14 +53,9 @@ export async function ProjectDetailView({
       <Breadcrumb trail={[{ label: "Projects", href: `${base}/projects` }]} current={project.name} />
 
       <PageHeader
+        eyebrow={team ? project.clientName : "Project"}
         title={project.name}
-        description={
-          <>
-            {team && <span className="font-medium text-ink-soft">{project.clientName}</span>}
-            {team && project.description && " · "}
-            {project.description}
-          </>
-        }
+        description={project.description || undefined}
         action={
           !team && (
             <Link href={newSubmissionHref} className={buttonClasses()}>
@@ -71,15 +66,15 @@ export async function ProjectDetailView({
       />
 
       {success && (
-        <p role="status" className="mb-6 rounded-md bg-emerald-50 px-4 py-2.5 text-[13px] text-emerald-800 ring-1 ring-emerald-200 ring-inset">
+        <p role="status" className="text-small mb-6 rounded-md bg-positive-soft px-4 py-2.5 text-positive-ink">
           {success}
         </p>
       )}
 
-      <Card className="mb-10 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:gap-8">
+      <Card className="mb-8 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:gap-8">
         <div className="flex shrink-0 items-center gap-3">
           <ProjectStatus project={project} />
-          <span className="text-meta">{pluralize(project.creativeCount, "creative")}</span>
+          <span className="text-small text-muted">{pluralize(project.creativeCount, "submission")}</span>
         </div>
         <ReviewProgress counts={project.statusCounts} showLegend className="flex-1" />
       </Card>
@@ -87,10 +82,10 @@ export async function ProjectDetailView({
       <div className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-8">
         <section className="flex min-w-0 flex-col gap-4 lg:col-span-2">
           <SectionHeader
-            title="Creatives"
+            title="Submissions"
             description={
               team
-                ? "Submitted work and earlier creatives. Client drafts stay private until submitted."
+                ? "Submitted work and earlier creatives. Client drafts stay private until they're submitted."
                 : "Your submissions and drafts, plus creatives shared with you earlier."
             }
           />

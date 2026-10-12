@@ -15,7 +15,7 @@ import { ReviewOutcome as Outcomes } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { evidenceKindFor } from "@/lib/evidence-files";
 import { prisma } from "@/lib/prisma";
-import { checkOutcome, clientFindingView, evidenceIsFinal, type Unmet } from "@/lib/workflow/findings";
+import { checkOutcome, clientFindingView, evidenceIsFinal, submittedToTeam, submittedWithRound, teamFindingView, type Unmet } from "@/lib/workflow/findings";
 import { authorize } from "@/lib/workflow/policy";
 import { loadReadiness } from "@/lib/workflow/readiness";
 import { creativeScope } from "./workspace";
@@ -32,7 +32,10 @@ import { creativeScope } from "./workspace";
  *   the review. The reviewer's resolve / reopen / dismiss moves reach the
  *   client only once a later decision has been recorded (clientFindingView),
  *   so a review in progress stays internal.
- * - TEAM receives everything for submissions it can see (never client drafts).
+ * - TEAM receives everything for submissions it can see (never client drafts),
+ *   EXCEPT client work prepared since the latest submission: responses,
+ *   evidence, evidence links and the finding moves they caused stay private
+ *   to the client until they formally resubmit (submittedToTeam).
  */
 
 export type FindingEntry =
@@ -90,8 +93,11 @@ export type EvidenceView = {
   visibility: EvidenceVisibility;
   addedByName: string | null;
   withdrawn: boolean;
+  /** Who withdrew it and when (stored on the row). */
+  withdrawal: { byName: string | null; at: Date } | null;
   createdAt: Date;
-  versionNumber: number | null;
+  /** Round it was submitted with; null while it's still being prepared (client only ever sees those). */
+  submittedWithRound: number | null;
   /** Uploaded file, served only through /api/media/evidence/[id]. */
   file: { name: string; sizeBytes: number | null; isImage: boolean } | null;
   findingIds: string[];
@@ -204,7 +210,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
             },
             evidence: {
               where: team ? {} : { evidence: { visibility: "SHARED" } },
-              select: { evidenceId: true },
+              select: { evidenceId: true, linkedAt: true },
             },
           },
         })
@@ -238,27 +244,42 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         origin: true,
         visibility: true,
         withdrawnAt: true,
+        withdrawnBy: { select: { name: true } },
         createdAt: true,
         addedById: true,
         fileName: true,
         fileSize: true,
         mimeType: true,
         fileUrl: true,
-        version: { select: { versionNumber: true } },
         addedBy: { select: { name: true } },
-        findings: { select: { findingId: true } },
+        findings: { select: { findingId: true, linkedAt: true } },
       },
     }),
   ]);
 
   const lastDecisionAt = decisions[0]?.createdAt ?? null;
+  const roundTimes = (cycle?.rounds ?? []).map((r) => ({ number: r.number, submittedAt: r.submittedAt }));
+  const lastSubmittedAt = roundTimes.reduce<Date | null>((max, r) => (!max || r.submittedAt > max ? r.submittedAt : max), null);
+  // TEAM sees client work only once it was part of a submission.
+  const teamMaySee = (createdAt: Date) => submittedToTeam(createdAt, lastSubmittedAt);
   const reviewer = (name: string, role: string) => (team || role === "CLIENT" ? name : "Clyntique reviewer");
+  // Client evidence reaches the team once submitted. Withdrawal is only possible
+  // before submission, so withdrawn client evidence was never submitted and
+  // never reaches the team (the client and the database keep it).
+  const visibleEvidence = team
+    ? evidence.filter((e) => e.origin !== "CLIENT_SUBMITTED" || (teamMaySee(e.createdAt) && e.withdrawnAt === null))
+    : evidence;
+  const visibleEvidenceIds = new Set(visibleEvidence.map((e) => e.id));
 
   const findingViews: FindingView[] = [];
   for (const f of findings) {
     const facts = f.events.map((e) => ({ ...e, byClient: e.actor.role === "CLIENT" }));
     // Published findings always have history; without any, there is nothing to hold back.
-    const seen = team || !facts.length ? { status: f.status as FindingStatus | null, events: facts } : clientFindingView(facts, lastDecisionAt);
+    const seen = !facts.length
+      ? { status: f.status as FindingStatus | null, events: facts }
+      : team
+        ? teamFindingView(facts, lastSubmittedAt)
+        : clientFindingView(facts, lastDecisionAt);
     if (!seen.status) continue; // nothing the client may see yet
     const status = seen.status;
 
@@ -268,7 +289,9 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         const move = e.toStatus === "RESOLVED" ? "RESOLVED" : e.toStatus === "DISMISSED" ? "DISMISSED" : e.toStatus === "OPEN" && e.fromStatus === "RESPONDED" ? "REOPENED" : null;
         return move ? [{ kind: "review", id: e.id, move, note: e.note, actorName: reviewer(e.actor.name, e.actor.role), createdAt: e.createdAt }] : [];
       });
-    const responses: FindingEntry[] = f.responses.map((r) => ({
+    const responses: FindingEntry[] = f.responses
+      .filter((r) => !team || r.author.role !== "CLIENT" || teamMaySee(r.createdAt))
+      .map((r) => ({
       kind: "response",
       id: r.id,
       message: r.message,
@@ -299,12 +322,11 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       marketCodes: team ? f.markets.map((m) => m.market.code) : [],
       platformCodes: team ? f.platforms.map((p) => p.platform.code) : [],
       entries: [...responses, ...reviewMoves].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
-      evidenceIds: f.evidence.map((e) => e.evidenceId),
+      evidenceIds: f.evidence.filter((e) => visibleEvidenceIds.has(e.evidenceId) && (!team || teamMaySee(e.linkedAt))).map((e) => e.evidenceId),
     });
   }
 
   const latestRound = cycle?.rounds[0] ?? null;
-  const lastSubmittedAt = cycle?.rounds.reduce<Date | null>((max, r) => (!max || r.submittedAt > max ? r.submittedAt : max), null) ?? null;
   const facts = { id: creative.id, workflow: "SUBMISSION_REVIEW" as const, status: creative.status, projectClientId: creative.project.clientId };
   const mayManageEvidence = !team && authorize(user, "MANAGE_EVIDENCE", facts).ok;
 
@@ -364,7 +386,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       reviewerName: d.reviewer.name,
       createdAt: d.createdAt,
     })),
-    evidence: evidence.map((e) => {
+    evidence: visibleEvidence.map((e) => {
       const kind = e.fileUrl && e.fileName ? evidenceKindFor(e.fileName) : null;
       return {
         id: e.id,
@@ -377,10 +399,11 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         visibility: e.visibility,
         addedByName: e.addedBy?.name ?? null,
         withdrawn: e.withdrawnAt !== null,
+        withdrawal: e.withdrawnAt ? { byName: e.withdrawnBy?.name ?? null, at: e.withdrawnAt } : null,
         createdAt: e.createdAt,
-        versionNumber: e.version?.versionNumber ?? null,
+        submittedWithRound: submittedWithRound(e.createdAt, roundTimes),
         file: kind && e.mimeType === kind.mimeType ? { name: e.fileName!, sizeBytes: e.fileSize, isImage: kind.inline } : null,
-        findingIds: e.findings.map((l) => l.findingId),
+        findingIds: e.findings.filter((l) => !team || teamMaySee(l.linkedAt)).map((l) => l.findingId),
         withdrawable:
           mayManageEvidence &&
           e.origin === "CLIENT_SUBMITTED" &&

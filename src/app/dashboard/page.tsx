@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { DashboardView } from "@/components/views/dashboard-view";
 import { PageSkeleton } from "@/components/views/page-skeleton";
 
-export const metadata: Metadata = { title: "Dashboard · Clyntique" };
+export const metadata: Metadata = { title: "Overview · Clyntique" };
 
 export default function ClientDashboardPage() {
   return (

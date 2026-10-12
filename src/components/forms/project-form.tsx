@@ -19,7 +19,7 @@ export function ProjectForm({ clients }: { clients: ClientOption[] }) {
       <Field label="Project name" hint="For example: Q4 Campaign" error={e?.name}>
         <Input name="name" defaultValue={v?.name} required maxLength={120} aria-invalid={e?.name ? true : undefined} />
       </Field>
-      <Field label="Client" hint="The client who will review and approve this project." error={e?.clientId}>
+      <Field label="Client" hint="The client who will submit creatives in this project for review." error={e?.clientId}>
         <Select
           name="clientId"
           defaultValue={v?.clientId ?? ""}
@@ -36,7 +36,7 @@ export function ProjectForm({ clients }: { clients: ClientOption[] }) {
           ))}
         </Select>
       </Field>
-      <Field label="Description (optional)" hint="Goals, audience, or anything the client should know." error={e?.description}>
+      <Field label="Description (optional)" hint="The campaign, its audience, or anything that helps the review." error={e?.description}>
         <Textarea name="description" defaultValue={v?.description} maxLength={1000} />
       </Field>
       <div className="flex items-center justify-end gap-2 border-t border-line pt-5">

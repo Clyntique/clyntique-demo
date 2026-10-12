@@ -28,12 +28,12 @@ const optionClasses =
   "flex cursor-pointer flex-col gap-0.5 rounded-md border border-line bg-surface px-3 py-2.5 shadow-card transition-colors hover:border-line-strong has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-brand-100";
 
 const chipClasses =
-  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] font-medium text-ink-soft shadow-card transition-colors hover:border-line-strong has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-900 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-brand-100";
+  "inline-flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-small font-medium text-ink-soft shadow-card transition-colors hover:border-line-strong has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 has-[:checked]:text-brand-900 has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-brand-100";
 
 function Choices({ name, legend, hint, options, selected }: { name: string; legend: string; hint: string; options: Option[]; selected: string[] }) {
   return (
     <fieldset className="flex flex-col gap-1.5">
-      <legend className="mb-0.5 text-[13px] font-medium text-ink-soft">{legend}</legend>
+      <legend className="mb-0.5 text-small font-medium text-ink-soft">{legend}</legend>
       <p className="text-meta mb-1.5">{hint}</p>
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
@@ -76,7 +76,7 @@ export function SubmissionForm(
       {showTargeting && <input type="hidden" name="targeting" value="1" />}
       <FormError message={state?.error} />
       {state?.ok && (
-        <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+        <p role="status" className="rounded-md bg-positive-soft px-3 py-2 text-small text-positive-ink">
           {state.ok}
         </p>
       )}
@@ -98,12 +98,12 @@ export function SubmissionForm(
       </Field>
 
       <fieldset className="flex flex-col gap-1.5">
-        <legend className="mb-1.5 text-[13px] font-medium text-ink-soft">Creative type</legend>
+        <legend className="mb-1.5 text-small font-medium text-ink-soft">Creative type</legend>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {FORMAT_ORDER.map((f) => (
             <label key={f} className={optionClasses}>
               <input type="radio" name="format" value={f} defaultChecked={str("format") === f} className="sr-only" />
-              <span className="text-[13px] font-medium text-ink">{FORMATS[f].label}</span>
+              <span className="text-small font-medium text-ink">{FORMATS[f].label}</span>
               <span className="text-meta">{FORMATS[f].ratio}</span>
             </label>
           ))}

@@ -362,6 +362,12 @@ model SubmissionRound {
   submittedById String
   submittedAt   DateTime @default(now())
   note          String?
+  // What the client submitted with this round (title, description, campaign
+  // context). The team reads these, so a client's later edits stay private
+  // until they resubmit. Null only if written before this snapshot existed.
+  submittedName        String?
+  submittedDescription String?
+  submittedContext     String?
 
   creative    Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
   cycle       ReviewCycle       @relation(fields: [cycleId], references: [id], onDelete: Cascade)

@@ -26,14 +26,14 @@ import { EVIDENCE_TYPES } from "./evidence-types";
 function Success({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="status" className="rounded-md bg-emerald-50 px-3 py-2 text-[13px] text-emerald-800">
+    <p role="status" className="rounded-md bg-positive-soft px-3 py-2 text-small text-positive-ink">
       {message}
     </p>
   );
 }
 
 function FieldErrorText({ message }: { message?: string }) {
-  return message ? <span className="text-[12px] text-red-600">{message}</span> : null;
+  return message ? <span className="text-caption text-critical-ink">{message}</span> : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +222,7 @@ export function EditEvidence({ creativeId, evidence }: { creativeId: string; evi
       >
         <input type="hidden" name="creativeId" value={creativeId} />
         <input type="hidden" name="evidenceId" value={evidence.id} />
-        <Button type="submit" variant="ghost" size="sm" disabled={removing} className="text-red-700 hover:bg-red-50 hover:text-red-800">
+        <Button type="submit" variant="ghost" size="sm" disabled={removing} className="text-critical-ink hover:bg-critical-soft hover:text-critical-ink">
           {removing ? "Removing…" : "Remove"}
         </Button>
       </form>
@@ -318,7 +318,7 @@ export function DecisionPanel({
             <Button variant="ghost" onClick={() => setMode("choose")} disabled={pending}>
               Back
             </Button>
-            <Button type="submit" disabled={pending} className="bg-amber-600 hover:bg-amber-700 active:bg-amber-800">
+            <Button type="submit" disabled={pending} className="bg-attention-strong hover:bg-attention-strong active:bg-attention-strong">
               {pending ? "Sending…" : "Send change request"}
             </Button>
           </div>
@@ -330,7 +330,7 @@ export function DecisionPanel({
             name="decision"
             value="APPROVED"
             disabled={pending}
-            className={cn("sm:flex-1", "bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800")}
+            className={cn("sm:flex-1", "bg-positive-strong hover:bg-positive-strong active:bg-positive-strong")}
           >
             <CheckIcon /> {pending ? "Approving…" : `Approve V${versionNumber}`}
           </Button>

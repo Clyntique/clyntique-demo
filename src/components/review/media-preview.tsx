@@ -7,11 +7,28 @@ import { AlertIcon, ImageIcon } from "@/components/ui/icons";
 
 // Preview frame height follows the placement, so a 9:16 story isn't shown as a
 // letterboxed sliver and a 16:9 video isn't shown tiny.
-const FRAME: Record<CreativeFormat, string> = {
-  STORY: "h-[min(70vh,640px)] aspect-[9/16]",
-  FEED: "h-[min(70vh,640px)] aspect-[4/5]",
-  STATIC: "w-full aspect-[1.91/1]",
-  VIDEO: "w-full aspect-video",
+// "stage" is the review workspace's main preview; "compare" is one side of a
+// side-by-side comparison.
+type Size = "default" | "stage" | "compare";
+const FRAME: Record<Size, Record<CreativeFormat, string>> = {
+  default: {
+    STORY: "h-[min(70vh,640px)] aspect-[9/16]",
+    FEED: "h-[min(70vh,640px)] aspect-[4/5]",
+    STATIC: "w-full aspect-[1.91/1]",
+    VIDEO: "w-full aspect-video",
+  },
+  stage: {
+    STORY: "h-[min(74vh,780px)] max-sm:h-[min(64vh,560px)] aspect-[9/16]",
+    FEED: "h-[min(70vh,720px)] max-sm:h-auto max-sm:w-full aspect-[4/5]",
+    STATIC: "w-full max-w-[1040px] aspect-[1.91/1]",
+    VIDEO: "w-full max-w-[1040px] aspect-video",
+  },
+  compare: {
+    STORY: "h-[min(62vh,640px)] max-sm:h-auto max-sm:w-full aspect-[9/16]",
+    FEED: "h-[min(58vh,600px)] max-sm:h-auto max-sm:w-full aspect-[4/5]",
+    STATIC: "w-full aspect-[1.91/1]",
+    VIDEO: "w-full aspect-video",
+  },
 };
 
 type Status = "loading" | "ready" | "error";
@@ -21,17 +38,25 @@ export function MediaPreview({
   mediaType,
   format,
   label,
+  size = "default",
 }: {
   src: string;
   mediaType: MediaType;
   format: CreativeFormat;
   label: string;
+  size?: Size;
 }) {
   const [status, setStatus] = useState<Status>("loading");
 
   return (
-    <div className="flex min-h-64 items-center justify-center bg-subtle p-4 sm:p-8">
-      <div className={cn("relative flex max-w-full items-center justify-center overflow-hidden rounded-md", FRAME[format])}>
+    <div className={cn("flex items-center justify-center", size === "default" ? "min-h-64 bg-subtle p-4 sm:p-8" : size === "compare" ? "min-h-40 p-2.5 sm:min-h-64 sm:p-6" : "min-h-64 p-3 sm:p-6")}>
+      <div
+        className={cn(
+          "relative flex max-w-full items-center justify-center overflow-hidden rounded-md",
+          size !== "default" && "shadow-art",
+          FRAME[size][format],
+        )}
+      >
         {status === "loading" && (
           <div aria-hidden className="absolute inset-0 animate-pulse rounded-md bg-line/60" />
         )}
@@ -93,7 +118,7 @@ export function MediaFallback({
       <span
         className={cn(
           "flex size-10 items-center justify-center rounded-full [&_svg]:size-5",
-          error ? "bg-red-50 text-red-600" : "bg-surface text-muted",
+          error ? "bg-critical-soft text-critical-ink" : "bg-surface text-muted",
         )}
       >
         {error ? <AlertIcon /> : <ImageIcon />}

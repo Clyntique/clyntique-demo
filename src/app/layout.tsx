@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Clyntique",
-  description: "Collaborative creative review platform",
+  description: "Advertising compliance review: submissions, findings and decisions in one place.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
