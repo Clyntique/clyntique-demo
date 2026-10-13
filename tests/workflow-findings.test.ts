@@ -4,6 +4,7 @@ import {
   checkOutcome,
   evidenceVisibleTo,
   findingVisibleTo,
+  inReviewFindingsLabel,
   moveFinding,
   resubmissionGaps,
   type FindingForReadiness,
@@ -136,5 +137,30 @@ describe("display labels", () => {
       expect(label).not.toMatch(/approv|complian|certif|violation/i);
     }
     expect(REVIEW_DISCLAIMER).toMatch(/not legal advice/i);
+  });
+});
+
+describe("TEAM overview: in-review findings label", () => {
+  it("says no findings yet when the current cycle has none", () => {
+    expect(inReviewFindingsLabel([])).toBe("no findings yet");
+  });
+
+  it("counts draft findings first, since they block an outcome", () => {
+    expect(inReviewFindingsLabel(["DRAFT"])).toBe("1 draft finding");
+    expect(inReviewFindingsLabel(["DRAFT", "DRAFT", "RESPONDED", "OPEN"])).toBe("2 draft findings");
+  });
+
+  it("then findings whose response awaits the reviewer's decision", () => {
+    expect(inReviewFindingsLabel(["RESPONDED"])).toBe("1 finding awaiting your decision");
+    expect(inReviewFindingsLabel(["RESPONDED", "RESPONDED", "OPEN", "RESOLVED"])).toBe("2 findings awaiting your decision");
+  });
+
+  it("then findings still open", () => {
+    expect(inReviewFindingsLabel(["OPEN", "RESOLVED", "DISMISSED"])).toBe("1 open finding");
+  });
+
+  it("says no open findings when every finding is resolved or withdrawn (e.g. round 2 of TEST M5S)", () => {
+    expect(inReviewFindingsLabel(["RESOLVED", "DISMISSED"])).toBe("no open findings");
+    expect(inReviewFindingsLabel(["DISMISSED"])).toBe("no open findings");
   });
 });

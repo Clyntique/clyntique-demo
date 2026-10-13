@@ -1,4 +1,5 @@
 import type { FindingAction, FindingSeverity, FindingStatus, ReviewOutcome, Role } from "@/generated/prisma/enums";
+import { pluralize } from "@/lib/format";
 
 /*
  * Rules for review findings: status transitions, who can see what, when a
@@ -226,4 +227,25 @@ export function checkOutcome(
     case "NOT_REVIEWABLE":
       return { ok: true };
   }
+}
+
+// ---------------------------------------------------------------------------
+// TEAM overview
+
+/**
+ * TEAM only: one-line summary of where an in-review submission's findings
+ * stand in the current review cycle. Drafts come first (they block an
+ * outcome), then responses awaiting the reviewer's decision, then findings
+ * still open. Resolved and withdrawn findings are settled, so a cycle with
+ * only those has "no open findings" rather than "no findings yet".
+ */
+export function inReviewFindingsLabel(statuses: FindingStatus[]): string {
+  const count = (s: FindingStatus) => statuses.filter((x) => x === s).length;
+  const drafts = count("DRAFT");
+  const awaiting = count("RESPONDED");
+  const open = count("OPEN");
+  if (drafts) return pluralize(drafts, "draft finding");
+  if (awaiting) return `${pluralize(awaiting, "finding")} awaiting your decision`;
+  if (open) return pluralize(open, "open finding");
+  return statuses.length ? "no open findings" : "no findings yet";
 }

@@ -68,10 +68,38 @@ describe("review queue", () => {
       platforms: [],
       rounds: [{ number: 1, submittedAt: new Date(at), submittedBy: { name: "Client" }, version: { versionNumber: 1 } }],
       versions: [],
-      _count: { findings: 0 },
+      findings: [],
     });
     h.prisma.creative.findMany.mockResolvedValue([row("newer", "2026-10-10T12:00:00Z"), row("older", "2026-10-09T12:00:00Z")]);
     expect((await queue.getReviewQueue(TEAM)).map((q) => q.id)).toEqual(["older", "newer"]);
+  });
+
+  it("loads finding statuses for the current review cycle only, and derives the draft count from them", async () => {
+    h.prisma.creative.findMany.mockResolvedValue([
+      {
+        id: "c1",
+        name: "c1",
+        status: "IN_REVIEW",
+        format: "FEED",
+        project: { id: "p", name: "P", client: { name: "Client" } },
+        markets: [],
+        platforms: [],
+        rounds: [{ number: 2, submittedAt: new Date("2026-10-12T12:00:00Z"), submittedBy: { name: "Client" }, version: { versionNumber: 2 } }],
+        versions: [],
+        findings: [{ status: "RESOLVED" }, { status: "DISMISSED" }, { status: "DRAFT" }],
+      },
+    ]);
+    const [item] = await queue.getReviewQueue(TEAM);
+    expect(h.prisma.creative.findMany.mock.calls[0][0].select.findings).toEqual({ where: { cycle: { closedAt: null } }, select: { status: true } });
+    expect(item.findingStatuses).toEqual(["RESOLVED", "DISMISSED", "DRAFT"]);
+    expect(item.draftFindings).toBe(1);
+  });
+
+  it("never includes submissions whose changes are requested, so draft client responses can't reach the TEAM overview", async () => {
+    await queue.getReviewQueue(TEAM);
+    const where = h.prisma.creative.findMany.mock.calls[0][0].where;
+    expect(where.status).toEqual({ in: ["SUBMITTED", "IN_REVIEW"] });
+    expect(where.status.in).not.toContain("CHANGES_REQUESTED");
   });
 
   it("summary counts are TEAM-only", async () => {

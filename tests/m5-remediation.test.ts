@@ -262,6 +262,35 @@ describe("responses", () => {
     expect(h.prisma.findingResponse.create).toHaveBeenCalledTimes(2);
     expect(h.prisma.finding.updateMany).not.toHaveBeenCalled(); // already RESPONDED: no status change
   });
+
+  // Privacy boundary (TEAM overview "awaiting your decision"): a response
+  // stored while changes are requested is a draft until resubmission. It may
+  // set the finding's own status, but it never writes team-visible activity or
+  // moves the submission's timestamps, and it is only possible while changes
+  // are requested, so a submission in the TEAM queue (SUBMITTED / IN_REVIEW)
+  // only carries responses that were formally resubmitted.
+  it("a draft response writes no activity and leaves the submission untouched", async () => {
+    setSubmission("CHANGES_REQUESTED");
+    setRound();
+    h.prisma.finding.findUnique.mockResolvedValue({ id: "f1", creativeId: "s1", cycleId: "c1", status: "OPEN", publishedAt: new Date() });
+    h.prisma.finding.updateMany.mockResolvedValue({ count: 1 });
+    expect((await cmd.respondToFinding(CLIENT_A, { findingId: "f1", message: "Removed the claim." })).ok).toBe(true);
+    expect(h.prisma.finding.updateMany.mock.calls[0][0]).toMatchObject({ where: { id: "f1", status: "OPEN" }, data: { status: "RESPONDED" } });
+    expect(h.prisma.activity.create).not.toHaveBeenCalled();
+    expect(h.prisma.creative.update).not.toHaveBeenCalled();
+    expect(h.prisma.creative.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("can't be added once resubmitted or while the team reviews", async () => {
+    for (const status of ["SUBMITTED", "IN_REVIEW", "REVIEW_COMPLETE"]) {
+      setSubmission(status);
+      setRound();
+      h.prisma.finding.findUnique.mockResolvedValue({ id: "f1", creativeId: "s1", cycleId: "c1", status: "OPEN", publishedAt: new Date() });
+      expect((await cmd.respondToFinding(CLIENT_A, { findingId: "f1", message: "Late reply" })).ok).toBe(false);
+    }
+    expect(h.prisma.findingResponse.create).not.toHaveBeenCalled();
+    expect(h.prisma.finding.updateMany).not.toHaveBeenCalled();
+  });
 });
 
 describe("resubmission readiness", () => {

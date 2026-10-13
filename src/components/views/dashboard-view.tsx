@@ -6,6 +6,7 @@ import type { QueueItem } from "@/lib/data/review-queue";
 import { getActivity } from "@/lib/data/workspace";
 import { cn } from "@/lib/cn";
 import { formatRelative, greetingFor, pluralize, requestTime } from "@/lib/format";
+import { inReviewFindingsLabel } from "@/lib/workflow/findings";
 import { REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonClasses } from "@/components/ui/button";
@@ -134,7 +135,6 @@ async function TeamDashboard({ user }: { user: CurrentUser }) {
 
 function QueueListRow({ item, now, next = false }: { item: QueueItem; now: number; next?: boolean }) {
   const targets = [...item.markets, ...item.platforms];
-  const drafts = item.draftFindings;
   return (
     <ListRow
       href={`/admin/creatives/${item.id}`}
@@ -142,7 +142,7 @@ function QueueListRow({ item, now, next = false }: { item: QueueItem; now: numbe
       title={item.name}
       subtitle={
         item.status === "IN_REVIEW"
-          ? `${item.clientName} · ${drafts ? `${pluralize(drafts, "draft finding")}` : "no findings yet"}`
+          ? `${item.clientName} · ${inReviewFindingsLabel(item.findingStatuses)}`
           : `${item.clientName} · ${targets.join(", ") || item.projectName}`
       }
       aside={

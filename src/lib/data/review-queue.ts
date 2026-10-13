@@ -1,5 +1,5 @@
 import "server-only";
-import type { CreativeFormat, CreativeStatus, MediaType } from "@/generated/prisma/enums";
+import type { CreativeFormat, CreativeStatus, FindingStatus, MediaType } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
 
@@ -25,6 +25,8 @@ export type QueueItem = {
   submittedByName: string;
   latestVersion: { id: string; versionNumber: number; mediaType: MediaType | null } | null;
   draftFindings: number;
+  /** Status of every finding in the current (open) review cycle, drafts included. */
+  findingStatuses: FindingStatus[];
 };
 
 export type ReviewSummary = { waiting: number; inReview: number; changesRequested: number; completedThisWeek: number };
@@ -49,7 +51,8 @@ export async function getReviewQueue(user: CurrentUser): Promise<QueueItem[]> {
         select: { number: true, submittedAt: true, submittedName: true, submittedBy: { select: { name: true } }, version: { select: { versionNumber: true } } },
       },
       versions: { orderBy: { versionNumber: "desc" }, take: 1, select: { id: true, versionNumber: true, mediaType: true } },
-      _count: { select: { findings: { where: { status: "DRAFT" } } } },
+      // Findings of the current review cycle only: drafts, shared, resolved and withdrawn.
+      findings: { where: { cycle: { closedAt: null } }, select: { status: true } },
     },
   });
 
@@ -74,7 +77,8 @@ export async function getReviewQueue(user: CurrentUser): Promise<QueueItem[]> {
         submittedAt: round.submittedAt,
         submittedByName: round.submittedBy.name,
         latestVersion: r.versions[0] ?? null,
-        draftFindings: r._count.findings,
+        draftFindings: r.findings.filter((f) => f.status === "DRAFT").length,
+        findingStatuses: r.findings.map((f) => f.status),
       };
     })
     .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
