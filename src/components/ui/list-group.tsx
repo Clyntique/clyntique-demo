@@ -33,18 +33,18 @@ export function ListGroup({
     <section
       aria-label={title}
       className={cn(
-        "flex min-w-0 flex-col overflow-hidden rounded-lg border bg-surface",
+        "flex min-w-0 flex-col overflow-hidden rounded-xl border bg-surface",
         tone === "attention" ? "border-attention-line" : "border-line",
         className,
       )}
     >
       <div
         className={cn(
-          "flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b px-4 py-2.5",
+          "flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b px-5 py-3",
           tone === "attention" ? "border-attention-line bg-attention-soft" : "border-line",
         )}
       >
-        <h2 className={cn("text-small font-semibold", tone === "attention" ? "text-attention-ink" : "text-ink")}>
+        <h2 className={cn("text-body font-semibold", tone === "attention" ? "text-attention-ink" : "text-ink")}>
           {title}
           {count !== undefined && <span className="text-record ml-2 font-normal text-muted">{count}</span>}
         </h2>
@@ -53,7 +53,7 @@ export function ListGroup({
           {action}
         </div>
       </div>
-      {hasRows ? <ul className="divide-y divide-line">{children}</ul> : <div className="text-small px-4 py-4 text-muted">{empty}</div>}
+      {hasRows ? <ul className="divide-y divide-line">{children}</ul> : <div className="text-small px-5 py-5 text-muted">{empty}</div>}
     </section>
   );
 }
@@ -64,20 +64,24 @@ export function ListRow({
   title,
   subtitle,
   aside,
+  detail,
 }: {
   href: string;
   thumb?: ReactNode;
   title: ReactNode;
   subtitle?: ReactNode;
   aside?: ReactNode;
+  /** Optional block under the title, e.g. a progress track. */
+  detail?: ReactNode;
 }) {
   return (
     <li>
-      <Link href={href} className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none">
+      <Link href={href} className="flex items-center gap-3.5 px-5 py-3.5 transition-colors hover:bg-canvas focus-visible:bg-canvas focus-visible:outline-none">
         {thumb}
         <div className="min-w-0 flex-1">
           <p className="text-card-title truncate text-ink">{title}</p>
           {subtitle && <p className="text-caption mt-0.5 truncate text-muted">{subtitle}</p>}
+          {detail}
         </div>
         {aside && <div className="flex shrink-0 items-center gap-2">{aside}</div>}
       </Link>

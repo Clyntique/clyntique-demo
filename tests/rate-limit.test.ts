@@ -106,7 +106,7 @@ describe("login integration", () => {
     vi.stubEnv("LOGIN_RATE_LIMIT", "enabled");
     h.prisma.loginAttempt.createManyAndReturn.mockResolvedValue([{ id: "a1" }, { id: "a2" }, { id: "a3" }]);
     h.prisma.user.findUnique.mockResolvedValue({ id: "u1", role: "CLIENT", passwordHash: "x" });
-    await expect(login(undefined, credentials("correct-password"))).rejects.toThrow("REDIRECT /dashboard");
+    await expect(login(undefined, credentials("correct-password"))).resolves.toEqual({ signedIn: true });
     expect(h.prisma.loginAttempt.updateMany.mock.calls[0][0]).toEqual({ where: { id: { in: ["a1", "a2", "a3"] } }, data: { succeeded: true } });
   });
 

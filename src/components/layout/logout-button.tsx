@@ -1,11 +1,12 @@
-import { logout } from "@/app/auth/actions";
 import { LogOutIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
-// Uses the Phase 1B logout server action.
+// A plain form POST to /auth/logout (not a server action), so signing out
+// loads the sign-in page as a new document and clears the browser's cache of
+// this account's pages. See src/app/auth/logout/route.ts.
 export function LogoutButton({ compact = false }: { compact?: boolean }) {
   return (
-    <form action={logout}>
+    <form method="post" action="/auth/logout">
       <button
         type="submit"
         title="Sign out"

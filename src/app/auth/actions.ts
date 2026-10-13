@@ -2,14 +2,14 @@
 
 import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { RATE_LIMIT_MESSAGE, beginAttempt, clientAddress, markSucceeded, rateLimitEnabled, type AttemptTicket } from "@/lib/auth/rate-limit";
-import { createSession, deleteSession } from "@/lib/auth/session";
-import { homePathFor } from "@/lib/auth/dal";
+import { createSession } from "@/lib/auth/session";
 
-export type LoginState = { error?: string; email?: string } | undefined;
+// signedIn: the session cookie is set; the form then loads /auth/continue as
+// a new document (see src/app/auth/continue/route.ts).
+export type LoginState = { error?: string; email?: string; signedIn?: true } | undefined;
 
 // Compared against when the email is unknown, so the response time does not
 // reveal which emails exist.
@@ -57,10 +57,5 @@ export async function login(
     });
   }
   await createSession({ userId: user.id, role: user.role });
-  redirect(homePathFor(user.role));
-}
-
-export async function logout() {
-  await deleteSession();
-  redirect("/auth/login");
+  return { signedIn: true };
 }

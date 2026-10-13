@@ -1,0 +1,131 @@
+<title>Redesign Phase 1 Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; before/after pairs side by side, stacking on phones. */
+:root {
+  --bg: #FAF9F9; --panel: #FFFFFF; --fg: #1A2C48; --fg-2: #3A4559; --muted: #6B6156; --line: #E7E2DA;
+  --gold: #8A6322; --mark: #DCA858; --ok-bg: #E4F0E9; --ok-fg: #21593F; --note-bg: #FCEBDD; --note-fg: #8A3B0C;
+  --sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --note-bg: #3A2416; --note-fg: #F2B58C; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --note-bg: #3A2416; --note-fg: #F2B58C; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+.prose { max-width: 70ch; }
+h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -0.01em; font-weight: 600; }
+h1 { font-size: 32px; line-height: 1.25; }
+h2 { font-size: 20px; line-height: 1.35; }
+p { margin: 0; }
+.eyebrow { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+.lede { font-size: 16px; color: var(--fg-2); margin-top: 12px; }
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.pair { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.pair.phone { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); max-width: 620px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+figcaption { font-size: 13px; color: var(--muted); }
+figcaption b { color: var(--fg); font-weight: 600; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.pill { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; }
+.ok { background: var(--ok-bg); color: var(--ok-fg); }
+.note { background: var(--note-bg); color: var(--note-fg); }
+.sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--line); }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow"><svg width="10" height="11" viewBox="0 0 10 11" aria-hidden="true"><path d="M5 0.5 L9.5 3 L9.5 8 L5 10.5 L0.5 8 L0.5 3 Z" fill="var(--mark)"/></svg>Redesign · Phase 1 of 4 · 13 Oct 2026</p>
+    <h1>Phase 1: brand tokens and Poppins</h1>
+    <p class="lede">Every page now uses Clyntique Navy, the brand kit's warm neutrals, the approved status colours and Poppins. No layout, markup or behaviour changed yet; the logo, sidebar and dashboards follow in Phases 2–4. Screenshots are from the local production build with TEST data.</p>
+  </header>
+
+  <section>
+    <h2>Team overview</h2>
+    <div class="pair">
+      <figure><img src="before/team-dashboard-1024.jpg" alt="Team overview before: blue accent and Geist" loading="lazy"><figcaption><b>Before</b> (Stage C): blue accent, Geist.</figcaption></figure>
+      <figure><img src="after/1-team-overview-desktop.jpg" alt="Team overview after: navy, warm neutrals, Poppins" loading="lazy"><figcaption><b>After:</b> navy text and actions, warm canvas, Poppins. The burnt-orange markers are "changes requested" events.</figcaption></figure>
+    </div>
+    <div class="pair phone">
+      <figure><img src="before/team-dashboard-375.jpg" alt="Team overview on a phone, before" loading="lazy"><figcaption><b>Before</b>, phone.</figcaption></figure>
+      <figure><img src="after/3-team-overview-mobile.jpg" alt="Team overview on a phone, after" loading="lazy"><figcaption><b>After</b>, phone (375 px). No horizontal scroll.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Creative review workspace</h2>
+    <div class="pair">
+      <figure><img src="before/1-team-review-desktop.jpg" alt="Review workspace before" loading="lazy"><figcaption><b>Before</b> (Stage D).</figcaption></figure>
+      <figure><img src="after/2-team-review-desktop.jpg" alt="Review workspace after" loading="lazy"><figcaption><b>After:</b> navy primary actions, a crimson High-severity marker, a green Resolved pill, warm finding cards.</figcaption></figure>
+    </div>
+    <div class="pair phone">
+      <figure><img src="before/2-team-review-mobile-top.jpg" alt="Review workspace on a phone, before" loading="lazy"><figcaption><b>Before</b>, phone.</figcaption></figure>
+      <figure><img src="after/4-team-review-mobile.jpg" alt="Review workspace on a phone, after" loading="lazy"><figcaption><b>After</b>, phone. No horizontal scroll.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Sign-in</h2>
+    <div class="pair">
+      <figure><img src="before/1-sign-in-desktop.jpg" alt="Sign-in before" loading="lazy"><figcaption><b>Before</b> (Stage E).</figcaption></figure>
+      <figure><img src="after/5-sign-in-desktop.jpg" alt="Sign-in after" loading="lazy"><figcaption><b>After</b>, tokens only. The cream brand panel and official logo arrive in Phases 2–3.</figcaption></figure>
+    </div>
+    <div class="pair phone">
+      <figure><img src="before/2-sign-in-mobile.jpg" alt="Sign-in on a phone, before" loading="lazy"><figcaption><b>Before</b>, phone.</figcaption></figure>
+      <figure><img src="after/6-sign-in-mobile.jpg" alt="Sign-in on a phone, after" loading="lazy"><figcaption><b>After</b>, phone.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>What changed</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>File</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td><code>src/app/globals.css</code></td><td>
+          Brand scale is now navy (primary <span class="sw" style="background:#1A2C48"></span><code>#1A2C48</code>, links <code>#2A4470</code>, focus <code>#3A527A</code>). New gold scale, used for accents only. Warm neutrals from the brand kit (canvas <code>#FAF9F9</code>, muted <code>#6B6156</code>).<br>
+          Needs attention is burnt orange (<span class="sw" style="background:#B34D15"></span><code>#B34D15</code>, text <code>#8A3B0C</code>). Critical is crimson (<span class="sw" style="background:#B42335"></span><code>#B42335</code>). Positive is tuned.<br>
+          Type scale is retuned for Poppins (32 / 24 / 18 / 15 / 14 / 13 / 12 / 11). New <code>text-eyebrow</code> utility; record text is 12 px. Navy-tinted shadows.
+        </td></tr>
+        <tr><td><code>src/app/layout.tsx</code></td><td>Poppins 400 / 500 / 600 and italic, via <code>next/font</code>, replace Geist Sans. Geist Mono stays for codes.</td></tr>
+        <tr><td><code>src/components/workspace/creative-card.tsx</code></td><td>The four placeholder tints now come from tokens. They were the only hard-coded colours in components.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="prose muted">Token names are unchanged, so the 31 components that use them picked up the brand without edits. No new packages.</p>
+  </section>
+
+  <section>
+    <h2>Checks</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Automated tests</td><td><span class="pill ok">242/242 pass</span></td></tr>
+        <tr><td>TypeScript, lint, production build</td><td><span class="pill ok">0 errors · 0 problems · pass</span></td></tr>
+        <tr><td>Contrast, every token text/background pair</td><td><span class="pill ok">39 pairs, 0 failures</span> Text 5.05:1 and up; pills 6.66:1 and up; focus ring 7.5:1.</td></tr>
+        <tr><td>Pages load (TEAM): overview, review, queue, submissions, projects, activity</td><td><span class="pill ok">All 200</span></td></tr>
+        <tr><td>Horizontal overflow at 1440 px and 375 px</td><td><span class="pill ok">None</span> Long titles truncate with an ellipsis, as before.</td></tr>
+        <tr><td>CLIENT screens</td><td><span class="pill note">Not captured locally</span> The local client session had expired. They use the same tokens; I'll check them on the Preview after your push.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Noticed, not changed</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Item</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td>"No findings yet." on the review decision panel</td><td>Round 2 of TEST M5S says "Reviewing round 2 · V2 · No findings yet." although it has two findings (one resolved, one withdrawn). This is the same kind of wrong label as the overview fix and isn't caused by Phase 1. I can propose a small fix with Phase 5.</td></tr>
+        <tr><td><code>faint</code> grey</td><td>2.77:1, used in 25 places for decorative marks. That's slightly better than before (2.58:1). I'll check in Phase 2 that none of those places carry essential text.</td></tr>
+        <tr><td>Viewfinder mark</td><td>It now renders in navy. The official logo replaces it in Phase 2; the favicon stays as it is until you approve the concept.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>

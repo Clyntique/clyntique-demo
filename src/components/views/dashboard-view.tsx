@@ -5,13 +5,16 @@ import { getClientOverview, getTeamOverview, type ClientItem } from "@/lib/data/
 import type { QueueItem } from "@/lib/data/review-queue";
 import { getActivity } from "@/lib/data/workspace";
 import { cn } from "@/lib/cn";
-import { formatRelative, greetingFor, pluralize, requestTime } from "@/lib/format";
+import { formatRelative, pluralize, requestTime } from "@/lib/format";
 import { inReviewFindingsLabel } from "@/lib/workflow/findings";
 import { REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
 import { PageHeader } from "@/components/layout/page-header";
 import { buttonClasses } from "@/components/ui/button";
 import { PlusIcon } from "@/components/ui/icons";
 import { ListGroup, ListRow, QuietLink } from "@/components/ui/list-group";
+import { LocalDate, LocalGreeting } from "@/components/ui/local-time";
+import { SubmissionSteps } from "@/components/ui/submission-steps";
+import { SummaryStrip } from "@/components/ui/summary-strip";
 import { StatusBadge, TonePill } from "@/components/ui/status-badge";
 import { ActivityList } from "@/components/workspace/activity-feed";
 import { CreativeThumb } from "@/components/workspace/creative-card";
@@ -26,7 +29,7 @@ import { CreativeThumb } from "@/components/workspace/creative-card";
 const DAY = 24 * 60 * 60 * 1000;
 
 function Thumb({ item }: { item: Parameters<typeof CreativeThumb>[0]["creative"] }) {
-  return <CreativeThumb creative={item} fill className="h-12 w-10 shrink-0 rounded-sm" />;
+  return <CreativeThumb creative={item} fill className="h-14 w-11 shrink-0 rounded-md" />;
 }
 
 /** Round and age in the record style; waits over two days are marked. */
@@ -43,6 +46,21 @@ function Age({ round, since, now }: { round?: number; since: Date | null; now: n
 export async function DashboardView({ role }: { role: Role }) {
   const user = await requireRole(role);
   return role === "TEAM" ? <TeamDashboard user={user} /> : <ClientDashboard user={user} />;
+}
+
+/** "2 hours", "3 days": a wait, without the "ago". */
+function age(since: Date, now: number) {
+  return formatRelative(since, now).replace(" ago", "").toLowerCase();
+}
+
+/** An empty list's message with a short heading (only shown when the list is genuinely empty). */
+function EmptyNote({ title, text }: { title: string; text: string }) {
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span className="text-small font-semibold text-ink">{title}</span>
+      <span>{text}</span>
+    </span>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -64,8 +82,13 @@ async function TeamDashboard({ user }: { user: CurrentUser }) {
     <>
       <PageHeader
         size="lg"
-        eyebrow="Team workspace"
-        title={greetingFor()}
+        eyebrow={
+          <>
+            Team workspace
+            <LocalDate prefix=" · " />
+          </>
+        }
+        title={<LocalGreeting />}
         description={summary}
         action={
           <>
@@ -79,14 +102,34 @@ async function TeamDashboard({ user }: { user: CurrentUser }) {
         }
       />
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
+      <SummaryStrip
+        label="Review summary"
+        items={[
+          {
+            label: "Needs review",
+            value: needsReview.length,
+            note: oldest ? `oldest ${age(oldest.submittedAt, now)}` : "queue clear",
+            href: "/admin/review",
+            tone: "attention",
+          },
+          { label: "In review", value: inReview.length, note: inReview.length ? "in progress" : "none open" },
+          {
+            label: "Waiting on clients",
+            value: waitingOnClients.length,
+            note: waitingOnClients[0]?.requestedAt ? `longest ${age(waitingOnClients[0].requestedAt, now)}` : "none owed",
+          },
+          { label: "Completed this week", value: completed.length, note: "last 7 days" },
+        ]}
+      />
+
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)]">
         <div className="flex min-w-0 flex-col gap-6">
           <ListGroup
             title="Needs review"
             count={needsReview.length}
             meta="Oldest first"
             action={needsReview.length > 5 ? <QuietLink href="/admin/review">All {needsReview.length}</QuietLink> : undefined}
-            empty="New client submissions appear here as soon as they're submitted."
+            empty={<EmptyNote title="Queue is clear" text="New client submissions appear here as soon as they're submitted." />}
           >
             {needsReview.slice(0, 5).map((item, i) => (
               <QueueListRow key={item.id} item={item} now={now} next={i === 0} />
@@ -270,7 +313,13 @@ function ClientRow({ item, now }: { item: ClientItem; now: number }) {
           thumb={thumb}
           title={item.name}
           subtitle={`${item.status === "IN_REVIEW" ? "Being reviewed" : "Waiting for a reviewer"}${item.submittedAt ? ` · sent ${formatRelative(item.submittedAt, now).toLowerCase()}` : ""}`}
-          aside={<StatusBadge status={item.status} />}
+          // On phones the steps already say where it stands; the pill would squeeze them.
+          aside={
+            <span className="hidden sm:inline-flex">
+              <StatusBadge status={item.status} />
+            </span>
+          }
+          detail={<SubmissionSteps status={item.status} round={item.roundNumber} />}
         />
       );
   }
@@ -293,12 +342,14 @@ function HowItWorks() {
 
 function RecentActivity({ items, href, now }: { items: Awaited<ReturnType<typeof getActivity>>; href: string; now: number }) {
   return (
-    <section aria-label="Recent activity" className="flex min-w-0 flex-col gap-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-small font-semibold text-ink">Recent activity</h2>
+    <section aria-label="Recent activity" className="flex min-w-0 flex-col overflow-hidden rounded-xl border border-line bg-surface">
+      <div className="flex items-baseline justify-between gap-3 border-b border-line px-5 py-3">
+        <h2 className="text-body font-semibold text-ink">Recent activity</h2>
         <QuietLink href={href}>View all</QuietLink>
       </div>
-      {items.length ? <ActivityList items={items} now={now} /> : <p className="text-small text-muted">No activity yet.</p>}
+      <div className="px-5 py-4">
+        {items.length ? <ActivityList items={items} now={now} /> : <p className="text-small text-muted">No activity yet.</p>}
+      </div>
     </section>
   );
 }

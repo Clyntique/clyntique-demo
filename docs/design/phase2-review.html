@@ -1,0 +1,119 @@
+<title>Redesign Phase 2 Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; screenshot grids (desktop wide, phone narrow). */
+:root {
+  --bg: #FAF9F9; --panel: #FFFFFF; --fg: #1A2C48; --fg-2: #3A4559; --muted: #6B6156; --line: #E7E2DA;
+  --gold: #8A6322; --mark: #DCA858; --ok-bg: #E4F0E9; --ok-fg: #21593F;
+  --sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+.prose { max-width: 70ch; }
+h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -0.01em; font-weight: 600; }
+h1 { font-size: 32px; line-height: 1.25; }
+h2 { font-size: 20px; line-height: 1.35; }
+p { margin: 0; }
+.eyebrow { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+.lede { font-size: 16px; color: var(--fg-2); margin-top: 12px; }
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.shots { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.shots.phone { grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+figure.actual img { width: auto; max-width: 100%; image-rendering: auto; }
+figcaption { font-size: 13px; color: var(--muted); }
+figcaption b { color: var(--fg); font-weight: 600; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--ok-bg); color: var(--ok-fg); }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow"><svg width="10" height="11" viewBox="0 0 10 11" aria-hidden="true"><path d="M5 0.5 L9.5 3 L9.5 8 L5 10.5 L0.5 8 L0.5 3 Z" fill="var(--mark)"/></svg>Redesign · Phase 2 of 4 · 14 Oct 2026</p>
+    <h1>Phase 2: official logo, sidebar and navigation</h1>
+    <p class="lede">The Viewfinder mark is gone from the app. The official Clyntique mark and wordmark now sit on a white sidebar and phone header, with a navy active state and a small gold hexagon marker. Page eyebrows use the wordmark's wide letter-spacing. The favicon is unchanged until you approve the concept. Screenshots are from the local production build with TEST data.</p>
+  </header>
+
+  <section>
+    <h2>Sidebar at actual size</h2>
+    <figure class="actual"><img src="screens/2-sidebar-actual-size.png" alt="Sidebar at real pixel size: official mark and wordmark, workspace label, active Overview item" width="240" height="200"><figcaption>Real pixels. The mark is 40 px and the wordmark 124 px, from transparent cuts of the official logo (files at 2×, 37 KB and 32 KB).</figcaption></figure>
+  </section>
+
+  <section>
+    <h2>TEAM</h2>
+    <div class="shots">
+      <figure><img src="screens/1-team-overview-desktop.jpg" alt="Team overview on desktop" loading="lazy"><figcaption><b>Overview.</b> White sidebar with the official logo; "Team workspace" as a gold eyebrow.</figcaption></figure>
+      <figure><img src="screens/3-team-review-desktop.jpg" alt="Team review workspace on desktop" loading="lazy"><figcaption><b>Review workspace.</b> Same shell; the workspace itself is Phase 5.</figcaption></figure>
+      <figure><img src="screens/4-team-projects-desktop.jpg" alt="Team projects on desktop" loading="lazy"><figcaption><b>Projects.</b> The active marker follows the section.</figcaption></figure>
+    </div>
+    <div class="shots phone">
+      <figure><img src="screens/5-team-overview-mobile.jpg" alt="Team overview on a phone" loading="lazy"><figcaption><b>Phone</b> header with the logo.</figcaption></figure>
+      <figure><img src="screens/6-team-menu-mobile.jpg" alt="Phone menu open" loading="lazy"><figcaption><b>Menu sheet</b>, white, with the same active state.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>CLIENT</h2>
+    <div class="shots">
+      <figure><img src="screens/7-client-overview-desktop.jpg" alt="Client overview on desktop" loading="lazy"><figcaption><b>Overview.</b> Alex's private draft shows only here. No Review queue in the client navigation.</figcaption></figure>
+      <figure><img src="screens/8-client-submission-desktop.jpg" alt="Client submission page on desktop" loading="lazy"><figcaption><b>Submission.</b> The reviewer's in-progress moves stay hidden ("Awaiting reviewer").</figcaption></figure>
+    </div>
+    <div class="shots phone">
+      <figure><img src="screens/9-client-overview-mobile.jpg" alt="Client overview on a phone" loading="lazy"><figcaption><b>Phone.</b> No horizontal scroll.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>What changed</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>File</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td><code>src/components/layout/brand.tsx</code></td><td>The official mark and wordmark (<code>next/image</code>, static files) replace the Viewfinder drawings. Same <code>Brand</code> component, so the sign-in page picks it up too.</td></tr>
+        <tr><td><code>src/components/layout/brand-assets/</code></td><td>New: <code>clyntique-mark.png</code> (160 × 117) and <code>clyntique-wordmark.png</code> (360 × 44). Cut from the supplied logo; only the white background is made transparent.</td></tr>
+        <tr><td><code>src/components/layout/app-shell.tsx</code></td><td>White sidebar and phone header, so the logo always sits on a light surface. Workspace label in wide uppercase, muted (5.8:1).</td></tr>
+        <tr><td><code>src/components/layout/nav-links.tsx</code></td><td>Active item: navy tint, semibold, and a small gold hexagon marker (decorative; <code>aria-current</code> carries the state). Rows are 36 px. Inactive icons use the muted grey.</td></tr>
+        <tr><td><code>src/components/layout/mobile-menu.tsx</code></td><td>The sheet is white.</td></tr>
+        <tr><td><code>src/components/layout/page-header.tsx</code></td><td>Eyebrow in wide-tracked dark gold (5.4:1).</td></tr>
+        <tr><td>9 files: faint-grey audit</td><td>Every essential text or control that used the decorative <code>faint</code> grey now uses <code>muted</code> (5.8:1 or better):
+          <ul>
+            <li>"Updated … ago" on submission cards and activity times;</li>
+            <li>"Not chosen yet", "None provided" and "No notes for this version.";</li>
+            <li>input placeholders;</li>
+            <li>step numbers on the dashboard and sign-in;</li>
+            <li>nav icons and the neutral status dot.</li>
+          </ul>
+          Only decorative marks keep <code>faint</code>: separators, strike-through lines, timeline dots and input icons.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="prose muted">No data, workflow, permission or server code changed. No new packages. The breadcrumb needed no change; its separators are decorative.</p>
+  </section>
+
+  <section>
+    <h2>Checks</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Automated tests</td><td><span class="pill">242/242 pass</span></td></tr>
+        <tr><td>TypeScript, lint (including warnings), production build</td><td><span class="pill">0 errors · 0 warnings · pass</span></td></tr>
+        <tr><td>Logo images load</td><td><span class="pill">Yes</span> Served from hashed static files at 40 × 29 and 124 × 15 px.</td></tr>
+        <tr><td>TEAM: overview, review, projects at 1440 px; overview and menu at 375 px</td><td><span class="pill">No overflow</span></td></tr>
+        <tr><td>CLIENT: overview and submission at 1440 px; overview at 375 px</td><td><span class="pill">No overflow</span> Client navigation: Overview, Submissions, Projects, Activity.</td></tr>
+        <tr><td>Private draft</td><td><span class="pill">Hidden from TEAM</span> Alex's draft appears on none of the team overview, submissions, projects, activity or queue pages.</td></tr>
+        <tr><td>Menu</td><td><span class="pill">Works</span> Opens, shows the active item, closes with Escape.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>

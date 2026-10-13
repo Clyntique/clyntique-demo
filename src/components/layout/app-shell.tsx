@@ -6,7 +6,8 @@ import { getReviewSummary } from "@/lib/data/review-queue";
 import { basePathFor, ROLE_LABEL } from "@/lib/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/states";
-import { Brand } from "./brand";
+import { Brand, BrandLogo } from "./brand";
+import { HistoryGuard } from "./history-guard";
 import { LogoutButton } from "./logout-button";
 import { MobileMenu } from "./mobile-menu";
 import { NavLinks, NavList, type NavCounts } from "./nav-links";
@@ -24,6 +25,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
 
   return (
     <div className="flex min-h-dvh flex-1 flex-col md:pl-58">
+      <HistoryGuard />
       <a
         href="#main"
         className="text-small sr-only z-50 rounded-md bg-surface px-3 py-2 font-medium text-ink ring-1 ring-line focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
@@ -34,9 +36,10 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
       {/* Desktop / tablet sidebar */}
       {/* White, so the official logo always sits on a light surface. */}
       <aside className="fixed inset-y-0 left-0 hidden w-58 flex-col border-r border-line bg-surface md:flex">
-        <div className="flex h-16 items-center px-4">
+        {/* The full primary logo, as on sign-in. */}
+        <div className="flex items-center px-4 pt-5 pb-3">
           <Link href={home} className="rounded-md" aria-label="Clyntique overview">
-            <Brand />
+            <BrandLogo width={128} />
           </Link>
         </div>
         <p className="text-micro px-4 pt-1 pb-2 font-semibold tracking-[0.14em] text-muted uppercase">{WORKSPACE_LABEL[role]}</p>

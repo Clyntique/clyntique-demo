@@ -1,0 +1,115 @@
+<title>Redesign Phase 3 Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; before/after pairs, then device widths side by side. */
+:root {
+  --bg: #FAF9F9; --panel: #FFFFFF; --fg: #1A2C48; --fg-2: #3A4559; --muted: #6B6156; --line: #E7E2DA;
+  --gold: #8A6322; --mark: #DCA858; --ok-bg: #E4F0E9; --ok-fg: #21593F; --note-bg: #FCEBDD; --note-fg: #8A3B0C;
+  --sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --note-bg: #3A2416; --note-fg: #F2B58C; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --note-bg: #3A2416; --note-fg: #F2B58C; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+.prose { max-width: 70ch; }
+h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -0.01em; font-weight: 600; }
+h1 { font-size: 32px; line-height: 1.25; }
+h2 { font-size: 20px; line-height: 1.35; }
+p { margin: 0; }
+.eyebrow { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+.lede { font-size: 16px; color: var(--fg-2); margin-top: 12px; }
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.pair { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.devices { display: grid; gap: 14px; grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr); align-items: start; }
+@media (max-width: 640px) { .devices { grid-template-columns: 1fr; } }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+figcaption { font-size: 13px; color: var(--muted); }
+figcaption b { color: var(--fg); font-weight: 600; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--ok-bg); color: var(--ok-fg); }
+.pill.note { background: var(--note-bg); color: var(--note-fg); }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow"><svg width="10" height="11" viewBox="0 0 10 11" aria-hidden="true"><path d="M5 0.5 L9.5 3 L9.5 8 L5 10.5 L0.5 8 L0.5 3 Z" fill="var(--mark)"/></svg>Redesign · Phase 3 of 4 · 14 Oct 2026</p>
+    <h1>Phase 3: sign-in page</h1>
+    <p class="lede">Built from the approved canvas mockup: a cream brand panel with the full official logo, subtle gold globe lines from the logo's grid, the three workflow steps and the disclaimer. The form has 44 px fields and a navy button. Authentication, redirects and error handling are unchanged. The favicon is unchanged.</p>
+  </header>
+
+  <section>
+    <h2>Desktop, before and after</h2>
+    <div class="pair">
+      <figure><img src="before/1-sign-in-desktop.jpg" alt="Sign-in before: grey panel with the Viewfinder mark" loading="lazy"><figcaption><b>Before</b> (Stage E): Viewfinder mark, blue accent, Geist.</figcaption></figure>
+      <figure><img src="after/1-sign-in-desktop.jpg" alt="Sign-in after: cream panel with the official logo and gold globe lines" loading="lazy"><figcaption><b>After</b>, 1440 px: the official logo at 200 px, the headline, the three steps, and a navy Sign in button.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>Tablet and phone</h2>
+    <div class="devices">
+      <figure><img src="after/2-sign-in-tablet.jpg" alt="Sign-in on a tablet, 768 px" loading="lazy"><figcaption><b>Tablet</b>, 768 px: a slim cream band with the logo above the form.</figcaption></figure>
+      <figure><img src="after/3-sign-in-mobile.jpg" alt="Sign-in on a phone, 375 px" loading="lazy"><figcaption><b>Phone</b>, 375 px: the same band; the disclaimer sits under the form.</figcaption></figure>
+    </div>
+    <div class="pair">
+      <figure><img src="before/2-sign-in-mobile.jpg" alt="Sign-in on a phone, before" loading="lazy"><figcaption><b>Phone before</b>, for comparison.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>What changed</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>File</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td><code>src/app/auth/login/page.tsx</code></td><td>
+          The layout from the mockup: a cream panel (1024 px and up) or a slim cream band (below), the full official logo and the decorative <code>GlobeLines</code>. The steps keep their existing wording; step numbers are dark gold (4.7:1).<br>
+          I toned the globe lines down after the first check (35% opacity, further into the corner), so they never compete with the text.
+        </td></tr>
+        <tr><td><code>src/app/auth/login/login-form.tsx</code></td><td>Large fields and button (<code>size="lg"</code>). The action, the validation, the error message (<code>role="alert"</code>) and the pending state are unchanged.</td></tr>
+        <tr><td><code>src/components/layout/brand.tsx</code></td><td>New <code>BrandLogo</code> for the full primary logo, loaded eagerly at high priority.</td></tr>
+        <tr><td><code>src/components/layout/brand-assets/clyntique-logo.png</code></td><td>New: transparent cut of the official logo, 440 × 375 (2× display), 258 KB.</td></tr>
+        <tr><td><code>src/components/ui/input.tsx</code>, <code>src/components/ui/button.tsx</code></td><td>Opt-in <code>size="lg"</code> (44 px). The default sizes everywhere else are unchanged.</td></tr>
+        <tr><td><code>src/app/globals.css</code></td><td>New <code>cream</code> token <code>#F4EFE6</code> (ink 12.2:1, muted 5.3:1, gold-700 4.7:1).</td></tr>
+      </tbody>
+    </table></div>
+    <p class="prose muted">No server, authentication, database or proxy code changed. No new packages.</p>
+  </section>
+
+  <section>
+    <h2>Checks</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Automated tests</td><td><span class="pill">242/242 pass</span></td></tr>
+        <tr><td>TypeScript, lint (including warnings), production build</td><td><span class="pill">0 errors · 0 warnings · pass</span> <code>/auth/login</code> is still static.</td></tr>
+        <tr><td>Layout at 1440, 768 and 375 px</td><td><span class="pill">No overflow</span> Two 720 px columns at 1440; a single column below 1024.</td></tr>
+        <tr><td>Logo</td><td><span class="pill">Clear</span> Loads at 200 × 170 (desktop) and 112 px wide (band). Alt text "Clyntique". Always on cream.</td></tr>
+        <tr><td>Accessibility</td><td><span class="pill">Pass</span>
+          <ul>
+            <li>Fields and button are 44 px; labels wrap their inputs.</li>
+            <li>One <code>h1</code> ("Sign in").</li>
+            <li>The globe lines are <code>aria-hidden</code>.</li>
+            <li>All text 4.7:1 or more on cream.</li>
+          </ul></td></tr>
+        <tr><td>Role redirects</td><td><span class="pill">Unchanged</span>
+          <ul>
+            <li>Signed-in TEAM: <code>/auth/login</code> goes to <code>/admin</code>.</li>
+            <li>Signed-in CLIENT: <code>/auth/login</code> and <code>/admin</code> go to <code>/dashboard</code>.</li>
+            <li>Signed out: <code>/admin</code> and <code>/dashboard</code> go to sign-in.</li>
+          </ul></td></tr>
+        <tr><td>Error message on wrong credentials</td><td><span class="pill note">Not triggered</span> A failed attempt could write a rate-limit record to the shared database, so I left it alone. Its markup and logic are unchanged.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>

@@ -1,0 +1,145 @@
+<title>Redesign Phase 4 Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; before/after pairs; phone shots in a narrow row. */
+:root {
+  --bg: #FAF9F9; --panel: #FFFFFF; --fg: #1A2C48; --fg-2: #3A4559; --muted: #6B6156; --line: #E7E2DA;
+  --gold: #8A6322; --mark: #DCA858; --ok-bg: #E4F0E9; --ok-fg: #21593F; --note-bg: #FCEBDD; --note-fg: #8A3B0C;
+  --sans: "Poppins", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --note-bg: #3A2416; --note-fg: #F2B58C; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #10161F; --panel: #18202B; --fg: #E9ECF1; --fg-2: #C3C9D2; --muted: #A69C90; --line: #2A323D; --gold: #E6C27E; --mark: #DCA858; --ok-bg: #1E3329; --ok-fg: #A9D6BE; --note-bg: #3A2416; --note-fg: #F2B58C; color-scheme: dark }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.6; padding-inline: 20px; padding-block: 48px 80px; }
+.wrap { max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 48px; }
+.prose { max-width: 70ch; }
+h1, h2 { margin: 0; text-wrap: balance; letter-spacing: -0.01em; font-weight: 600; }
+h1 { font-size: 32px; line-height: 1.25; }
+h2 { font-size: 20px; line-height: 1.35; }
+p { margin: 0; }
+.eyebrow { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
+.lede { font-size: 16px; color: var(--fg-2); margin-top: 12px; }
+.muted { color: var(--muted); }
+section { display: flex; flex-direction: column; gap: 16px; }
+code { font-family: var(--mono); font-size: 0.86em; }
+.pair { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); }
+.phones { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); max-width: 760px; }
+figure { margin: 0; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+figure img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+figcaption { font-size: 13px; color: var(--muted); }
+figcaption b { color: var(--fg); font-weight: 600; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--ok-bg); color: var(--ok-fg); }
+.pill.note { background: var(--note-bg); color: var(--note-fg); }
+ul { margin: 6px 0 0; padding-left: 18px; }
+</style>
+
+<div class="wrap">
+  <header class="prose">
+    <p class="eyebrow"><svg width="10" height="11" viewBox="0 0 10 11" aria-hidden="true"><path d="M5 0.5 L9.5 3 L9.5 8 L5 10.5 L0.5 8 L0.5 3 Z" fill="var(--mark)"/></svg>Redesign · Phase 4 of 4 · 14 Oct 2026</p>
+    <h1>Phase 4: dashboards, plus the account-switch fix</h1>
+    <p class="lede">The account-switch fix (Flag A) came first, as you asked, and was verified with real account switches and browser Back. Then the TEAM and CLIENT dashboards were redesigned, with the official full logo in the sidebar. Screenshots are from the local production build with TEST data.</p>
+  </header>
+
+  <section>
+    <h2>Flag A: a fresh document on every account change</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Test (same browser tab)</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>TEAM → Sign out</td><td><span class="pill">Fresh document</span> The page marker was gone and the navigation was a new page load (one 303 redirect). No team content remained in the page.</td></tr>
+        <tr><td>Back ×3 (M5S review, queue, overview)</td><td><span class="pill">Blocked</span> Every entry went back to the server and was redirected to sign-in. No team content was shown or present.</td></tr>
+        <tr><td>Sign in as CLIENT (Alex)</td><td><span class="pill">Fresh document</span> Through <code>/auth/continue</code> to <code>/dashboard</code>. Only the four client links; no team content in the page.</td></tr>
+        <tr><td>Back ×4 into the earlier TEAM pages</td><td><span class="pill">Blocked</span> Each went to the server and was redirected to Alex's own <code>/dashboard</code>.</td></tr>
+        <tr><td>CLIENT → Sign out, then Back to Alex's M5S page</td><td><span class="pill">Blocked</span> A fresh sign-in page; Back reached only sign-in.</td></tr>
+        <tr><td>Sign in as TEAM, then Back ×3 into Alex's pages</td><td><span class="pill">Blocked</span> Only team pages. Alex's draft, responses and client view never appeared.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="prose muted">How it works, in four layers:</p>
+    <ol class="prose muted">
+      <li>Sign-out is a plain form POST to <code>/auth/logout</code>. It is same-origin only, ends the session and returns a 303 to sign-in with <code>Clear-Site-Data: "cache"</code>.</li>
+      <li>After a successful sign-in, the browser loads <code>/auth/continue</code> as a new document. It clears the cache the same way and sends each role to its home.</li>
+      <li>A small guard reloads a signed-in page if the browser ever restores it from the back/forward cache.</li>
+      <li>Unchanged: passwords, rate limiting, sessions, the proxy and every server-side permission check.</li>
+    </ol>
+    <p class="prose muted">What layers 1 and 3 cover: a full page reload alone would not have been enough. Protected pages are sent as <code>public, max-age=0</code>, which browsers may reuse from cache for Back. Clearing the cache on sign-out and sign-in covers that case, and the guard covers the back/forward cache.</p>
+  </section>
+
+  <section>
+    <h2>TEAM overview</h2>
+    <figure><img src="screens/1-team-overview-desktop.jpg" alt="Team overview with the full logo, local date, summary strip and lists" loading="lazy">
+      <figcaption>
+        <b>Desktop.</b>
+        <ul>
+          <li>The full official logo in the sidebar.</li>
+          <li>The eyebrow and greeting in local time ("Wednesday 14 October", "Good morning"). The UTC server would have said 13 October, evening.</li>
+          <li>A summary strip whose counts match the lists: 0 needs review ("queue clear"), 1 in review, 0 waiting, 2 completed.</li>
+          <li>"Queue is clear" only because the queue is empty.</li>
+        </ul>
+      </figcaption></figure>
+    <div class="phones">
+      <figure><img src="screens/2-team-overview-mobile.jpg" alt="Team overview on a phone" loading="lazy"><figcaption><b>Phone.</b> The strip becomes 2 × 2.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>CLIENT overview</h2>
+    <figure><img src="screens/3-client-overview-desktop.jpg" alt="Client overview with progress track" loading="lazy"><figcaption><b>Desktop.</b> Your action needed (Alex's own draft), then With Clyntique with the progress track: Resubmitted · round 2 → <b>Being reviewed</b> → Decision. Then Done and Recent activity.</figcaption></figure>
+    <div class="phones">
+      <figure><img src="screens/4-client-overview-mobile.jpg" alt="Client overview on a phone" loading="lazy"><figcaption><b>Phone.</b></figcaption></figure>
+      <figure><img src="screens/5-client-progress-mobile.png" alt="Progress track on a phone" loading="lazy"><figcaption><b>Progress track at 375 px.</b> Labels wrap at word breaks. The status pill is hidden on phones, because the steps already say where the submission stands.</figcaption></figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>What changed</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>File</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td><code>src/app/auth/logout/route.ts</code> (new)<br><code>src/app/auth/continue/route.ts</code> (new)<br><code>src/app/auth/fresh-document.ts</code> (new)</td><td>Sign-out and post-sign-in redirects that load a new document and clear the browser cache. Sign-out checks the origin.</td></tr>
+        <tr><td><code>src/app/auth/actions.ts</code></td><td>On success, <code>login</code> returns <code>{ signedIn: true }</code> after creating the session, instead of redirecting. The checks are unchanged. The old <code>logout</code> server action is removed (replaced by the route).</td></tr>
+        <tr><td><code>src/app/auth/login/login-form.tsx</code></td><td>On <code>signedIn</code>, loads <code>/auth/continue</code> as a new page. A "Continue" link is shown without JavaScript.</td></tr>
+        <tr><td><code>src/components/layout/logout-button.tsx</code></td><td>A native form POST to <code>/auth/logout</code>.</td></tr>
+        <tr><td><code>src/components/layout/history-guard.tsx</code> (new), <code>app-shell.tsx</code></td><td>The back/forward cache guard. The sidebar shows the full primary logo (128 px), as on sign-in.</td></tr>
+        <tr><td><code>src/components/views/dashboard-view.tsx</code></td><td>Local date and greeting, the TEAM summary strip, "Queue is clear", the activity panel, larger thumbnails, and the client progress track.</td></tr>
+        <tr><td><code>src/components/ui/local-time.tsx</code> (new)</td><td>Greeting and date in the viewer's time zone; neutral fallback on the server.</td></tr>
+        <tr><td><code>src/components/ui/summary-strip.tsx</code> (new)</td><td>The ledger-style count panel. Every number comes from the list it links to.</td></tr>
+        <tr><td><code>src/components/ui/submission-steps.tsx</code> (new)</td><td>The client progress track, built only from status and round.</td></tr>
+        <tr><td><code>src/components/ui/list-group.tsx</code></td><td>Softer panels (14 px radius), more padding, 14 px headings, and an optional <code>detail</code> slot in rows.</td></tr>
+        <tr><td><code>tests/auth-routes.test.ts</code> (new), <code>tests/rate-limit.test.ts</code></td><td>4 new tests: sign-out, cross-site refusal, and role redirects with cache clearing. The login success expectation is updated.</td></tr>
+      </tbody>
+    </table></div>
+    <p class="prose muted">No schema, data loader, workflow, permission or privacy code changed. No new packages. The favicon is unchanged.</p>
+  </section>
+
+  <section>
+    <h2>Checks</h2>
+    <div class="tbl"><table>
+      <thead><tr><th>Check</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td>Automated tests</td><td><span class="pill">246/246 pass</span> 4 new.</td></tr>
+        <tr><td>TypeScript, lint (including warnings), production build</td><td><span class="pill">0 errors · 0 warnings · pass</span> <code>/auth/logout</code> and <code>/auth/continue</code> are dynamic; <code>/auth/login</code> is still static.</td></tr>
+        <tr><td>Layout at 1440 and 375 px (TEAM and CLIENT)</td><td><span class="pill">No overflow</span></td></tr>
+        <tr><td>Status accuracy</td><td><span class="pill">Matches</span> The strip counts match each list. The progress track matches M5S (IN_REVIEW, round 2) and shows only for submissions that are with Clyntique.</td></tr>
+        <tr><td>Privacy</td><td><span class="pill">Unchanged</span> Alex's private draft is on no TEAM page. The CLIENT overview has no team names and no <code>/admin</code> links.</td></tr>
+        <tr><td>Flag B: database connections</td><td><span class="pill">Healthy</span> The 5 lingering connections were gone once the old Preview tabs were closed. A recount found 6, all from the local test server and idle for under 10 s. The pool configuration is unchanged.</td></tr>
+        <tr><td>Jordan (other client) check</td><td><span class="pill note">Needs a sign-in</span> Not run yet. Available on the Preview after your push, if you sign in as Jordan.</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>Notes</h2>
+    <ul class="prose muted">
+      <li>Phones keep the side-by-side mark and wordmark in the 56 px header, because the full logo's wordmark would be unreadable at that height. The full logo is in the desktop sidebar.</li>
+      <li>"Good morning" is chosen from the viewer's local hour (before 12:00). The server render shows "Welcome" for a moment until the browser fills in the local value.</li>
+      <li>Still open: the review decision panel's "No findings yet." in round 2 (Phase 5).</li>
+    </ul>
+  </section>
+</div>
