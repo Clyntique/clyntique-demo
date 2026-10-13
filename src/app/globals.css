@@ -7,68 +7,100 @@
  */
 @theme {
   /*
-   * Neutrals: warm, faintly blue-biased greys around the ink colour.
-   * canvas = page, surface = panels, subtle = quiet fills, stage = the area
-   * behind a creative preview.
+   * Neutrals: the brand kit's warm off-white (#FAF9F9) and warm greys derived
+   * from its Grey Orange. canvas = page, surface = panels, subtle = quiet
+   * fills, stage = the area behind a creative preview. Text: ink is Clyntique
+   * Navy; muted passes AA (5.8:1) on canvas; faint is for decorative marks only.
    */
-  --color-canvas: #f7f6f2;
+  --color-canvas: #faf9f9;
   --color-surface: #ffffff;
-  --color-subtle: #f0eee8;
-  --color-stage: #eceae4;
-  --color-line: #e6e3da;
-  --color-line-strong: #d3cfc4;
-  --color-ink: #17212f;
-  --color-ink-soft: #3b4655;
-  --color-muted: #6b7480;
-  --color-faint: #9aa1aa;
+  --color-subtle: #f5f2ee;
+  --color-stage: #eeeae4;
+  /* Warm cream for brand panels (sign-in). Ink 12.2:1, muted 5.3:1, gold-700 4.7:1 on it. */
+  --color-cream: #f4efe6;
+  --color-line: #e7e2da;
+  --color-line-strong: #d3ccc1;
+  --color-ink: #1a2c48;
+  --color-ink-soft: #3a4559;
+  --color-muted: #6b6156;
+  --color-faint: #a39a8e;
 
-  /* Accent: actions, focus, links, and "with Clyntique" states. */
-  --color-brand-50: #f1f4fd;
-  --color-brand-100: #e8edfb;
-  --color-brand-200: #cdd8f6;
-  --color-brand-500: #5a77de;
-  --color-brand-600: #4868d8;
-  --color-brand-700: #3a55be;
-  --color-brand-800: #2b43a0;
-  --color-brand-900: #1e3178;
+  /* Placeholder frames for creatives without a file: close variations of the stage colour. */
+  --color-placeholder-1: #ece8e1;
+  --color-placeholder-2: #e8e3db;
+  --color-placeholder-3: #efebe5;
+  --color-placeholder-4: #e9e5de;
+
+  /*
+   * Accent: Clyntique Navy (brand kit #1A2C48). 600 = primary actions,
+   * 700 = links and accent text (and primary hover), 500 = focus and markers,
+   * 50-200 = tints for selected and "with Clyntique" states.
+   */
+  --color-brand-50: #eef1f6;
+  --color-brand-100: #dce3ee;
+  --color-brand-200: #bfcbdd;
+  --color-brand-300: #93a5c0;
+  --color-brand-400: #5e7598;
+  --color-brand-500: #3a527a;
+  --color-brand-600: #1a2c48;
+  --color-brand-700: #2a4470;
+  --color-brand-800: #22385c;
+  --color-brand-900: #132136;
+
+  /*
+   * Clyntique Gold (brand kit #DCA858): a brand accent only, never a status.
+   * Gold on white is 2.15:1, so 500 is used on navy or as decoration; 700 is
+   * the only gold for text on light surfaces (5.4:1).
+   */
+  --color-gold-50: #fbf5ea;
+  --color-gold-100: #f6ead3;
+  --color-gold-200: #eed69f;
+  --color-gold-300: #e6c27e;
+  --color-gold-500: #dca858;
+  --color-gold-600: #b98a3e;
+  --color-gold-700: #8a6322;
 
   /*
    * Semantic tones. Each has one meaning across the app:
-   * positive = done / resolved, attention = the client needs to act,
-   * critical = high severity and errors. soft = fill, line = border,
+   * positive = done / resolved, attention = the client needs to act (burnt
+   * orange, distinct from brand gold), critical = high severity and errors
+   * (crimson, distinct from attention). soft = fill, line = border,
    * solid = dots and markers, strong = filled buttons, ink = text on soft.
+   * Every ink passes 6.6:1 on its soft fill; every solid and strong passes
+   * 4.5:1 on white.
    */
-  --color-positive-soft: #dde8e2;
-  --color-positive-line: #c3d7cb;
-  --color-positive-solid: #3f8a65;
-  --color-positive-strong: #2e6b4d;
-  --color-positive-ink: #24563f;
+  --color-positive-soft: #e4f0e9;
+  --color-positive-line: #c3dccd;
+  --color-positive-solid: #2f7a55;
+  --color-positive-strong: #256346;
+  --color-positive-ink: #21593f;
 
-  --color-attention-soft: #f6ebdd;
-  --color-attention-line: #e9d3b5;
-  --color-attention-solid: #d6a56b;
-  --color-attention-strong: #a2681f;
-  --color-attention-ink: #7a4e14;
+  --color-attention-soft: #fcebdd;
+  --color-attention-line: #f3c7a5;
+  --color-attention-solid: #b34d15;
+  --color-attention-strong: #a3440f;
+  --color-attention-ink: #8a3b0c;
 
-  --color-critical-soft: #f6e1dd;
-  --color-critical-line: #ebc4bd;
-  --color-critical-solid: #c2503d;
-  --color-critical-strong: #a63f2e;
-  --color-critical-ink: #8f2f23;
+  --color-critical-soft: #fbe6e8;
+  --color-critical-line: #f1c2c8;
+  --color-critical-solid: #b42335;
+  --color-critical-strong: #9c1d2e;
+  --color-critical-ink: #8e1d2c;
 
-  /* Typography: Geist for the interface, Geist Mono for the review record (versions, rounds, times). */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Typography: Poppins (brand kit body face) for the interface, Geist Mono for the review record (versions, rounds, times). */
+  --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   /* Radii */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
+  --radius-xl: 14px;
 
-  /* Elevation: hairline borders do most of the work; shadows stay faint. */
-  --shadow-card: 0 1px 2px rgb(23 33 47 / 0.04);
-  --shadow-pop: 0 8px 24px rgb(23 33 47 / 0.08), 0 1px 3px rgb(23 33 47 / 0.06);
-  --shadow-art: 0 6px 24px rgb(23 33 47 / 0.14);
+  /* Elevation: hairline borders do most of the work; shadows stay faint (navy-tinted). */
+  --shadow-card: 0 1px 2px rgb(12 21 36 / 0.04);
+  --shadow-pop: 0 10px 28px rgb(12 21 36 / 0.08), 0 1px 3px rgb(12 21 36 / 0.06);
+  --shadow-art: 0 6px 24px rgb(12 21 36 / 0.14);
 }
 
 @layer base {
@@ -80,7 +112,6 @@
     background: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01";
   }
 
   ::selection {
@@ -103,34 +134,34 @@
 }
 
 /*
- * Typography scale (12 · 13 · 14 · 16 · 20 · 28). Components use these
- * utilities instead of one-off pixel sizes.
+ * Typography scale for Poppins (approved visual direction, 13 Oct 2026):
+ * 11 · 12 · 13 · 14 · 15 · 18 · 24 · 32. Components use these utilities
+ * instead of one-off pixel sizes.
  */
 @utility text-display {
-  font-size: 1.75rem;
-  line-height: 2.125rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-@utility text-page-title {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
-}
-
-@utility text-section-title {
-  font-size: 1rem;
-  line-height: 1.5rem;
+  font-size: 2rem;
+  line-height: 2.5rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
+@utility text-page-title {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+@utility text-section-title {
+  font-size: 1.125rem;
+  line-height: 1.625rem;
+  font-weight: 600;
+}
+
 @utility text-card-title {
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  font-weight: 500;
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+  font-weight: 600;
 }
 
 @utility text-body {
@@ -150,13 +181,23 @@
 
 @utility text-micro {
   font-size: 0.6875rem;
-  line-height: 0.875rem;
+  line-height: 1rem;
 }
 
 @utility text-meta {
   font-size: 0.75rem;
   line-height: 1rem;
   color: var(--color-muted);
+}
+
+/* Section eyebrows: the wordmark's wide letter-spacing, in dark gold (5.4:1). */
+@utility text-eyebrow {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-gold-700);
 }
 
 /* Field and group labels: sentence case, quiet weight. */
@@ -170,7 +211,7 @@
 /* The review record: versions, rounds, timestamps (V3 · R2). */
 @utility text-record {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 1rem;
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;

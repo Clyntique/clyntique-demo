@@ -1,54 +1,71 @@
+import Image from "next/image";
 import { cn } from "@/lib/cn";
+import logo from "./brand-assets/clyntique-logo.png";
+import mark from "./brand-assets/clyntique-mark.png";
+import wordmark from "./brand-assets/clyntique-wordmark.png";
 
 /*
- * The Clyntique mark: "Viewfinder", four crop corners around a focal point,
- * a creative under close review (approved 12 Oct 2026).
+ * The official Clyntique logo (brand kit, 13 Oct 2026): the hexagonal C mark
+ * and the CLYNTIQUE wordmark, cut from the supplied logo.png. Only the white
+ * background was made transparent; the artwork itself is unchanged. Files are
+ * at twice their largest display size.
  *
- * Two drawings of the same mark, checked by rasterising at real size:
- * - regular (28 px and up): lighter strokes, glyph at ~62% of the tile;
- * - small (under 24 px, and the favicon): heavier strokes, shorter corners
- *   and a larger dot at ~88% of the tile, so the four corners stay distinct
- *   at 16 px instead of blurring together.
- * The favicon (src/app/icon.svg) uses the small drawing.
+ * Always shown on light surfaces: on navy the mark's navy half and the
+ * wordmark disappear. The favicon (src/app/icon.svg) stays as it is until a
+ * small-size version is approved.
  */
-const REGULAR = {
-  d: "M3 7.25V4.5A1.5 1.5 0 0 1 4.5 3h2.75M12.75 3h2.75A1.5 1.5 0 0 1 17 4.5v2.75M17 12.75v2.75a1.5 1.5 0 0 1-1.5 1.5h-2.75M7.25 17H4.5A1.5 1.5 0 0 1 3 15.5v-2.75",
-  stroke: 2,
-  dot: 2.1,
-  glyph: "size-[62%]",
-};
-const SMALL = {
-  d: "M3.5 7.5V5a1.5 1.5 0 0 1 1.5-1.5h2.5M12.5 3.5H15A1.5 1.5 0 0 1 16.5 5v2.5M16.5 12.5V15a1.5 1.5 0 0 1-1.5 1.5h-2.5M7.5 16.5H5A1.5 1.5 0 0 1 3.5 15v-2.5",
-  stroke: 2.6,
-  dot: 2.6,
-  glyph: "size-[88%]",
-};
+const SIZES = {
+  md: { mark: 40, word: 124 },
+  lg: { mark: 56, word: 176 },
+} as const;
 
-export function BrandMark({ className, size = "md", tone = "accent" }: { className?: string; size?: "sm" | "md" | "lg"; tone?: "accent" | "ink" }) {
-  const drawing = size === "sm" ? SMALL : REGULAR;
+const heightFor = (img: { width: number; height: number }, width: number) => Math.round((img.height / img.width) * width);
+
+export function BrandMark({ className, width = SIZES.md.mark }: { className?: string; width?: number }) {
   return (
-    <span
+    <Image
+      src={mark}
+      alt=""
       aria-hidden
-      className={cn(
-        "inline-flex shrink-0 items-center justify-center text-white",
-        size === "sm" ? "size-4 rounded-[4px]" : size === "lg" ? "size-14 rounded-xl" : "size-7 rounded-md",
-        tone === "accent" ? "bg-brand-600" : "bg-ink",
-        className,
-      )}
-    >
-      <svg viewBox="0 0 20 20" className={drawing.glyph} fill="none" stroke="currentColor" strokeWidth={drawing.stroke} strokeLinecap="round" strokeLinejoin="round">
-        <path d={drawing.d} />
-        <circle cx="10" cy="10" r={drawing.dot} fill="currentColor" stroke="none" />
-      </svg>
+      width={width}
+      height={heightFor(mark, width)}
+      unoptimized
+      loading="eager"
+      className={cn("shrink-0 select-none", className)}
+    />
+  );
+}
+
+export function Brand({ className, size = "md" }: { className?: string; size?: keyof typeof SIZES }) {
+  const s = SIZES[size];
+  return (
+    <span className={cn("inline-flex items-center gap-2.5", className)}>
+      <BrandMark width={s.mark} />
+      <Image
+        src={wordmark}
+        alt="Clyntique"
+        width={s.word}
+        height={heightFor(wordmark, s.word)}
+        unoptimized
+        loading="eager"
+        className="shrink-0 select-none"
+      />
     </span>
   );
 }
 
-export function Brand({ className, size = "md" }: { className?: string; size?: "md" | "lg" }) {
+/** The full primary logo (mark above the wordmark), for brand panels such as sign-in. */
+export function BrandLogo({ className, width = 200 }: { className?: string; width?: number }) {
   return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <BrandMark size={size} />
-      <span className={cn("font-semibold tracking-tight text-ink", size === "lg" ? "text-[1.375rem]" : "text-[15px]")}>Clyntique</span>
-    </span>
+    <Image
+      src={logo}
+      alt="Clyntique"
+      width={width}
+      height={heightFor(logo, width)}
+      unoptimized
+      loading="eager"
+      fetchPriority="high"
+      className={cn("select-none", className)}
+    />
   );
 }

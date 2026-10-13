@@ -19,7 +19,7 @@ const FRAME: Record<CreativeFormat, string> = {
 // Placeholder frames use close variations of the stage neutral, so a list of
 // creatives without files still reads as one calm surface. Picked from the id,
 // so a creative keeps its frame everywhere.
-const TINTS = ["#e7e5de", "#e3e1da", "#ebe9e3", "#e5e3dc"];
+const TINTS = ["var(--color-placeholder-1)", "var(--color-placeholder-2)", "var(--color-placeholder-3)", "var(--color-placeholder-4)"];
 
 function tintFor(id: string) {
   let hash = 0;
@@ -146,7 +146,7 @@ export function CreativeCard({
             <span className={needsYou ? "font-medium text-attention-ink" : "text-ink-soft"}>
               {reviewStateLabel(role, creative.workflow, creative.status)}
             </span>
-            <span className="text-faint">Updated {formatRelative(creative.updatedAt, now).toLowerCase()}</span>
+            <span className="text-muted">Updated {formatRelative(creative.updatedAt, now).toLowerCase()}</span>
           </div>
         </div>
       </div>

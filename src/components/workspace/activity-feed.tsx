@@ -30,7 +30,7 @@ function Entry({ item, now, last }: { item: ActivityItem; now: number; last: boo
         <p className="text-caption mt-0.5 truncate text-muted">
           {item.projectName} · {item.actorName}
         </p>
-        <p className="text-record mt-0.5 text-faint">{formatRelative(item.createdAt, now)}</p>
+        <p className="text-record mt-0.5 text-muted">{formatRelative(item.createdAt, now)}</p>
       </div>
     </li>
   );

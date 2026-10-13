@@ -4,8 +4,9 @@ import { cn } from "@/lib/cn";
 export function Input({
   className,
   icon,
+  size = "md",
   ...props
-}: ComponentProps<"input"> & { icon?: ReactNode }) {
+}: Omit<ComponentProps<"input">, "size"> & { icon?: ReactNode; size?: "md" | "lg" }) {
   return (
     <div className={cn("relative", className)}>
       {icon && (
@@ -15,7 +16,8 @@ export function Input({
       )}
       <input
         className={cn(
-          "h-9 w-full rounded-md border border-line bg-surface px-3 text-sm text-ink shadow-card transition-colors placeholder:text-faint",
+          "w-full rounded-md border border-line bg-surface px-3 text-sm text-ink shadow-card transition-colors placeholder:text-muted",
+          size === "lg" ? "h-11 px-3.5" : "h-9",
           "hover:border-line-strong focus:border-brand-500 focus:ring-3 focus:ring-brand-100 focus:outline-none",
           "aria-invalid:border-critical-solid",
           icon ? "pl-9" : undefined,
@@ -51,7 +53,7 @@ export function Field({
 }
 
 const fieldClasses =
-  "w-full rounded-md border border-line bg-surface px-3 text-sm text-ink shadow-card transition-colors placeholder:text-faint hover:border-line-strong focus:border-brand-500 focus:ring-3 focus:ring-brand-100 focus:outline-none aria-invalid:border-critical-solid";
+  "w-full rounded-md border border-line bg-surface px-3 text-sm text-ink shadow-card transition-colors placeholder:text-muted hover:border-line-strong focus:border-brand-500 focus:ring-3 focus:ring-brand-100 focus:outline-none aria-invalid:border-critical-solid";
 
 export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
   return <textarea className={cn(fieldClasses, "min-h-24 py-2", className)} {...props} />;

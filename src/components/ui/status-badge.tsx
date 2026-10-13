@@ -12,7 +12,7 @@ import { cn } from "@/lib/cn";
 export type Tone = "neutral" | "accent" | "attention" | "positive";
 
 export const TONE_STYLES: Record<Tone, { pill: string; dot: string; bar: string }> = {
-  neutral: { pill: "bg-subtle text-ink-soft", dot: "bg-faint", bar: "bg-line-strong" },
+  neutral: { pill: "bg-subtle text-ink-soft", dot: "bg-muted", bar: "bg-line-strong" },
   accent: { pill: "bg-brand-100 text-brand-800", dot: "bg-brand-600", bar: "bg-brand-500" },
   attention: { pill: "bg-attention-soft text-attention-ink", dot: "bg-attention-solid", bar: "bg-attention-solid" },
   positive: { pill: "bg-positive-soft text-positive-ink", dot: "bg-positive-solid", bar: "bg-positive-solid" },

@@ -16,6 +16,7 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           defaultValue={state?.email}
+          size="lg"
           required
           aria-invalid={state?.error ? true : undefined}
         />
@@ -25,6 +26,7 @@ export function LoginForm() {
           name="password"
           type="password"
           autoComplete="current-password"
+          size="lg"
           required
           aria-invalid={state?.error ? true : undefined}
         />
@@ -34,7 +36,7 @@ export function LoginForm() {
           {state.error}
         </p>
       )}
-      <Button type="submit" disabled={pending} className="mt-2 w-full">
+      <Button type="submit" size="lg" disabled={pending} className="mt-2 w-full">
         {pending ? "Signing in…" : "Sign in"}
       </Button>
     </form>

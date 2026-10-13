@@ -115,3 +115,39 @@ No schema, environment variable, database permission, Render or Vercel setting c
 2. **Connections:** count `pg_stat_activity` right after testing, then again after a **90 s pause**. Expect them to fall close to 0 (previously about 6 minutes).
 3. **Vercel logs:** no errors, timeouts or the warning above.
 4. **Usage page:** provisioned memory after testing.
+
+## Preview verification (13 Oct): `ohqix3qp7` (with `attachDatabasePool`) vs `noc5my5qr` (without)
+
+Both use pool limit 5 and a 60 s idle timeout. Read-only checks; TEST M5S was not modified. Each Preview was tested separately so the connection counts don't mix.
+
+**Pages** (`ohqix3qp7`, TEAM): overview (shows "no open findings"), TEST M5S (responses, "Withdrawn") and the review queue all load (200).
+
+**TEAM submission page timing**, from India:
+
+| | Warm, median | After a 15 s pause, median | 3 at once | 6 at once | First load |
+|---|---|---|---|---|---|
+| noc5my5qr (no helper) | 0.84 s | 0.98 s | 4.8 s | 2.2 s | 7.0 s (cold) |
+| **ohqix3qp7 (helper)** | **0.76 s** | **0.81 s** | **2.7 s** | **2.0 s** | 0.76 s |
+
+Every load was complete on both. The helper did not slow anything down; the new Preview was as fast or slightly faster.
+
+**Database connections** (`pg_stat_activity`, read-only):
+
+| When | Open connections |
+|---|---|
+| Before testing | 0 |
+| ohqix3qp7, right after testing | 15 idle (includes 5 from an earlier noc5my5qr sign-in check) |
+| **ohqix3qp7, after a 90 s pause** | **5**, all idle 358 s, i.e. noc5my5qr's. None of ohqix3qp7's own connections remained. |
+| noc5my5qr, right after testing | 10 idle |
+| **noc5my5qr, after a 90 s pause** | **15 still open**, idle 87–113 s. The count grew because a later request reused the pool, probably from the open noc5my5qr tab. |
+
+The helper does what it promises: connections close about 60 s after last use instead of staying open while instances are paused.
+
+**Vercel logs:** 0 warnings, 0 errors, 0 fatal entries. Statuses 200, 304 and POST 200 only. No connection timeouts and no "outside of request scope" or "Unsupported database pool type" messages.
+
+**Vercel Usage** (Sep 13 – Oct 13): provisioned memory 0.51 GB-hours (0.40 before today's tests) of 360 included. Active CPU 4m 54s, invocations 4.5K. Nothing unexpected.
+
+**Recommendation: keep this implementation as it is** (helper, limit 5, idle 60 s).
+- A higher limit isn't needed for the demo; single-page loads are already at the earlier levels.
+- If more speed is wanted later, a limit of 10 could be trialled separately with the same checks.
+- Older Preview deployments without the helper (noc5my5qr, kz1k7vowe, 4wd0objph) still leave connections open while someone uses them; avoid using them now.

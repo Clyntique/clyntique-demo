@@ -85,7 +85,7 @@ export function MobileMenu({
               aria-modal="true"
               aria-label="Main menu"
               onClick={(e) => e.stopPropagation()}
-              className="relative flex max-h-full flex-col gap-4 overflow-y-auto border-b border-line bg-canvas px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-pop"
+              className="relative flex max-h-full flex-col gap-4 overflow-y-auto border-b border-line bg-surface px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-pop"
             >
               <nav aria-label="Main">
                 <NavLinks

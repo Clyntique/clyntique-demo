@@ -32,13 +32,14 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
       </a>
 
       {/* Desktop / tablet sidebar */}
-      <aside className="fixed inset-y-0 left-0 hidden w-58 flex-col border-r border-line bg-canvas md:flex">
-        <div className="flex h-15 items-center px-4">
-          <Link href={home} className="rounded-md">
+      {/* White, so the official logo always sits on a light surface. */}
+      <aside className="fixed inset-y-0 left-0 hidden w-58 flex-col border-r border-line bg-surface md:flex">
+        <div className="flex h-16 items-center px-4">
+          <Link href={home} className="rounded-md" aria-label="Clyntique overview">
             <Brand />
           </Link>
         </div>
-        <p className="text-caption px-4 pb-2 text-faint">{WORKSPACE_LABEL[role]}</p>
+        <p className="text-micro px-4 pt-1 pb-2 font-semibold tracking-[0.14em] text-muted uppercase">{WORKSPACE_LABEL[role]}</p>
         <nav aria-label="Main" className="flex-1 px-2.5">
           <Suspense fallback={<NavList role={role} layout="sidebar" pathname={null} />}>
             <SidebarNav role={role} />
@@ -52,8 +53,8 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
       </aside>
 
       {/* Phone top bar with a menu sheet */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-canvas/95 px-4 backdrop-blur md:hidden">
-        <Link href={home} className="rounded-md">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur md:hidden">
+        <Link href={home} className="rounded-md" aria-label="Clyntique overview">
           <Brand />
         </Link>
         <Suspense fallback={<Skeleton className="h-9 w-20" />}>

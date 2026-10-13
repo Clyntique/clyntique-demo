@@ -506,7 +506,7 @@ function NextActionContent({
 }
 
 function Details({ submission }: { submission: SubmissionDetail }) {
-  const empty = <span className="text-faint">Not chosen yet</span>;
+  const empty = <span className="text-muted">Not chosen yet</span>;
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
       <div>
@@ -519,11 +519,11 @@ function Details({ submission }: { submission: SubmissionDetail }) {
       </div>
       <div className="sm:col-span-2">
         <dt className="text-label mb-1">Campaign context</dt>
-        <dd className="text-body break-words whitespace-pre-line text-ink-soft">{submission.context || <span className="text-faint">None provided</span>}</dd>
+        <dd className="text-body break-words whitespace-pre-line text-ink-soft">{submission.context || <span className="text-muted">None provided</span>}</dd>
       </div>
       <div className="sm:col-span-2">
         <dt className="text-label mb-1">Description</dt>
-        <dd className="text-body break-words whitespace-pre-line text-ink-soft">{submission.description || <span className="text-faint">None provided</span>}</dd>
+        <dd className="text-body break-words whitespace-pre-line text-ink-soft">{submission.description || <span className="text-muted">None provided</span>}</dd>
       </div>
       <p className="text-caption text-muted sm:col-span-2">
         Markets and platforms describe where the ad will run, as context for the review. They don&apos;t imply approval by any regulator or platform.

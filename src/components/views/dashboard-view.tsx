@@ -283,7 +283,7 @@ function HowItWorks() {
     <ol aria-label="How a review works" className="grid grid-cols-2 gap-x-6 gap-y-2 border-y border-line py-3 sm:grid-cols-4">
       {steps.map((s, i) => (
         <li key={s} className="text-small flex items-baseline gap-2 text-ink-soft">
-          <span className="text-record text-faint">{i + 1}</span>
+          <span className="text-record text-muted">{i + 1}</span>
           {s}
         </li>
       ))}

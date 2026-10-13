@@ -226,7 +226,7 @@ function CompareSide({
         <p className="text-caption text-muted">
           Uploaded by {version.createdByName} · {formatRelative(version.createdAt).toLowerCase()}
         </p>
-        <p className="text-small mt-0.5 break-words whitespace-pre-line text-ink-soft">{version.changeNotes || <span className="text-faint">No notes for this version.</span>}</p>
+        <p className="text-small mt-0.5 break-words whitespace-pre-line text-ink-soft">{version.changeNotes || <span className="text-muted">No notes for this version.</span>}</p>
       </div>
     </figure>
   );

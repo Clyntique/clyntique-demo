@@ -22,7 +22,7 @@ export function PageHeader({
   return (
     <header className={cn("mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between", className)}>
       <div className="min-w-0">
-        {eyebrow && <p className="text-small mb-1 text-muted">{eyebrow}</p>}
+        {eyebrow && <p className="text-eyebrow mb-2">{eyebrow}</p>}
         <h1 className={cn(size === "lg" ? "text-display" : "text-page-title", "text-balance text-ink")}>{title}</h1>
         {description && <p className="text-body mt-1.5 max-w-2xl text-muted">{description}</p>}
       </div>

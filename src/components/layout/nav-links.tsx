@@ -44,13 +44,15 @@ export function NavList({ role, layout, pathname, counts, onNavigate }: NavProps
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2.5 rounded-md font-medium transition-colors",
-                layout === "sidebar" ? "text-small h-8 px-2.5" : "text-body h-11 px-3",
-                active ? "bg-surface text-ink ring-1 ring-line" : "text-ink-soft hover:bg-subtle hover:text-ink",
+                "flex items-center gap-2.5 rounded-md transition-colors",
+                layout === "sidebar" ? "text-small h-9 px-2.5" : "text-body h-11 px-3",
+                active ? "bg-brand-50 font-semibold text-ink" : "font-medium text-ink-soft hover:bg-subtle hover:text-ink",
               )}
             >
-              <Icon className={cn("size-4 shrink-0", active ? "text-brand-600" : "text-faint")} />
+              <Icon className={cn("size-4 shrink-0", active ? "text-brand-600" : "text-muted")} />
               <span className="flex-1">{label}</span>
+              {/* Brand marker for the current section (decorative; aria-current carries the state). */}
+              {active && !count ? <ActiveMarker /> : null}
               {count ? (
                 <span className="text-record rounded-sm bg-brand-100 px-1.5 text-brand-800">
                   {count}
@@ -62,5 +64,14 @@ export function NavList({ role, layout, pathname, counts, onNavigate }: NavProps
         );
       })}
     </ul>
+  );
+}
+
+// A small gold hexagon, echoing the logo's shape.
+function ActiveMarker() {
+  return (
+    <svg aria-hidden viewBox="0 0 10 11" className="size-2 shrink-0 fill-gold-500">
+      <path d="M5 .5 9.5 3v5L5 10.5.5 8V3Z" />
+    </svg>
   );
 }
