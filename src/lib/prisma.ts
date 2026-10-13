@@ -1,5 +1,7 @@
 import "server-only";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { attachDatabasePool } from "@vercel/functions";
+import { Pool } from "pg";
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -20,14 +22,19 @@ function createPrismaClient() {
   // (or waiting for a free pooled connection) gives up after 10 s instead of
   // waiting forever, and TCP keep-alive lets a silently dropped connection be
   // noticed.
-  const adapter = new PrismaPg({
+  const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 5,
     idleTimeoutMillis: 60_000,
     connectionTimeoutMillis: 10_000,
     keepAlive: true,
   });
-  return new PrismaClient({ adapter });
+  // On Vercel (Fluid compute), keeps the instance awake after each query just
+  // long enough for the pool to close its idle connections before the instance
+  // is paused, so paused instances don't hold database connections. It does
+  // nothing outside Vercel (local development, tests, builds).
+  attachDatabasePool(pool);
+  return new PrismaClient({ adapter: new PrismaPg(pool) });
 }
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
