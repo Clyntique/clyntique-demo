@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Suspense, type ReactNode } from "react";
+import { cache, Suspense, type ReactNode } from "react";
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole, type CurrentUser } from "@/lib/auth/dal";
 import { getReviewSummary } from "@/lib/data/review-queue";
@@ -68,7 +68,8 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
   );
 }
 
-async function navCounts(user: CurrentUser): Promise<NavCounts> {
+// Cached per request: the sidebar and the phone menu both show the count.
+const navCounts = cache(async (user: CurrentUser): Promise<NavCounts> => {
   if (user.role !== "TEAM") return {};
   // A navigation badge must never take the page down: without it the link still works.
   try {
@@ -77,7 +78,7 @@ async function navCounts(user: CurrentUser): Promise<NavCounts> {
   } catch {
     return {};
   }
-}
+});
 
 async function SidebarNav({ role }: { role: Role }) {
   const user = await requireRole(role);

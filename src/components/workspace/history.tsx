@@ -72,7 +72,7 @@ export function buildHistory({
       if (e.kind === "response") {
         entries.push({ key: `resp-${e.id}`, at: e.createdAt, tone: "accent", title: `Response to ${label(f)}`, who: e.authorName, note: e.message });
       } else {
-        const verb = e.move === "RESOLVED" ? "Resolved" : e.move === "REOPENED" ? "Reopened" : "Withdrew";
+        const verb = e.move === "RESOLVED" ? "Resolved" : e.move === "REOPENED" ? "Reopened" : "Withdrawn";
         entries.push({ key: `mv-${e.id}`, at: e.createdAt, tone: e.move === "RESOLVED" ? "positive" : e.move === "REOPENED" ? "attention" : "neutral", title: `${verb} ${label(f)}`, who: e.actorName, note: e.note ?? undefined });
       }
     }

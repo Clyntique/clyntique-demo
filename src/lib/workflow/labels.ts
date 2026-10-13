@@ -51,5 +51,5 @@ export const FINDING_STATUS_LABEL: Record<FindingStatus, string> = {
   OPEN: "Open",
   RESPONDED: "Awaiting reviewer",
   RESOLVED: "Resolved",
-  DISMISSED: "Dismissed",
+  DISMISSED: "Withdrawn",
 };

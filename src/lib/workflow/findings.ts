@@ -208,7 +208,7 @@ export function checkOutcome(
 ): { ok: true } | { ok: false; error: string } {
   if (summary.trim().length < MIN_SUMMARY) return { ok: false, error: "Write a short summary of the review (at least a sentence)." };
   if (findings.some((f) => f.status === "DRAFT")) {
-    return { ok: false, error: "Publish or dismiss draft findings before completing the review." };
+    return { ok: false, error: "Publish or withdraw draft findings before completing the review." };
   }
   const live = findings.filter((f) => f.status !== "DISMISSED");
   const unresolved = live.filter((f) => f.status === "OPEN" || f.status === "RESPONDED");

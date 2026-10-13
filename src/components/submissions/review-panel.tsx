@@ -226,7 +226,7 @@ export function DraftFindingControls({ finding, markets, platforms }: { finding:
             Edit
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setMode("dismiss")}>
-            Dismiss
+            Withdraw
           </Button>
         </div>
       )}
@@ -249,7 +249,7 @@ export function DraftFindingControls({ finding, markets, platforms }: { finding:
         <form action={dismissAction} className="flex flex-col gap-3">
           <input type="hidden" name="findingId" value={finding.id} />
           <FormError message={dismissState?.error} />
-          <Field label="Reason for dismissing" hint="Kept in the finding's history. The client never sees draft findings.">
+          <Field label="Reason for withdrawing" hint="Kept in the finding's history. The client never sees draft findings.">
             <Input name="note" required maxLength={2000} placeholder="e.g. Not applicable to the selected markets." />
           </Field>
           <div className="flex justify-end gap-2">
@@ -257,7 +257,7 @@ export function DraftFindingControls({ finding, markets, platforms }: { finding:
               Cancel
             </Button>
             <Button type="submit" variant="secondary" disabled={dismissing}>
-              {dismissing ? "Dismissing…" : "Dismiss finding"}
+              {dismissing ? "Withdrawing…" : "Withdraw finding"}
             </Button>
           </div>
         </form>
@@ -339,7 +339,7 @@ export function CompleteReviewForm({
       {drafts > 0 && (
         <div className="rounded-md bg-attention-soft px-3 py-2.5 text-small text-attention-ink">
           <p>
-            {drafts} draft finding{drafts === 1 ? " is" : "s are"} unresolved. Dismiss {drafts === 1 ? "it" : "them"}, or share{" "}
+            {drafts} draft finding{drafts === 1 ? " is" : "s are"} unresolved. Withdraw {drafts === 1 ? "it" : "them"}, or share{" "}
             {drafts === 1 ? "it" : "them"} with the client as part of this outcome.
           </p>
           <label className="mt-2 flex items-center gap-2 font-medium">

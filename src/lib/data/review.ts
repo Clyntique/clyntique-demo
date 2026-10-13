@@ -120,7 +120,10 @@ export async function getCreativeReview(
   const selected = (versionNumber && versions.find((v) => v.versionNumber === versionNumber)) || current;
 
   let thread: ThreadEntry[] = [];
-  if (selected) {
+  // The comment/approval thread belongs to the earlier workflow only; new
+  // submissions render SubmissionView, which never reads it. The scoped lookup
+  // above still decides access for both.
+  if (selected && creative.workflow !== "SUBMISSION_REVIEW") {
     const [comments, approvals] = await Promise.all([
       prisma.comment.findMany({
         where: { creativeId: creative.id, versionId: selected.id },

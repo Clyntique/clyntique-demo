@@ -94,7 +94,7 @@ export async function dismissFindingAction(_prev: ReviewActionState, formData: F
   const result = await reviewFinding(user, { findingId: text(formData, "findingId"), move: "DISMISS", note: text(formData, "note") });
   if (!result.ok) return { error: result.error };
   revalidateWorkspaces();
-  return { ok: "Finding dismissed." };
+  return { ok: "Finding withdrawn." };
 }
 
 export async function resolveFindingAction(_prev: ReviewActionState, formData: FormData): Promise<ReviewActionState> {

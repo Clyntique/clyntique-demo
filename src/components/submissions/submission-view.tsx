@@ -58,6 +58,11 @@ export async function SubmissionView({
   created?: boolean;
 }) {
   const user = await requireRole(role);
+  // Both loaders apply the same scope on their own, so the review data can load
+  // alongside the submission instead of after it. (The catch only keeps an
+  // abandoned load from being reported as unhandled; it is awaited below.)
+  const reviewLoad = getSubmissionReview(user, creativeId);
+  reviewLoad.catch(() => undefined);
   const submission = await getSubmission(user, creativeId, versionNumber);
   if (!submission) notFound();
 
@@ -67,7 +72,7 @@ export async function SubmissionView({
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
   const canManageEvidence = role === "CLIENT" && authorize(user, "MANAGE_EVIDENCE", facts).ok;
-  const [targeting, review] = await Promise.all([editable ? getTargetingOptions() : Promise.resolve(null), getSubmissionReview(user, submission.id)]);
+  const [targeting, review] = await Promise.all([editable ? getTargetingOptions() : Promise.resolve(null), reviewLoad]);
   if (!review) notFound();
 
   const team = role === "TEAM";
