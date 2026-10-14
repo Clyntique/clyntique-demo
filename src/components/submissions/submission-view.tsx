@@ -11,6 +11,7 @@ import { basePathFor } from "@/lib/navigation";
 import { uploadsConfigured } from "@/lib/review/blob";
 import { REVIEW_DISCLAIMER, REVIEW_OUTCOME_DESCRIPTION, REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
 import { authorize } from "@/lib/workflow/policy";
+import { cn } from "@/lib/cn";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { Card } from "@/components/ui/card";
 import { StatusBadge, TonePill } from "@/components/ui/status-badge";
@@ -217,15 +218,24 @@ export async function SubmissionView({
         ]}
         current={submission.name}
       />
-      <header className="mb-6 flex flex-col gap-2">
+      <header className="mb-6 flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-page-title min-w-0 text-balance break-words text-ink">{submission.name}</h1>
+          <h1 className="text-page-title sm:text-display min-w-0 text-balance break-words font-semibold tracking-tight text-ink">
+            {submission.name}
+          </h1>
           <StatusBadge status={submission.status} label={statusLabel(role, submission.status)} />
-          {review.round && <span className="text-record text-muted">R{review.round.number} · V{review.round.versionNumber}</span>}
+          {review.round && (
+            <span className="text-record rounded-full bg-subtle px-2.5 py-0.5 text-muted ring-1 ring-line ring-inset">
+              Round {review.round.number} · V{review.round.versionNumber}
+            </span>
+          )}
+          <span className="text-caption rounded-full bg-surface px-2.5 py-0.5 text-muted ring-1 ring-line ring-inset">
+            {format.label} · {format.ratio}
+          </span>
         </div>
-        <p className="text-small flex flex-wrap gap-x-2 text-muted">
+        <p className="text-small flex flex-wrap items-center gap-x-2 text-muted">
           {headerMeta.map((m, i) => (
-            <span key={i}>
+            <span key={i} className="flex items-center">
               {i > 0 && <span className="mr-2 text-faint">·</span>}
               {m}
             </span>
@@ -234,7 +244,7 @@ export async function SubmissionView({
       </header>
 
       {created && (
-        <p role="status" className="text-small mb-4 rounded-md bg-positive-soft px-4 py-2.5 text-positive-ink">
+        <p role="status" className="text-small mb-4 rounded-md bg-positive-soft px-4 py-2.5 text-positive-ink ring-1 ring-positive-line ring-inset">
           Draft created. Upload your creative file, check the details, then submit it for review.
         </p>
       )}
@@ -244,15 +254,23 @@ export async function SubmissionView({
         upload and details. Two columns from xl: stage and details on the left,
         the review panel on the right spanning both rows.
       */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_380px] xl:grid-rows-[auto_1fr] 2xl:grid-cols-[minmax(0,1fr)_420px]">
-        {/* The creative */}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_400px] xl:grid-rows-[auto_1fr] 2xl:grid-cols-[minmax(0,1fr)_440px]">
+        {/* The creative centerpiece stage */}
         <div className="min-w-0 xl:col-start-1 xl:row-start-1">
           <Stage submission={submission} rounds={review.rounds} role={role} base={base} compareWith={compareWith} />
         </div>
 
-        {/* Review panel: next action, then the tabs */}
+        {/* Compliance Inspector: next action, then the tabs */}
         <aside aria-label="Review" className="flex min-w-0 flex-col gap-5 xl:col-start-2 xl:row-span-2 xl:row-start-1">
-          <section aria-label="Next step" className="flex flex-col gap-3 rounded-lg border border-line bg-surface p-4">
+          <section aria-label="Next step" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-xs">
+            <div className="flex items-center justify-between border-b border-line pb-2.5">
+              <span className="text-eyebrow">
+                {role === "TEAM" ? "Review Command Desk" : "Remediation & Actions"}
+              </span>
+              {review.round && (
+                <span className="text-record text-caption text-muted">Round {review.round.number}</span>
+              )}
+            </div>
             <NextActionContent
               role={role}
               submission={submission}
@@ -265,14 +283,16 @@ export async function SubmissionView({
               finalDecision={finalDecision}
             />
           </section>
-          <Tabs label="Review details" defaultId={defaultTab} tabs={[findingsTab, evidenceTab, historyTab]} />
+
+          <div className="rounded-xl border border-line bg-surface p-4 shadow-xs">
+            <Tabs label="Compliance Inspector" defaultId={defaultTab} tabs={[findingsTab, evidenceTab, historyTab]} />
+          </div>
         </aside>
 
         {/* Upload and details */}
         <div className="flex min-w-0 flex-col gap-6 self-start xl:col-start-1 xl:row-start-2">
-
           {canUpload && (
-            <Card id="upload" className="scroll-mt-6 p-5">
+            <Card id="upload" className="scroll-mt-6 p-5 shadow-xs">
               <h2 className="text-section-title text-ink">{remediation ? "Upload a revised version" : submission.current ? "Upload a new version" : "Upload the creative"}</h2>
               <p className="text-small mt-0.5 mb-4 text-muted">
                 {remediation && submission.current
@@ -293,13 +313,13 @@ export async function SubmissionView({
             </Card>
           )}
 
-          <Card className="p-5">
+          <Card className="p-5 shadow-xs">
             <h2 className="text-section-title mb-4 text-ink">Submission details</h2>
             <Details submission={submission} />
             {editable && targeting && (
               <details className="group mt-5 border-t border-line pt-4" open={!submission.current}>
-                <summary className="text-small flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-brand-700">
-                  Edit details
+                <summary className="text-small flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-brand-700 hover:text-brand-800">
+                  <span>Edit details</span>
                   <span className="text-caption font-normal text-muted group-open:hidden">
                     Title, description, context{submission.status === "DRAFT" ? ", markets and platforms" : ""}
                   </span>
@@ -351,19 +371,19 @@ function NextTitle({ title, detail }: { title: string; detail?: ReactNode }) {
 /** A collapsible form inside the next-action block; the summary is the button. */
 function ActionDisclosure({ label, primary, children }: { label: string; primary?: boolean; children: ReactNode }) {
   return (
-    <details className="group rounded-md border border-line open:border-line-strong">
+    <details className="group rounded-lg border border-line open:border-line-strong overflow-hidden shadow-2xs">
       <summary
-        className={
-          "text-small flex h-9 cursor-pointer list-none items-center justify-between rounded-md px-3 font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 group-open:rounded-b-none " +
-          (primary ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-surface text-ink hover:bg-subtle")
-        }
+        className={cn(
+          "text-small flex h-10 cursor-pointer list-none items-center justify-between rounded-lg px-3.5 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 group-open:rounded-b-none group-open:border-b group-open:border-line",
+          primary ? "bg-brand-600 text-white hover:bg-brand-700" : "bg-surface text-ink hover:bg-subtle",
+        )}
       >
-        {label}
-        <span aria-hidden className="text-caption transition-transform group-open:rotate-180">
+        <span>{label}</span>
+        <span aria-hidden className="text-caption transition-transform duration-200 group-open:rotate-180">
           ▾
         </span>
       </summary>
-      <div className="p-3">{children}</div>
+      <div className="p-3.5 bg-surface">{children}</div>
     </details>
   );
 }

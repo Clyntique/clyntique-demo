@@ -90,24 +90,24 @@ export function HistoryLedger({ entries, showDisclaimer }: { entries: Entry[]; s
     <div className="flex flex-col gap-4">
       <ol className="relative flex flex-col">
         {entries.map((e, i) => (
-          <li key={e.key} className="relative flex gap-3 pb-4 last:pb-0">
-            {i < entries.length - 1 && <span aria-hidden className="absolute top-3 left-[3.5px] h-full w-px bg-line" />}
-            <span aria-hidden className={cn("relative mt-1.5 size-2 shrink-0 rounded-full", DOT[e.tone])} />
+          <li key={e.key} className="relative flex gap-3.5 pb-4 last:pb-0">
+            {i < entries.length - 1 && <span aria-hidden className="absolute top-3 left-[4.5px] h-full w-px bg-line" />}
+            <span aria-hidden className={cn("relative mt-1.5 size-2.5 shrink-0 rounded-full ring-2 ring-white shadow-2xs", DOT[e.tone])} />
             <div className="min-w-0 flex-1">
-              <p className="text-small break-words text-ink">
+              <p className="text-small font-semibold break-words text-ink">
                 {e.title}
-                {e.detail && <span className="text-muted"> · {e.detail}</span>}
+                {e.detail && <span className="font-normal text-muted"> · {e.detail}</span>}
               </p>
               <p className="text-record mt-0.5 text-muted">
                 <time dateTime={e.at.toISOString()}>{formatDateTime(e.at)}</time>
                 {e.who ? ` · ${e.who}` : ""}
               </p>
-              {e.note && <p className="text-small mt-1 break-words whitespace-pre-line text-ink-soft">{e.note}</p>}
+              {e.note && <p className="text-small mt-1.5 rounded-lg bg-subtle/70 p-2.5 border border-line break-words whitespace-pre-line text-ink-soft">{e.note}</p>}
             </div>
           </li>
         ))}
       </ol>
-      {showDisclaimer && <p className="text-caption rounded-md bg-subtle px-3 py-2 text-muted">{REVIEW_DISCLAIMER}</p>}
+      {showDisclaimer && <p className="text-caption rounded-lg bg-subtle p-3 text-muted border border-line">{REVIEW_DISCLAIMER}</p>}
     </div>
   );
 }

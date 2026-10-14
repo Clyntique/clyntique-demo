@@ -44,12 +44,21 @@ export function Tabs({ tabs, defaultId, label }: { tabs: TabSpec[]; defaultId: s
               tabIndex={on ? 0 : -1}
               onClick={() => setActive(t.id)}
               className={cn(
-                "text-small -mb-px flex h-10 items-center gap-1.5 border-b-2 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600",
-                on ? "border-ink text-ink" : "border-transparent text-muted hover:text-ink",
+                "text-small -mb-px flex h-10 items-center gap-2 border-b-2 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600",
+                on ? "border-brand-600 font-semibold text-ink" : "border-transparent text-muted hover:text-ink hover:border-line-strong",
               )}
             >
-              {t.label}
-              {t.count !== undefined && <span className="text-record text-muted">{t.count}</span>}
+              <span>{t.label}</span>
+              {t.count !== undefined && (
+                <span
+                  className={cn(
+                    "text-micro inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1.5 font-semibold",
+                    on ? "bg-brand-100 text-brand-900" : "bg-subtle text-muted",
+                  )}
+                >
+                  {t.count}
+                </span>
+              )}
             </button>
           );
         })}

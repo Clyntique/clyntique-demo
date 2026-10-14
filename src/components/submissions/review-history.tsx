@@ -71,7 +71,7 @@ export function EvidenceList({
       {evidence.map((e) => {
         const supports = e.findingIds.map((id) => findingLabels.get(id)).filter(Boolean);
         return (
-          <li key={e.id} id={`evidence-${e.id}`} className={cn("scroll-mt-6 rounded-lg border border-line bg-surface p-4", e.withdrawn && "bg-subtle/60")}>
+          <li key={e.id} id={`evidence-${e.id}`} className={cn("scroll-mt-6 rounded-xl border border-line bg-surface p-4 sm:p-5 shadow-xs transition-shadow", e.withdrawn && "bg-subtle/60")}>
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone="outline">{EVIDENCE_TYPES[e.type]}</Badge>
               {e.origin === "REVIEWER_ADDED" && <Badge>Added by reviewer</Badge>}
@@ -83,19 +83,19 @@ export function EvidenceList({
               )}
               {e.withdrawn && <Badge>Withdrawn</Badge>}
             </div>
-            <p className={cn("text-card-title mt-1 break-words", e.withdrawn && "line-through decoration-faint")}>{e.title}</p>
-            {e.description && <p className="text-body mt-0.5 break-words whitespace-pre-line text-ink-soft">{e.description}</p>}
+            <p className={cn("text-card-title sm:text-body mt-1.5 font-semibold text-ink break-words", e.withdrawn && "line-through decoration-faint")}>{e.title}</p>
+            {e.description && <p className="text-small mt-1 break-words whitespace-pre-line text-ink-soft">{e.description}</p>}
             {e.file && (
               <a
                 href={`/api/media/evidence/${e.id}`}
                 target={e.file.isImage ? "_blank" : undefined}
                 rel="noopener noreferrer"
-                className="text-small mt-2 inline-flex max-w-full items-center gap-2 rounded-md border border-line-strong bg-canvas px-2.5 py-1.5 text-ink hover:bg-subtle"
+                className="text-small mt-2.5 inline-flex max-w-full items-center gap-2 rounded-lg border border-line-strong bg-canvas px-3 py-1.5 text-ink hover:bg-subtle transition-colors shadow-2xs"
               >
                 <FileIcon className="size-3.5 shrink-0 text-muted" />
                 <span className="truncate">{e.file.name}</span>
                 {e.file.sizeBytes != null && <span className="text-meta shrink-0">{formatBytes(e.file.sizeBytes)}</span>}
-                <span className="text-meta shrink-0">{e.file.isImage ? "View" : "Download"}</span>
+                <span className="text-meta font-medium text-brand-700 shrink-0">{e.file.isImage ? "View" : "Download"}</span>
               </a>
             )}
             <p className="text-meta mt-1 flex flex-wrap items-center gap-x-2">
