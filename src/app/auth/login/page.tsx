@@ -38,10 +38,10 @@ export default function LoginPage() {
 
           <div className="max-w-md flex flex-col gap-3 pt-4">
             <span className="text-eyebrow">Enterprise Advertising Compliance</span>
-            <h2 className="text-display text-balance text-ink font-semibold tracking-tight">
+            <h2 className="text-brand-display text-balance text-ink">
               Internal review workflow, from initial submission to final decision.
             </h2>
-            <p className="text-body text-ink-soft">
+            <p className="text-body text-ink-soft leading-relaxed">
               A single authoritative platform for advertising review, policy grounding, version tracking, and client remediation.
             </p>
           </div>
@@ -77,8 +77,8 @@ export default function LoginPage() {
         <div className="flex flex-1 flex-col items-center justify-center px-5 py-12 sm:px-8">
           <div className="w-full max-w-[420px]">
             <div className="mb-6">
-              <h1 className="text-page-title text-ink font-semibold tracking-tight">Sign in to your workspace</h1>
-              <p className="text-body mt-1.5 text-muted">
+              <h1 className="text-brand-title text-ink">Sign in to your workspace</h1>
+              <p className="text-body mt-2 text-muted leading-relaxed">
                 Enter the credentials for your authorized Clyntique account.
               </p>
             </div>

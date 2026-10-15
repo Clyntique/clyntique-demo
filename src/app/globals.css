@@ -119,8 +119,8 @@
     font-family: var(--font-sans);
   }
 
-  h1, h2, h3, h4 {
-    font-family: var(--font-heading);
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-sans);
   }
 
   ::selection {
@@ -143,35 +143,62 @@
 }
 
 /*
- * Typography scale: Bayer TypeArchiType for headings and prominent titles,
- * Poppins for body text and UI elements.
+ * Typography scale: Poppins for dashboard, workspace and operational UI;
+ * Bayer TypeArchiType reserved for brand identity and auth titles with generous line-height.
  */
 @utility font-heading {
   font-family: var(--font-heading);
+  font-weight: 400;
+}
+
+@utility font-bayer {
+  font-family: var(--font-heading);
+  font-weight: 400;
 }
 
 @utility font-sans {
   font-family: var(--font-sans);
 }
 
-@utility text-display {
+/* Brand display heading with generous line-height for Bayer TypeArchiType */
+@utility text-brand-display {
   font-family: var(--font-heading);
-  font-size: 2rem;
-  line-height: 2.5rem;
-  font-weight: 600;
+  font-size: 2.125rem;
+  line-height: 1.38;
+  font-weight: 400;
   letter-spacing: -0.01em;
 }
 
-@utility text-page-title {
+/* Brand title with generous line-height for Bayer TypeArchiType */
+@utility text-brand-title {
   font-family: var(--font-heading);
+  font-size: 1.625rem;
+  line-height: 1.38;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* Operational dashboard & workspace display title (Poppins) */
+@utility text-display {
+  font-family: var(--font-sans);
+  font-size: 1.875rem;
+  line-height: 2.375rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* Operational page title (Poppins) */
+@utility text-page-title {
+  font-family: var(--font-sans);
   font-size: 1.5rem;
   line-height: 2rem;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
+/* Operational section title (Poppins) */
 @utility text-section-title {
-  font-family: var(--font-heading);
+  font-family: var(--font-sans);
   font-size: 1.125rem;
   line-height: 1.625rem;
   font-weight: 600;
