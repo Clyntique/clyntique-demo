@@ -21,7 +21,13 @@ const ITEMS = [
 
 export type NavCounts = Partial<Record<string, number>>;
 
-type NavProps = { role: Role; layout: "sidebar" | "sheet"; counts?: NavCounts; onNavigate?: () => void };
+type NavProps = {
+  role: Role;
+  layout: "sidebar" | "sheet";
+  counts?: NavCounts;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+};
 
 export function NavLinks(props: NavProps) {
   return <NavList {...props} pathname={usePathname()} />;
@@ -29,15 +35,70 @@ export function NavLinks(props: NavProps) {
 
 // Server-renderable nav without an active item. Used as the Suspense fallback
 // on dynamic routes, where the pathname is only known at request time.
-export function NavList({ role, layout, pathname, counts, onNavigate }: NavProps & { pathname: string | null }) {
+export function NavList({
+  role,
+  layout,
+  pathname,
+  counts,
+  collapsed = false,
+  onNavigate,
+}: NavProps & { pathname: string | null }) {
   const base = basePathFor(role);
 
   return (
-    <ul className="flex flex-col gap-0.5">
+    <ul className={cn("flex flex-col", collapsed ? "gap-1.5" : "gap-0.5")}>
       {ITEMS.filter((item) => role === "TEAM" || !item.teamOnly).map(({ label, segment, icon: Icon }) => {
         const href = base + segment;
         const active = pathname !== null && (segment ? pathname.startsWith(href) : pathname === href);
         const count = counts?.[segment];
+
+        if (collapsed) {
+          return (
+            <li key={label} className="relative flex justify-center">
+              <Link
+                href={href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                aria-label={count ? `${label} (${count} waiting)` : label}
+                className={cn(
+                  "group relative flex size-10 items-center justify-center rounded-lg transition-all",
+                  active
+                    ? "bg-brand-50 text-brand-600 ring-1 ring-brand-200"
+                    : "text-ink-soft hover:bg-subtle hover:text-ink",
+                )}
+              >
+                <Icon className={cn("size-5 shrink-0 transition-transform group-hover:scale-105", active ? "text-brand-600" : "text-muted")} />
+
+                {/* Notification dot when collapsed and items are waiting */}
+                {count ? (
+                  <span className="absolute top-1.5 right-1.5 flex size-2">
+                    <span className="absolute inline-flex size-full animate-ping rounded-full bg-attention-solid opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-attention-solid" />
+                  </span>
+                ) : null}
+
+                {/* Floating Tooltip with arrow */}
+                <div
+                  role="tooltip"
+                  className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 flex -translate-y-1/2 items-center gap-2 whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white shadow-pop opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+                >
+                  <span>{label}</span>
+                  {count ? (
+                    <span className="rounded bg-brand-500 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-white">
+                      {count}
+                    </span>
+                  ) : null}
+                  {/* Tooltip triangle indicator */}
+                  <span
+                    aria-hidden
+                    className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-ink"
+                  />
+                </div>
+              </Link>
+            </li>
+          );
+        }
+
         return (
           <li key={label}>
             <Link

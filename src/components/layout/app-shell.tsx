@@ -6,16 +6,14 @@ import { getReviewSummary } from "@/lib/data/review-queue";
 import { basePathFor, ROLE_LABEL } from "@/lib/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/states";
-import { Brand, BrandLogo } from "./brand";
+import { Brand } from "./brand";
 import { HistoryGuard } from "./history-guard";
 import { LogoutButton } from "./logout-button";
 import { MobileMenu } from "./mobile-menu";
-import { NavLinks, NavList, type NavCounts } from "./nav-links";
-
-const WORKSPACE_LABEL: Record<Role, string> = {
-  TEAM: "Team workspace",
-  CLIENT: "Client workspace",
-};
+import { NavList, type NavCounts } from "./nav-links";
+import { SidebarProvider } from "./sidebar-context";
+import { ShellLayout } from "./shell-layout";
+import { DesktopSidebar } from "./desktop-sidebar";
 
 // Authenticated application layout shared by the TEAM and CLIENT areas.
 // Only the user section and the TEAM queue count read the session/database,
@@ -24,7 +22,7 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
   const home = basePathFor(role);
 
   return (
-    <div className="flex min-h-dvh flex-1 flex-col md:pl-58">
+    <SidebarProvider>
       <HistoryGuard />
       <a
         href="#main"
@@ -33,42 +31,26 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
         Skip to content
       </a>
 
-      {/* Desktop / tablet sidebar */}
-      {/* White, so the official logo always sits on a light surface. */}
-      <aside className="fixed inset-y-0 left-0 hidden w-58 flex-col border-r border-line bg-surface md:flex">
-        {/* The full primary logo, as on sign-in. */}
-        <div className="flex items-center px-4 pt-5 pb-3">
-          <Link href={home} className="rounded-md" aria-label="Clyntique overview">
-            <BrandLogo width={128} />
-          </Link>
-        </div>
-        <p className="text-micro px-4 pt-1 pb-2 font-semibold tracking-[0.14em] text-muted uppercase">{WORKSPACE_LABEL[role]}</p>
-        <nav aria-label="Main" className="flex-1 px-2.5">
-          <Suspense fallback={<NavList role={role} layout="sidebar" pathname={null} />}>
-            <SidebarNav role={role} />
+      <ShellLayout
+        sidebar={
+          <Suspense fallback={<SidebarSkeleton role={role} />}>
+            <SidebarContent role={role} />
           </Suspense>
-        </nav>
-        <div className="border-t border-line p-2.5">
-          <Suspense fallback={<UserSkeleton />}>
-            <SidebarUser role={role} />
-          </Suspense>
-        </div>
-      </aside>
-
-      {/* Phone top bar with a menu sheet */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur md:hidden">
-        <Link href={home} className="rounded-md" aria-label="Clyntique overview">
-          <Brand />
-        </Link>
-        <Suspense fallback={<Skeleton className="h-9 w-20" />}>
-          <PhoneMenu role={role} />
-        </Suspense>
-      </header>
-
-      <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-9 has-[[data-wide]]:max-w-[1440px]">
+        }
+        mobileHeader={
+          <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur md:hidden">
+            <Link href={home} className="rounded-md" aria-label="Clyntique overview">
+              <Brand />
+            </Link>
+            <Suspense fallback={<Skeleton className="h-9 w-20" />}>
+              <PhoneMenu role={role} />
+            </Suspense>
+          </header>
+        }
+      >
         {children}
-      </main>
-    </div>
+      </ShellLayout>
+    </SidebarProvider>
   );
 }
 
@@ -84,9 +66,16 @@ const navCounts = cache(async (user: CurrentUser): Promise<NavCounts> => {
   }
 });
 
-async function SidebarNav({ role }: { role: Role }) {
+async function SidebarContent({ role }: { role: Role }) {
   const user = await requireRole(role);
-  return <NavLinks role={role} layout="sidebar" counts={await navCounts(user)} />;
+  const counts = await navCounts(user);
+  return (
+    <DesktopSidebar
+      role={role}
+      user={{ id: user.id, name: user.name, email: user.email, role: user.role }}
+      counts={counts}
+    />
+  );
 }
 
 function UserBlock({ user }: { user: CurrentUser }) {
@@ -106,14 +95,37 @@ function UserBlock({ user }: { user: CurrentUser }) {
   );
 }
 
-async function SidebarUser({ role }: { role: Role }) {
-  const user = await requireRole(role);
-  return <UserBlock user={user} />;
-}
-
 async function PhoneMenu({ role }: { role: Role }) {
   const user = await requireRole(role);
-  return <MobileMenu role={role} counts={await navCounts(user)} footer={<UserBlock user={user} />} />;
+  return (
+    <MobileMenu
+      role={role}
+      counts={await navCounts(user)}
+      footer={<UserBlock user={user} />}
+    />
+  );
+}
+
+function SidebarSkeleton({ role }: { role: Role }) {
+  const home = basePathFor(role);
+  return (
+    <aside
+      aria-hidden
+      className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-line bg-surface md:flex"
+    >
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-line/60">
+        <Link href={home} className="rounded-md">
+          <Brand size="md" />
+        </Link>
+      </div>
+      <div className="flex-1 px-3 py-3">
+        <NavList role={role} layout="sidebar" pathname={null} />
+      </div>
+      <div className="border-t border-line/80 p-2.5">
+        <UserSkeleton />
+      </div>
+    </aside>
+  );
 }
 
 function UserSkeleton() {

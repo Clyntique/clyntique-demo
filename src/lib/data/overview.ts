@@ -45,6 +45,37 @@ export type TeamOverview = { needsReview: QueueItem[]; inReview: QueueItem[]; wa
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 
+export type TeamMetrics = {
+  activePolicyCount: number;
+  averageTurnaroundHours: number | null;
+};
+
+export async function getTeamMetrics(user: CurrentUser, now = new Date()): Promise<TeamMetrics> {
+  if (user.role !== "TEAM") return { activePolicyCount: 0, averageTurnaroundHours: null };
+  const weekAgo = new Date(now.getTime() - WEEK);
+
+  const [activePolicyCount, completedDecisions] = await Promise.all([
+    prisma.policyRuleVersion.count({ where: { status: "ACTIVE" } }),
+    prisma.reviewDecision.findMany({
+      where: { kind: "FINAL", createdAt: { gte: weekAgo }, creative: { workflow: "SUBMISSION_REVIEW" } },
+      select: {
+        createdAt: true,
+        round: { select: { submittedAt: true } },
+      },
+    }),
+  ]);
+
+  const turnaroundDurations = completedDecisions
+    .filter((d) => d.round.submittedAt)
+    .map((d) => d.createdAt.getTime() - d.round.submittedAt.getTime());
+
+  const averageTurnaroundHours = turnaroundDurations.length > 0
+    ? Math.round((turnaroundDurations.reduce((a, b) => a + b, 0) / turnaroundDurations.length) / (1000 * 60 * 60) * 10) / 10
+    : null;
+
+  return { activePolicyCount, averageTurnaroundHours };
+}
+
 export async function getTeamOverview(user: CurrentUser, now = new Date()): Promise<TeamOverview> {
   if (user.role !== "TEAM") return { needsReview: [], inReview: [], waitingOnClients: [], completed: [] };
   const weekAgo = new Date(now.getTime() - WEEK);
@@ -135,6 +166,16 @@ export type ClientItem = {
 };
 
 export type ClientOverview = { actionNeeded: ClientItem[]; withClyntique: ClientItem[]; done: ClientItem[]; earlierWork: number };
+
+export type ClientMetrics = {
+  projectCount: number;
+};
+
+export async function getClientMetrics(user: CurrentUser): Promise<ClientMetrics> {
+  if (user.role !== "CLIENT") return { projectCount: 0 };
+  const projectCount = await prisma.project.count({ where: { clientId: user.id } });
+  return { projectCount };
+}
 
 export async function getClientOverview(user: CurrentUser): Promise<ClientOverview> {
   if (user.role !== "CLIENT") return { actionNeeded: [], withClyntique: [], done: [], earlierWork: 0 };

@@ -7,87 +7,85 @@
  */
 @theme {
   /*
-   * Neutrals: the brand kit's warm off-white (#FAF9F9) and warm greys derived
-   * from its Grey Orange. canvas = page, surface = panels, subtle = quiet
-   * fills, stage = the area behind a creative preview. Text: ink is Clyntique
-   * Navy; muted passes AA (5.8:1) on canvas; faint is for decorative marks only.
+   * Luminous white enterprise neutrals:
+   * canvas = ultra-clean, minimal neutral page backdrop (#F8F9FA)
+   * surface = pure crisp white (#FFFFFF) for cards, dialogs, and workspace panels
+   * subtle = cool whisper grey (#F1F3F5) for quiet hover and secondary fills
+   * stage = clean neutral studio backdrop (#EDF0F2) for creative previews
+   * line = subtle hairline divider (#E5E7EB)
+   * line-strong = refined border for active controls (#D1D5DB)
    */
-  --color-canvas: #faf9f9;
+  --color-canvas: #f8f9fa;
   --color-surface: #ffffff;
-  --color-subtle: #f5f2ee;
-  --color-stage: #eeeae4;
-  /* Warm cream for brand panels (sign-in). Ink 12.2:1, muted 5.3:1, gold-700 4.7:1 on it. */
-  --color-cream: #f4efe6;
-  --color-line: #e7e2da;
-  --color-line-strong: #d3ccc1;
-  --color-ink: #1a2c48;
-  --color-ink-soft: #3a4559;
-  --color-muted: #6b6156;
-  --color-faint: #a39a8e;
+  --color-subtle: #f1f3f5;
+  --color-stage: #edf0f2;
+  --color-cream: #faf9f6;
+  --color-line: #e5e7eb;
+  --color-line-strong: #d1d5db;
+  --color-ink: #0f172a;
+  --color-ink-soft: #334155;
+  --color-muted: #64748b;
+  --color-faint: #94a3b8;
 
-  /* Placeholder frames for creatives without a file: close variations of the stage colour. */
-  --color-placeholder-1: #ece8e1;
-  --color-placeholder-2: #e8e3db;
-  --color-placeholder-3: #efebe5;
-  --color-placeholder-4: #e9e5de;
+  /* Placeholder frames for creatives without a file: subtle neutral variations. */
+  --color-placeholder-1: #f1f3f5;
+  --color-placeholder-2: #e9ecef;
+  --color-placeholder-3: #f8f9fa;
+  --color-placeholder-4: #edf0f2;
 
   /*
-   * Accent: Clyntique Navy (brand kit #1A2C48). 600 = primary actions,
-   * 700 = links and accent text (and primary hover), 500 = focus and markers,
-   * 50-200 = tints for selected and "with Clyntique" states.
+   * Accent: Clyntique Navy (brand kit #1A2C48).
+   * 600 = primary actions, 700 = links and active hover, 500 = focus rings,
+   * 50-200 = clean neutral slate tints.
    */
-  --color-brand-50: #eef1f6;
-  --color-brand-100: #dce3ee;
-  --color-brand-200: #bfcbdd;
-  --color-brand-300: #93a5c0;
-  --color-brand-400: #5e7598;
-  --color-brand-500: #3a527a;
+  --color-brand-50: #f1f5f9;
+  --color-brand-100: #e2e8f0;
+  --color-brand-200: #cbd5e1;
+  --color-brand-300: #94a3b8;
+  --color-brand-400: #64748b;
+  --color-brand-500: #334155;
   --color-brand-600: #1a2c48;
-  --color-brand-700: #2a4470;
-  --color-brand-800: #22385c;
-  --color-brand-900: #132136;
+  --color-brand-700: #14233a;
+  --color-brand-800: #0f1a2b;
+  --color-brand-900: #0a111e;
 
   /*
-   * Clyntique Gold (brand kit #DCA858): a brand accent only, never a status.
-   * Gold on white is 2.15:1, so 500 is used on navy or as decoration; 700 is
-   * the only gold for text on light surfaces (5.4:1).
+   * Clyntique Gold (brand kit #DCA858): a restrained brand accent only, never a status.
+   * Gold on white: 700 passes WCAG AA contrast (5.4:1); 500 used for active pips and borders.
    */
-  --color-gold-50: #fbf5ea;
-  --color-gold-100: #f6ead3;
-  --color-gold-200: #eed69f;
-  --color-gold-300: #e6c27e;
+  --color-gold-50: #fdfaf3;
+  --color-gold-100: #fbf2de;
+  --color-gold-200: #f5e2b8;
+  --color-gold-300: #eed08d;
   --color-gold-500: #dca858;
-  --color-gold-600: #b98a3e;
+  --color-gold-600: #b88636;
   --color-gold-700: #8a6322;
 
   /*
    * Semantic tones. Each has one meaning across the app:
-   * positive = done / resolved, attention = the client needs to act (burnt
-   * orange, distinct from brand gold), critical = high severity and errors
-   * (crimson, distinct from attention). soft = fill, line = border,
-   * solid = dots and markers, strong = filled buttons, ink = text on soft.
-   * Every ink passes 6.6:1 on its soft fill; every solid and strong passes
-   * 4.5:1 on white.
+   * positive = done / resolved / internal approval
+   * attention = client action needed (changes requested, pending response)
+   * critical = high severity finding / system error
    */
-  --color-positive-soft: #e4f0e9;
-  --color-positive-line: #c3dccd;
-  --color-positive-solid: #2f7a55;
-  --color-positive-strong: #256346;
-  --color-positive-ink: #21593f;
+  --color-positive-soft: #ecfdf5;
+  --color-positive-line: #a7f3d0;
+  --color-positive-solid: #059669;
+  --color-positive-strong: #047857;
+  --color-positive-ink: #065f46;
 
-  --color-attention-soft: #fcebdd;
-  --color-attention-line: #f3c7a5;
-  --color-attention-solid: #b34d15;
-  --color-attention-strong: #a3440f;
-  --color-attention-ink: #8a3b0c;
+  --color-attention-soft: #fffbeb;
+  --color-attention-line: #fde68a;
+  --color-attention-solid: #d97706;
+  --color-attention-strong: #b45309;
+  --color-attention-ink: #92400e;
 
-  --color-critical-soft: #fbe6e8;
-  --color-critical-line: #f1c2c8;
-  --color-critical-solid: #b42335;
-  --color-critical-strong: #9c1d2e;
-  --color-critical-ink: #8e1d2c;
+  --color-critical-soft: #fef2f2;
+  --color-critical-line: #fecaca;
+  --color-critical-solid: #dc2626;
+  --color-critical-strong: #b91c1c;
+  --color-critical-ink: #991b1b;
 
-  /* Typography: Poppins (brand kit body face) for the interface, Geist Mono for the review record (versions, rounds, times). */
+  /* Typography: Poppins for interface, Geist Mono for review record */
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
@@ -97,10 +95,12 @@
   --radius-lg: 10px;
   --radius-xl: 14px;
 
-  /* Elevation: hairline borders do most of the work; shadows stay faint (navy-tinted). */
-  --shadow-card: 0 1px 2px rgb(12 21 36 / 0.04);
-  --shadow-pop: 0 10px 28px rgb(12 21 36 / 0.08), 0 1px 3px rgb(12 21 36 / 0.06);
-  --shadow-art: 0 6px 24px rgb(12 21 36 / 0.14);
+  /* Elevation: multi-layered subtle ambient shadows for white cards */
+  --shadow-2xs: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+  --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.05), 0 1px 2px -1px rgb(15 23 42 / 0.03);
+  --shadow-pop: 0 10px 25px -5px rgb(15 23 42 / 0.08), 0 8px 10px -6px rgb(15 23 42 / 0.04);
+  --shadow-art: 0 12px 32px -4px rgb(15 23 42 / 0.12);
 }
 
 @layer base {
