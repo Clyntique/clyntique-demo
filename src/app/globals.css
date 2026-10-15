@@ -85,7 +85,12 @@
   --color-critical-strong: #b91c1c;
   --color-critical-ink: #991b1b;
 
-  /* Typography: Poppins for interface, Geist Mono for review record */
+  /* Brand Core Colors: Navy #1A2C48, Gold #DCA858 */
+  --color-navy: #1a2c48;
+  --color-gold: #dca858;
+
+  /* Typography: Bayer TypeArchiType for headings, Poppins for interface, Geist Mono for review record */
+  --font-heading: var(--font-bayer), var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
@@ -114,6 +119,10 @@
     font-family: var(--font-sans);
   }
 
+  h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+  }
+
   ::selection {
     background: var(--color-brand-100);
   }
@@ -134,11 +143,19 @@
 }
 
 /*
- * Typography scale for Poppins (approved visual direction, 13 Oct 2026):
- * 11 · 12 · 13 · 14 · 15 · 18 · 24 · 32. Components use these utilities
- * instead of one-off pixel sizes.
+ * Typography scale: Bayer TypeArchiType for headings and prominent titles,
+ * Poppins for body text and UI elements.
  */
+@utility font-heading {
+  font-family: var(--font-heading);
+}
+
+@utility font-sans {
+  font-family: var(--font-sans);
+}
+
 @utility text-display {
+  font-family: var(--font-heading);
   font-size: 2rem;
   line-height: 2.5rem;
   font-weight: 600;
@@ -146,6 +163,7 @@
 }
 
 @utility text-page-title {
+  font-family: var(--font-heading);
   font-size: 1.5rem;
   line-height: 2rem;
   font-weight: 600;
@@ -153,6 +171,7 @@
 }
 
 @utility text-section-title {
+  font-family: var(--font-heading);
   font-size: 1.125rem;
   line-height: 1.625rem;
   font-weight: 600;
