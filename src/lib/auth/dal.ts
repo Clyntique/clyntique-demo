@@ -14,6 +14,7 @@ export type CurrentUser = {
   name: string;
   email: string;
   role: Role;
+  isPolicyAdmin?: boolean;
 };
 
 // Cached per request, so the layout and page share one database lookup.
@@ -23,7 +24,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   // Never select passwordHash here: this object can reach the UI.
   return prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true },
+    select: { id: true, name: true, email: true, role: true, isPolicyAdmin: true },
   });
 });
 

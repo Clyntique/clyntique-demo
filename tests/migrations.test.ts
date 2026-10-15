@@ -16,8 +16,14 @@ const sql = (folder: string) => readFileSync(join(dir, folder, "migration.sql"),
 const statements = (folder: string) => sql(folder).replace(/--.*$/gm, "");
 
 describe("prisma/migrations", () => {
-  it("starts with the 0_init baseline, followed by the submission-workflow, evidence-files and round-snapshot migrations", () => {
-    expect(folders).toEqual(["0_init", "20261009180000_submission_workflow", "20261011090000_evidence_files", "20261012190000_round_snapshot"]);
+  it("starts with the 0_init baseline, followed by the submission-workflow, evidence-files, round-snapshot, and compliance-policy-library migrations", () => {
+    expect(folders).toEqual([
+      "0_init",
+      "20261009180000_submission_workflow",
+      "20261011090000_evidence_files",
+      "20261012190000_round_snapshot",
+      "20261014220000_compliance_policy_library",
+    ]);
   });
 
   it("the round-snapshot migration adds three nullable columns and only fills those new columns", () => {
@@ -71,5 +77,21 @@ describe("prisma/migrations", () => {
   it("keeps the schema default for new creatives as SUBMISSION_REVIEW", () => {
     const schema = readFileSync(join(process.cwd(), "prisma", "schema.prisma"), "utf8");
     expect(schema).toMatch(/workflow\s+CreativeWorkflow\s+@default\(SUBMISSION_REVIEW\)/);
+  });
+
+  it("the compliance-policy-library migration is purely additive with ON DELETE RESTRICT on historical findings and versions", () => {
+    const body = statements("20261014220000_compliance_policy_library");
+    expect(body).toContain('ALTER TABLE "User" ADD COLUMN "isPolicyAdmin" BOOLEAN NOT NULL DEFAULT false;');
+    expect(body).toContain('ALTER TABLE "Finding" ADD COLUMN "ruleVersionId" TEXT;');
+    expect(body).toContain('CREATE TABLE "PolicySource"');
+    expect(body).toContain('CREATE TABLE "PolicyRule"');
+    expect(body).toContain('CREATE TABLE "PolicyRuleVersion"');
+    expect(body).toContain('CREATE TABLE "PolicyRuleVersionSource"');
+    // Historical permanence checks (Requirement 2)
+    expect(body).toContain('FOREIGN KEY ("ruleVersionId") REFERENCES "PolicyRuleVersion"("id") ON DELETE RESTRICT');
+    expect(body).toContain('FOREIGN KEY ("ruleId") REFERENCES "PolicyRule"("id") ON DELETE RESTRICT');
+    expect(body).toContain('FOREIGN KEY ("versionId") REFERENCES "PolicyRuleVersion"("id") ON DELETE RESTRICT');
+    // Unverified default checks (Requirement 1)
+    expect(body).toContain('"verificationStatus" "PolicyVerificationStatus" NOT NULL DEFAULT \'UNVERIFIED\'');
   });
 });

@@ -25,6 +25,7 @@ import { AddFindingForm, CompleteReviewForm, RequestChangesForm, StartReviewForm
 import { EvidenceList } from "./review-history";
 import { SubmissionForm } from "./submission-form";
 import { SubmitPanel } from "./submit-panel";
+import { AICompliancePanel } from "./ai-compliance-panel";
 
 /*
  * The review workspace for a client submission (workflow SUBMISSION_REVIEW),
@@ -193,6 +194,22 @@ export async function SubmissionView({
     count: history.length,
     content: <HistoryLedger entries={history} showDisclaimer={Boolean(finalDecision)} />,
   };
+  const aiScanTab: TabSpec | null = team
+    ? {
+        id: "ai-compliance",
+        label: "AI Compliance",
+        content: (
+          <AICompliancePanel
+            creativeId={submission.id}
+            versionId={target?.versionId ?? submission.current?.id}
+            versionNumber={target?.versionNumber ?? submission.current?.versionNumber}
+            inReview={inReview}
+            markets={submission.markets}
+            platforms={submission.platforms}
+          />
+        ),
+      }
+    : null;
   const defaultTab = actionable ? "findings" : canManageEvidence && submission.status === "DRAFT" ? "evidence" : review.findings.length ? "findings" : "history";
 
   // ---- Header context --------------------------------------------------------
@@ -285,7 +302,11 @@ export async function SubmissionView({
           </section>
 
           <div className="rounded-xl border border-line bg-surface p-4 shadow-xs">
-            <Tabs label="Compliance Inspector" defaultId={defaultTab} tabs={[findingsTab, evidenceTab, historyTab]} />
+            <Tabs
+              label="Compliance Inspector"
+              defaultId={defaultTab}
+              tabs={[findingsTab, ...(aiScanTab ? [aiScanTab] : []), evidenceTab, historyTab]}
+            />
           </div>
         </aside>
 

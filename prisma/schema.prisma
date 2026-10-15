@@ -169,6 +169,10 @@ model User {
   findingEvidence   FindingEvidence[]
   addedEvidence     Evidence[]        @relation("EvidenceAddedBy")
   withdrawnEvidence Evidence[]        @relation("EvidenceWithdrawnBy")
+
+  isPolicyAdmin              Boolean             @default(false)
+  createdPolicyRuleVersions  PolicyRuleVersion[] @relation("RuleVersionCreatedBy")
+  approvedPolicyRuleVersions PolicyRuleVersion[] @relation("RuleVersionApprovedBy")
 }
 
 // A campaign/client project, e.g. "Acme Health — Q4 Campaign".
@@ -444,8 +448,14 @@ model Finding {
   markets           FindingMarket[]
   platforms         FindingPlatform[]
 
+  // Optional link to the cited compliance policy rule version.
+  // Historical references are permanently preserved: onDelete Restrict.
+  ruleVersionId     String?
+  ruleVersion       PolicyRuleVersion? @relation(fields: [ruleVersionId], references: [id], onDelete: Restrict)
+
   @@index([creativeId])
   @@index([cycleId])
+  @@index([ruleVersionId])
 }
 
 // Append-only status history of a finding.
@@ -599,3 +609,127 @@ model LoginAttempt {
 
   @@index([key, createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// Compliance Policy Library (M6)
+// Managed internally by Clyntique TEAM Policy Administrators.
+
+enum PolicyAuthorityType {
+  REGULATION        // Government law (FTC, FDA, MOHAP, UAE Media Council)
+  PLATFORM_POLICY   // Ad platform policies (TikTok, Meta, Google Ads)
+  INTERNAL_RISK     // Clyntique internal risk guidance & enterprise protocol
+}
+
+enum PolicyVerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  REJECTED
+}
+
+enum PolicyRuleStatus {
+  DRAFT
+  PENDING_APPROVAL
+  ACTIVE
+  DEPRECATED
+}
+
+enum PolicyCategory {
+  EFFICACY_CLAIM
+  BEFORE_AFTER
+  DISCLOSURE
+  PRICING_PROMO
+  SUBSTANTIATION
+  RESTRICTED_PROCEDURES
+  MANDATORY_LABELING
+}
+
+// Official regulatory or platform publication source
+model PolicySource {
+  id                 String                   @id @default(cuid())
+  name               String
+  authorityName      String
+  authorityType      PolicyAuthorityType
+  jurisdictionCode   String                   // "US", "AE", "GLOBAL", etc.
+  officialUrl        String
+  publishedAt        DateTime?
+  lastAuditedAt      DateTime                 @default(now())
+  verificationStatus PolicyVerificationStatus @default(UNVERIFIED)
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+
+  citations          PolicyRuleVersionSource[]
+
+  @@index([authorityType, jurisdictionCode])
+}
+
+// Canonical compliance rule entity
+model PolicyRule {
+  id                   String              @id @default(cuid())
+  code                 String              @unique // e.g. "US-FTC-DISC-01", "AE-MOH-LIC-01", "TIKTOK-HLT-01"
+  title                String
+  authorityType        PolicyAuthorityType
+  jurisdictionCode     String              // "US", "AE", "GLOBAL"
+  subJurisdiction      String?             // e.g. "California", "Dubai"
+  platformCode         String?             // "TIKTOK", "META", "GOOGLE", null for platform-agnostic
+  industry             String              @default("HEALTHCARE") // "HEALTHCARE", "AESTHETICS", "GENERAL"
+  category             PolicyCategory
+  currentVersionNumber Int                 @default(1)
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  versions             PolicyRuleVersion[]
+
+  @@index([jurisdictionCode, platformCode])
+  @@index([authorityType, category])
+}
+
+// Immutable rule version with complete audit history and maker-checker tracking
+model PolicyRuleVersion {
+  id                      String                   @id @default(cuid())
+  ruleId                  String
+  versionNumber           Int
+  title                   String
+  summary                 String
+  legalExplanation        String
+  remediationAction       String
+  applicabilityConditions String[]
+  exceptions              String[]
+  effectiveFrom           DateTime                 @default(now())
+  effectiveTo             DateTime?
+  status                  PolicyRuleStatus         @default(PENDING_APPROVAL)
+  verificationStatus      PolicyVerificationStatus @default(UNVERIFIED)
+  changeSummary           String
+  createdById             String
+  approvedById            String?
+  approvedAt              DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  rule                    PolicyRule               @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  createdBy               User                     @relation("RuleVersionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy              User?                    @relation("RuleVersionApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  sources                 PolicyRuleVersionSource[]
+  findings                Finding[]
+
+  @@unique([ruleId, versionNumber])
+  @@index([status, verificationStatus])
+}
+
+// Granular citation connecting rule versions to exact source sections
+model PolicyRuleVersionSource {
+  id               String            @id @default(cuid())
+  versionId        String
+  sourceId         String
+  sectionReference String            // e.g. "16 CFR § 255.5", "Cabinet Resolution 23/2020 Art. 4"
+  sectionTitle     String
+  directUrl        String
+  excerpt          String?
+  createdAt        DateTime          @default(now())
+
+  version          PolicyRuleVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  source           PolicySource      @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@index([versionId])
+  @@index([sourceId])
+}
+

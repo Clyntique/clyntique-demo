@@ -15,10 +15,13 @@
     "db:inventory": "tsx prisma/db-inventory.ts",
     "db:export": "tsx prisma/db-export.ts",
     "db:migrate:status": "prisma migrate status",
+    "db:restore": "tsx prisma/db-restore.ts",
+    "db:grant-policy-admin": "tsx prisma/grant-policy-admin.ts",
     "blob:orphans": "tsx prisma/blob-orphans.ts",
     "test": "vitest run"
   },
   "dependencies": {
+    "@google/genai": "^2.29.1",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "@vercel/blob": "2.8.1",
