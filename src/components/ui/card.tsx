@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 // A panel: hairline border on a white surface. Used for content that needs to
 // be set apart, not as a wrapper for every block.
 export function Card({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("rounded-lg border border-line bg-surface", className)} {...props} />;
+  return <div className={cn("rounded-lg border border-line bg-surface shadow-xs", className)} {...props} />;
 }
 
 // Header row for a card or page section: title on the left, optional action on the right.

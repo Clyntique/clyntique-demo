@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { SparklesIcon, AlertIcon, CheckIcon, ShieldIcon, ExternalLinkIcon } from "@/components/ui/icons";
+import Link from "next/link";
+import {
+  SparklesIcon,
+  AlertIcon,
+  CheckIcon,
+  ShieldIcon,
+  ExternalLinkIcon,
+  ClockIcon,
+} from "@/components/ui/icons";
 import { runAICreativeScan, acceptAIFindingAction } from "@/lib/ai/actions";
 import type { AIAnalysisResult, AISuggestedFinding } from "@/lib/ai/types";
 import { cn } from "@/lib/cn";
@@ -71,22 +79,22 @@ export function AICompliancePanel({
   const visibleFindings = scanResult?.findings.filter((f) => !dismissedFindingIds.has(f.id)) ?? [];
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5 shadow-xs">
+    <div className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-5 shadow-xs">
       {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-brand-200">
-            <SparklesIcon className="size-4.5" />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 ring-1 ring-brand-200/60 shadow-2xs">
+            <SparklesIcon className="size-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-small font-semibold text-ink">Gemini AI Compliance Scan</h3>
-              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-meta font-medium text-brand-800">
+              <h3 className="text-base font-semibold text-ink">Gemini AI Compliance Assistant</h3>
+              <span className="rounded-full bg-brand-100 px-2 py-0.5 text-micro font-semibold text-brand-800">
                 TEAM Only
               </span>
             </div>
             <p className="text-caption text-muted">
-              Multimodal creative analysis grounded strictly in verified Clyntique policies.
+              Multimodal image and text evaluation grounded strictly in active, approved compliance policies.
             </p>
           </div>
         </div>
@@ -96,38 +104,53 @@ export function AICompliancePanel({
           onClick={() => handleRunScan(Boolean(scanResult))}
           disabled={isScanning}
           className={cn(
-            "inline-flex items-center gap-2 rounded-lg px-3.5 py-1.5 text-small font-medium transition-colors shadow-2xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
+            "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-small font-medium transition-all shadow-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600",
             isScanning
               ? "cursor-not-allowed bg-subtle text-muted"
               : "bg-brand-600 text-white hover:bg-brand-700 active:bg-brand-800"
           )}
         >
-          <SparklesIcon className={cn("size-3.5", isScanning && "animate-spin")} />
-          <span>{isScanning ? "Scanning with Gemini..." : scanResult ? "Re-scan Creative" : "Run AI Scan"}</span>
+          <SparklesIcon className={cn("size-4", isScanning && "animate-spin")} />
+          <span>{isScanning ? "Scanning Creative..." : scanResult ? "Re-run AI Scan" : "Run AI Scan"}</span>
         </button>
       </div>
 
-      {/* Scanning status banner */}
+      {/* Honest Scanning Indicator: Single request server action */}
       {isScanning && (
-        <div className="flex items-center gap-3 rounded-lg border border-brand-200 bg-brand-50/60 p-4 text-brand-900 animate-pulse">
-          <div className="size-2 rounded-full bg-brand-600 animate-ping" />
-          <p className="text-small font-medium">
-            Analyzing creative visuals, OCR text, and promotional claims against verified compliance policies...
-          </p>
+        <div className="flex flex-col gap-3 rounded-xl border border-brand-200 bg-brand-50/50 p-5 text-brand-900 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-brand-100 text-brand-800 animate-pulse">
+              <SparklesIcon className="size-4.5 animate-spin" />
+            </div>
+            <div>
+              <p className="text-small font-semibold text-brand-900">
+                Analyzing creative with Google Gemini...
+              </p>
+              <p className="text-caption text-brand-700">
+                Evaluating advertising visuals, extracting OCR copy, and verifying claims against approved compliance rules.
+              </p>
+            </div>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-brand-200/70">
+            <div className="h-full w-1/2 rounded-full bg-brand-600 animate-[pulse_1.5s_ease-in-out_infinite]" />
+          </div>
         </div>
       )}
 
       {/* Global error banner */}
       {errorMessage && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-danger-line bg-danger-soft p-3.5 text-danger-ink">
-          <AlertIcon className="size-4 shrink-0 mt-0.5" />
-          <p className="text-small font-medium break-words">{errorMessage}</p>
+        <div className="flex items-start gap-3 rounded-xl border border-danger-line bg-danger-soft p-4 text-danger-ink shadow-xs">
+          <AlertIcon className="size-5 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <p className="text-small font-semibold">Scan Error</p>
+            <p className="text-caption mt-0.5 break-words text-danger-ink/90">{errorMessage}</p>
+          </div>
         </div>
       )}
 
       {/* Action success message */}
       {actionSuccessMessage && (
-        <div className="flex items-center gap-2 rounded-lg border border-positive-line bg-positive-soft p-3 text-positive-ink">
+        <div className="flex items-center gap-2.5 rounded-xl border border-positive-line bg-positive-soft p-3.5 text-positive-ink shadow-xs">
           <CheckIcon className="size-4 shrink-0" />
           <p className="text-small font-medium">{actionSuccessMessage}</p>
         </div>
@@ -135,78 +158,110 @@ export function AICompliancePanel({
 
       {/* Empty Initial State */}
       {!scanResult && !isScanning && !errorMessage && (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-line-strong py-8 px-4 text-center">
-          <ShieldIcon className="size-8 text-muted/60 mb-2" />
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-line-strong py-10 px-6 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-3">
+            <ShieldIcon className="size-6" />
+          </div>
           <h4 className="text-small font-semibold text-ink">Ready for AI Compliance Scan</h4>
-          <p className="text-caption mt-1 max-w-md text-muted">
-            Launch Gemini 3.5 Flash to inspect the creative image, extract visual copy, verify claims,
-            and cross-reference approved US, UAE, Meta, TikTok, and Google policies.
+          <p className="text-caption mt-1.5 max-w-md text-muted leading-relaxed">
+            Execute Google Gemini multimodal analysis to inspect the creative image, extract visual text,
+            detect promotional claims, and verify against approved US, UAE, Meta, TikTok, and Google policies.
           </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-micro text-muted">
+            <span className="rounded bg-slate-100 px-2 py-0.5 font-medium">Multimodal OCR</span>
+            <span>·</span>
+            <span className="rounded bg-slate-100 px-2 py-0.5 font-medium">Grounded Citations</span>
+            <span>·</span>
+            <span className="rounded bg-slate-100 px-2 py-0.5 font-medium">Human-in-the-Loop</span>
+          </div>
         </div>
       )}
 
       {/* Scan Results View */}
       {scanResult && !isScanning && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
           {/* Metadata pill bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-subtle/60 px-3 py-2 text-caption text-muted">
-            <span className="flex items-center gap-1.5 font-medium text-ink">
-              <span className="size-2 rounded-full bg-positive-solid" />
-              {scanResult.modelUsed || "Google Gemini"}
-            </span>
-            {scanResult.executionTimeMs && <span>Execution: {scanResult.executionTimeMs}ms</span>}
-            <span>Version: V{versionNumber ?? 1}</span>
-            <span>Target: {markets.map((m) => m.code).join(", ") || "Global"} · {platforms.map((p) => p.code).join(", ") || "Universal"}</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-slate-50/80 px-4 py-2.5 text-caption text-muted">
+            <div className="flex items-center gap-2 font-medium text-slate-800">
+              <span className="size-2 rounded-full bg-emerald-500" />
+              <span>Model: <span className="font-mono text-ink font-semibold">{scanResult.modelUsed || "Google Gemini"}</span></span>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-caption text-slate-600">
+              {scanResult.executionTimeMs && (
+                <span className="inline-flex items-center gap-1">
+                  <ClockIcon className="size-3.5 text-slate-400" />
+                  <span>{scanResult.executionTimeMs}ms latency</span>
+                </span>
+              )}
+              <span>Version: V{versionNumber ?? 1}</span>
+              <span>Target: {markets.map((m) => m.code).join(", ") || "Global"} · {platforms.map((p) => p.code).join(", ") || "Universal"}</span>
+            </div>
           </div>
 
           {/* Insufficient coverage status */}
           {scanResult.status === "INSUFFICIENT_COVERAGE" && (
-            <div className="rounded-lg border border-attention-line bg-attention-soft p-4 text-attention-ink">
-              <div className="flex items-center gap-2 font-semibold">
-                <AlertIcon className="size-4 shrink-0" />
-                <span>Insufficient policy coverage — manual review required.</span>
+            <div className="rounded-xl border border-attention-line bg-attention-soft p-5 text-attention-ink shadow-xs">
+              <div className="flex items-start gap-3">
+                <AlertIcon className="size-5 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h4 className="text-small font-semibold">
+                    Insufficient policy coverage — manual review required
+                  </h4>
+                  <p className="text-caption text-slate-700 leading-relaxed">
+                    Zero active, approved policies in the database currently match this creative&apos;s target jurisdiction and platform parameters.
+                    The AI review engine strictly requires approved policies to prevent hallucinated compliance violations.
+                  </p>
+                  <div className="pt-2">
+                    <Link
+                      href="/admin/policies"
+                      className="inline-flex items-center gap-1.5 text-small font-semibold text-brand-700 hover:text-brand-900"
+                    >
+                      <span>Manage & Approve Policies in Library</span>
+                      <ExternalLinkIcon className="size-3.5" />
+                    </Link>
+                  </div>
+                </div>
               </div>
-              <p className="text-small mt-1 text-ink-soft">
-                Zero active, verified policies currently match this creative&apos;s jurisdiction and platform parameters.
-                Review the submission manually or import and approve applicable policies in the Policy Library.
-              </p>
             </div>
           )}
 
           {/* Rate limited status */}
           {scanResult.status === "RATE_LIMITED" && (
-            <div className="rounded-lg border border-attention-line bg-attention-soft p-4 text-attention-ink">
-              <div className="flex items-center gap-2 font-semibold">
-                <AlertIcon className="size-4 shrink-0" />
+            <div className="rounded-xl border border-attention-line bg-attention-soft p-5 text-attention-ink shadow-xs">
+              <div className="flex items-center gap-2.5 font-semibold text-small">
+                <AlertIcon className="size-5 shrink-0" />
                 <span>Gemini API Rate Limit Reached</span>
               </div>
-              <p className="text-small mt-1 text-ink-soft">
-                {scanResult.summary}
+              <p className="text-caption mt-1.5 text-slate-700">
+                {scanResult.summary || "The rate limit for Google Gemini API has been reached. Please wait a moment and try again."}
               </p>
             </div>
           )}
 
-          {/* Summary Box */}
+          {/* Executive Summary */}
           {scanResult.summary && scanResult.status === "SUCCESS" && (
-            <div className="rounded-lg border border-line bg-subtle/40 p-3.5">
-              <p className="text-eyebrow text-muted mb-1">Executive Summary</p>
-              <p className="text-small font-medium text-ink">{scanResult.summary}</p>
+            <div className="rounded-xl border border-line bg-slate-50/50 p-4">
+              <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1.5">Executive Summary</p>
+              <p className="text-small font-medium text-ink leading-relaxed">{scanResult.summary}</p>
             </div>
           )}
 
           {/* OCR Visual Text Chips */}
           {scanResult.extractedVisualText.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <p className="text-eyebrow text-muted">Extracted Visual Text (OCR)</p>
-              <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <p className="text-micro font-semibold uppercase tracking-wider text-muted">Extracted Visual Text (OCR)</p>
+                <span className="text-micro text-muted">{scanResult.extractedVisualText.length} text fragments found</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 {scanResult.extractedVisualText.map((t, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center rounded-md border border-line bg-surface px-2.5 py-1 text-caption font-mono text-ink shadow-2xs"
+                    className="inline-flex items-center rounded-lg border border-line bg-surface px-3 py-1 text-caption font-mono text-ink shadow-2xs"
                     title={t.location ? `Location: ${t.location}` : undefined}
                   >
                     &ldquo;{t.text}&rdquo;
-                    {t.location && <span className="ml-1 text-meta text-muted">({t.location})</span>}
+                    {t.location && <span className="ml-1.5 text-micro text-muted">({t.location})</span>}
                   </span>
                 ))}
               </div>
@@ -215,16 +270,21 @@ export function AICompliancePanel({
 
           {/* Detected Claims */}
           {scanResult.detectedClaims.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <p className="text-eyebrow text-muted">Detected Claims & Promotional Statements</p>
-              <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <p className="text-micro font-semibold uppercase tracking-wider text-muted">Detected Promotional Statements & Claims</p>
+                <span className="text-micro text-muted">{scanResult.detectedClaims.length} claims identified</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 {scanResult.detectedClaims.map((c, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2.5 py-1 text-caption text-ink shadow-2xs"
+                    className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-1.5 text-caption text-ink shadow-2xs"
                   >
-                    <span className="font-semibold text-brand-800 text-meta">[{c.category}]</span>
-                    <span>{c.claimText}</span>
+                    <span className="rounded bg-brand-50 px-1.5 py-0.5 text-micro font-semibold text-brand-800">
+                      {c.category}
+                    </span>
+                    <span>&ldquo;{c.claimText}&rdquo;</span>
                   </span>
                 ))}
               </div>
@@ -232,47 +292,58 @@ export function AICompliancePanel({
           )}
 
           {/* Grounded Policy Findings List */}
-          <div className="flex flex-col gap-2.5 border-t border-line pt-3">
+          <div className="flex flex-col gap-3 border-t border-line pt-4">
             <div className="flex items-center justify-between">
-              <p className="text-eyebrow text-muted">
-                Grounded Policy Suggestions ({visibleFindings.length})
-              </p>
-              <span className="text-meta text-muted">Strict Grounding Enforced</span>
+              <div className="flex items-center gap-2">
+                <h4 className="text-small font-semibold text-ink">
+                  Grounded Compliance Findings ({visibleFindings.length})
+                </h4>
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-micro font-medium text-emerald-700">
+                  Strict Grounding
+                </span>
+              </div>
+              <span className="text-caption text-muted">Reviewer decision required</span>
             </div>
 
             {visibleFindings.length === 0 ? (
-              <div className="rounded-lg border border-line bg-subtle/30 p-4 text-center">
-                <p className="text-small text-muted">
-                  No policy violations detected among approved, verified policies for this creative.
+              <div className="rounded-xl border border-line bg-slate-50/50 p-6 text-center">
+                <div className="flex size-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 mx-auto mb-2">
+                  <CheckIcon className="size-4" />
+                </div>
+                <p className="text-small font-medium text-ink">
+                  No policy violations detected
+                </p>
+                <p className="text-caption mt-0.5 text-muted">
+                  The creative complies with all currently approved, applicable policies for this jurisdiction.
                 </p>
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-4">
                 {visibleFindings.map((f) => {
                   const isAccepted = acceptedFindingIds.has(f.id);
                   return (
                     <div
                       key={f.id}
                       className={cn(
-                        "flex flex-col gap-2.5 rounded-xl border p-4 shadow-2xs transition-colors",
+                        "flex flex-col gap-3 rounded-xl border p-5 shadow-2xs transition-all",
                         isAccepted
-                          ? "border-positive-line/70 bg-positive-soft/30"
-                          : "border-line bg-surface"
+                          ? "border-positive-line/80 bg-positive-soft/20"
+                          : "border-line bg-surface hover:border-slate-300"
                       )}
                     >
                       {/* Finding Header */}
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <SeverityBadge severity={f.severity} />
-                          <span className="rounded-md bg-subtle px-2 py-0.5 text-record font-mono font-semibold text-ink ring-1 ring-line ring-inset">
+                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-record font-mono font-semibold text-slate-800">
                             {f.policyCitation.ruleCode}
                           </span>
-                          <span className="text-meta text-muted">
-                            {f.policyCitation.authorityType}
+                          <span className="text-caption font-medium text-muted">
+                            {f.policyCitation.authorityType.replace("_", " ")}
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-meta text-muted font-medium">
+                          <span className="text-caption font-semibold text-slate-700">
                             {Math.round(f.confidenceScore * 100)}% Confidence
                           </span>
                         </div>
@@ -280,56 +351,58 @@ export function AICompliancePanel({
 
                       {/* Issue & Explanation */}
                       <div>
-                        <h4 className="text-card-title font-semibold text-ink">{f.issue}</h4>
-                        <p className="text-small mt-1 text-ink-soft whitespace-pre-line">{f.explanation}</p>
+                        <h5 className="text-base font-semibold text-ink">{f.issue}</h5>
+                        <p className="text-small mt-1 text-slate-600 leading-relaxed whitespace-pre-line">{f.explanation}</p>
                       </div>
 
                       {/* Official Legal Citation Callout */}
-                      <div className="rounded-lg border border-line bg-subtle/50 p-2.5 text-caption">
+                      <div className="rounded-lg border border-line bg-slate-50/80 p-3 text-caption">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-ink">
-                            Official Source: {f.policyCitation.sectionReference}
+                            Official Regulatory Citation: {f.policyCitation.sectionReference}
                           </span>
                           {f.policyCitation.officialUrl && (
                             <a
                               href={f.policyCitation.officialUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center gap-1 text-brand-700 hover:text-brand-800 font-medium"
+                              className="inline-flex items-center gap-1 font-medium text-brand-700 hover:text-brand-900"
                             >
-                              <span>Official Doc</span>
+                              <span>Official Document</span>
                               <ExternalLinkIcon className="size-3" />
                             </a>
                           )}
                         </div>
                         {f.policyCitation.excerpt && (
-                          <p className="mt-1 italic text-muted text-meta">
+                          <p className="mt-1.5 italic text-slate-600 border-l-2 border-slate-300 pl-2">
                             &ldquo;{f.policyCitation.excerpt}&rdquo;
                           </p>
                         )}
                       </div>
 
-                      {/* Remediation Action */}
-                      <div className="rounded-lg bg-surface border border-line px-3 py-2 text-small">
-                        <span className="text-eyebrow text-muted block mb-0.5">Recommended Remediation</span>
+                      {/* Recommended Remediation */}
+                      <div className="rounded-lg bg-surface border border-line p-3 text-small">
+                        <span className="text-micro font-semibold uppercase tracking-wider text-muted block mb-1">
+                          Recommended Action Details
+                        </span>
                         <p className="font-medium text-ink">{f.actionDetails}</p>
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center justify-between pt-1 border-t border-line/60">
+                      {/* Actions & Decision Authority */}
+                      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-line/60">
                         {isAccepted ? (
                           <span className="inline-flex items-center gap-1.5 text-small font-medium text-positive-ink">
                             <CheckIcon className="size-4" />
                             <span>Accepted into Draft Review Findings</span>
                           </span>
                         ) : (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2.5">
                             {inReview && (
                               <button
                                 type="button"
                                 onClick={() => handleAcceptFinding(f)}
                                 disabled={isAccepting}
-                                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-small font-medium text-white hover:bg-brand-700 active:bg-brand-800 disabled:opacity-50 transition-colors shadow-2xs"
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3.5 py-1.5 text-small font-medium text-white hover:bg-brand-700 active:bg-brand-800 disabled:opacity-50 transition-colors shadow-2xs"
                               >
                                 <CheckIcon className="size-3.5" />
                                 <span>Accept Finding</span>
@@ -338,14 +411,14 @@ export function AICompliancePanel({
                             <button
                               type="button"
                               onClick={() => handleDismissFinding(f.id)}
-                              className="rounded-lg border border-line px-2.5 py-1.5 text-caption font-medium text-muted hover:bg-subtle hover:text-ink transition-colors"
+                              className="rounded-lg border border-line px-3 py-1.5 text-caption font-medium text-muted hover:bg-subtle hover:text-ink transition-colors"
                             >
                               Dismiss
                             </button>
                           </div>
                         )}
-                        <span className="text-meta text-muted">
-                          {isAccepted ? "Published finding remains under reviewer authority" : "Requires human confirmation"}
+                        <span className="text-caption text-muted">
+                          {isAccepted ? "Published under reviewer authority" : "Requires human reviewer confirmation"}
                         </span>
                       </div>
                     </div>
@@ -371,7 +444,7 @@ function SeverityBadge({ severity }: { severity: AISuggestedFinding["severity"] 
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-md border px-2 py-0.5 text-record font-semibold uppercase tracking-wider",
+        "inline-flex items-center rounded-md border px-2 py-0.5 text-micro font-bold uppercase tracking-wider",
         styles[severity]
       )}
     >
