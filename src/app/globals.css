@@ -89,10 +89,11 @@
   --color-navy: #1a2c48;
   --color-gold: #dca858;
 
-  /* Typography: Bayer TypeArchiType for headings, Poppins for interface, Geist Mono for review record */
+  /* Typography: Bayer TypeArchiType for headings, Poppins for interface, Geist Mono for review record, Alex Brush for script */
   --font-heading: var(--font-bayer), var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-script: var(--font-script), cursive;
 
   /* Radii */
   --radius-sm: 4px;
@@ -158,6 +159,10 @@
 
 @utility font-sans {
   font-family: var(--font-sans);
+}
+
+@utility font-script {
+  font-family: var(--font-script);
 }
 
 /* Brand display heading with generous line-height for Bayer TypeArchiType */
