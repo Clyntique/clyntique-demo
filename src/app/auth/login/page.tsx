@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Brand, BrandMark } from "@/components/layout/brand";
 import { REVIEW_DISCLAIMER } from "@/lib/workflow/labels";
 import { FileTextIcon, ShieldIcon, CheckCircleIcon } from "@/components/ui/icons";
@@ -117,6 +118,20 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* Auth Mode Toggle Tabs */}
+            <div className="mb-6 grid grid-cols-2 rounded-xl border border-line bg-subtle p-1 shadow-2xs">
+              <div className="flex items-center justify-center rounded-lg bg-surface py-2.5 text-small font-semibold text-ink shadow-2xs">
+                Sign In
+              </div>
+              <Link
+                href="/auth/signup"
+                prefetch={true}
+                className="flex items-center justify-center rounded-lg py-2.5 text-small font-medium text-muted hover:text-ink transition-colors cursor-pointer"
+              >
+                Create Account
+              </Link>
+            </div>
+
             {/* Form Card */}
             <div className="rounded-2xl border border-line bg-surface p-7 shadow-card sm:p-9">
               <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-subtle/70" />}>
@@ -124,7 +139,21 @@ export default function LoginPage() {
               </Suspense>
             </div>
 
-            {/* Auth extras: signup link + demo logins (render only when enabled on the server) */}
+            {/* Direct Sign-up Link */}
+            <div className="mt-4 text-center">
+              <p className="text-small text-muted">
+                New client?{" "}
+                <Link
+                  href="/auth/signup"
+                  prefetch={true}
+                  className="font-semibold text-brand-700 hover:text-brand-900 transition-colors underline-offset-2 hover:underline"
+                >
+                  Create a client account
+                </Link>
+              </p>
+            </div>
+
+            {/* Auth extras: demo logins (render only when enabled on the server) */}
             <AuthExtras />
 
             <p className="text-caption mt-6 text-center text-muted/80 lg:hidden leading-relaxed">

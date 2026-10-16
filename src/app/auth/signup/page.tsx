@@ -88,11 +88,39 @@ export default function SignupPage() {
               </p>
             </div>
 
+            {/* Auth Mode Toggle Tabs */}
+            <div className="mb-6 grid grid-cols-2 rounded-xl border border-line bg-subtle p-1 shadow-2xs">
+              <Link
+                href="/auth/login"
+                prefetch={true}
+                className="flex items-center justify-center rounded-lg py-2.5 text-small font-medium text-muted hover:text-ink transition-colors cursor-pointer"
+              >
+                Sign In
+              </Link>
+              <div className="flex items-center justify-center rounded-lg bg-surface py-2.5 text-small font-semibold text-ink shadow-2xs">
+                Create Account
+              </div>
+            </div>
+
             {/* Form Card */}
             <div className="rounded-2xl border border-line bg-surface p-7 shadow-card sm:p-9">
               <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-subtle/70" />}>
                 <SignupGate />
               </Suspense>
+            </div>
+
+            {/* Direct Sign-in Link */}
+            <div className="mt-4 text-center">
+              <p className="text-small text-muted">
+                Already registered?{" "}
+                <Link
+                  href="/auth/login"
+                  prefetch={true}
+                  className="font-semibold text-brand-700 hover:text-brand-900 transition-colors underline-offset-2 hover:underline"
+                >
+                  Sign in to your workspace
+                </Link>
+              </p>
             </div>
 
             <p className="text-caption mt-6 text-center text-muted/80 lg:hidden leading-relaxed">
