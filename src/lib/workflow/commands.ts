@@ -82,8 +82,8 @@ async function validCodes(kind: "market" | "platform", codes: string[]) {
   return rows.length === unique.length ? { ok: true as const, codes: unique } : { ok: false as const };
 }
 
-async function latestVersion(creativeId: string) {
-  return prisma.creativeVersion.findFirst({
+async function latestVersion(creativeId: string, db: Prisma.TransactionClient = prisma) {
+  return db.creativeVersion.findFirst({
     where: { creativeId },
     orderBy: { versionNumber: "desc" },
     select: { id: true, versionNumber: true },
@@ -108,6 +108,20 @@ async function currentRound(creativeId: string) {
 
 function activity(tx: Prisma.TransactionClient, s: Loaded, user: CurrentUser, type: Prisma.ActivityCreateInput["type"], message: string) {
   return tx.activity.create({ data: { projectId: s.projectId, creativeId: s.id, userId: user.id, type, message } });
+}
+
+/**
+ * First statement of a transaction that must not interleave with a status
+ * change: a guarded no-op write that takes the submission's row lock and
+ * re-checks its status after any concurrent writer has committed. Nothing
+ * visible changes (the "updated" time is written back as it was).
+ */
+async function lockSubmission(tx: Prisma.TransactionClient, s: Loaded, status: Loaded["status"]) {
+  const { count } = await tx.creative.updateMany({
+    where: { id: s.id, workflow: "SUBMISSION_REVIEW", status },
+    data: { updatedAt: s.updatedAt },
+  });
+  if (!count) throw new Conflict("This submission changed meanwhile. Refresh and try again.");
 }
 
 async function run<T>(label: string, fn: () => Promise<CommandResult<T>>): Promise<CommandResult<T>> {
@@ -194,6 +208,11 @@ export async function updateDraft(user: CurrentUser, creativeId: string, input: 
   const isDraft = g.s.status === "DRAFT";
   const targeting = input.marketCodes !== undefined || input.platformCodes !== undefined;
   if (targeting && !isDraft) return fail("Markets and platforms can't be changed after submission.");
+  if (!isDraft) {
+    // The creative type is part of what the team reviewed and isn't snapshotted per round.
+    const stored = await prisma.creative.findUnique({ where: { id: g.s.id }, select: { format: true } });
+    if (stored && stored.format !== valid.data.format) return fail("The creative type can't be changed after submission.");
+  }
   const markets = await validCodes("market", input.marketCodes ?? []);
   const platforms = await validCodes("platform", input.platformCodes ?? []);
   if (!markets.ok || !platforms.ok) return fail("Choose markets and platforms from the list.");
@@ -251,12 +270,21 @@ export async function submitForReview(user: CurrentUser, creativeId: string): Pr
         data: { status: "SUBMITTED", submittedAt: new Date() },
       });
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
+      // Re-read under the row lock: an upload or targeting edit that committed
+      // after the checks above is either included here or rejected.
+      const [lockedVersion, lockedMarkets, lockedPlatforms] = await Promise.all([
+        latestVersion(g.s.id, tx),
+        tx.submissionMarket.count({ where: { creativeId: g.s.id, market: { active: true } } }),
+        tx.submissionPlatform.count({ where: { creativeId: g.s.id, platform: { active: true } } }),
+      ]);
+      const lockedGaps = submitGaps({ versionCount: lockedVersion ? 1 : 0, marketCount: lockedMarkets, platformCount: lockedPlatforms });
+      if (lockedGaps.length || !lockedVersion) throw new Conflict(`Before submitting: ${lockedGaps.map((gap) => SUBMIT_GAP_MESSAGE[gap]).join(" ")}`);
       const cycle = await tx.reviewCycle.create({ data: { creativeId: g.s.id, number: 1, openedById: user.id }, select: { id: true } });
       const round = await tx.submissionRound.create({
-        data: { creativeId: g.s.id, cycleId: cycle.id, number: 1, versionId: version.id, submittedById: user.id, ...(await detailsSnapshot(tx, g.s.id)) },
+        data: { creativeId: g.s.id, cycleId: cycle.id, number: 1, versionId: lockedVersion.id, submittedById: user.id, ...(await detailsSnapshot(tx, g.s.id)) },
         select: { id: true },
       });
-      await activity(tx, g.s, user, "SUBMISSION_SUBMITTED", `Submitted “${g.s.name}” for review (V${version.versionNumber})`);
+      await activity(tx, g.s, user, "SUBMISSION_SUBMITTED", `Submitted “${g.s.name}” for review (V${lockedVersion.versionNumber})`);
       return { ok: true as const, roundId: round.id };
     }),
   );
@@ -299,6 +327,7 @@ export async function respondToFinding(
 
   return run("respondToFinding", async () =>
     prisma.$transaction(async (tx) => {
+      await lockSubmission(tx, g.s, "CHANGES_REQUESTED");
       await tx.findingResponse.create({
         data: { findingId: finding.id, authorId: user.id, message: message!, versionId: version?.id ?? null, roundId: current?.round?.id ?? null },
       });
@@ -341,12 +370,18 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
         data: { status: "SUBMITTED" },
       });
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
+      // Re-read under the row lock, so a revision uploaded or a response or
+      // evidence change committed meanwhile is part of this round's checks.
+      const lockedVersion = await latestVersion(g.s.id, tx);
+      const locked = await loadReadiness(g.s.id, current.cycle.id, tx);
+      if (!lockedVersion) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
+      if (locked.gaps.length) throw new Conflict(`Address every open finding before resubmitting (${locked.gaps.length} item${locked.gaps.length === 1 ? "" : "s"} outstanding).`);
       const round = await tx.submissionRound.create({
         data: {
           creativeId: g.s.id,
           cycleId: current.cycle.id,
           number: current.round!.number + 1, // unique (cycleId, number) rejects a concurrent duplicate
-          versionId: version.id,
+          versionId: lockedVersion.id,
           submittedById: user.id,
           note: cleanNote || null,
           ...(await detailsSnapshot(tx, g.s.id)),
@@ -354,7 +389,7 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
         select: { id: true },
       });
       // The client's prepared work becomes visible to the team with this round; summarise it once.
-      const since = requestedAt ?? new Date(0);
+      const since = locked.requestedAt ?? requestedAt ?? new Date(0);
       const [responses, evidence] = await Promise.all([
         tx.findingResponse.count({ where: { finding: { cycleId: current.cycle.id }, authorId: user.id, createdAt: { gt: since } } }),
         tx.evidence.count({ where: { creativeId: g.s.id, origin: "CLIENT_SUBMITTED", withdrawnAt: null, createdAt: { gt: since } } }),
@@ -365,7 +400,7 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
         g.s,
         user,
         "RESUBMITTED",
-        `Resubmitted “${g.s.name}” (V${version.versionNumber}, round ${current.round!.number + 1})${extras.length ? ` with ${extras.join(" and ")}` : ""}`,
+        `Resubmitted “${g.s.name}” (V${lockedVersion.versionNumber}, round ${current.round!.number + 1})${extras.length ? ` with ${extras.join(" and ")}` : ""}`,
       );
       return { ok: true as const, roundId: round.id };
     }),
@@ -552,6 +587,7 @@ export async function withdrawEvidence(user: CurrentUser, evidenceId: string): P
 
   return run("withdrawEvidence", async () =>
     prisma.$transaction(async (tx) => {
+      await lockSubmission(tx, g.s, g.s.status);
       const { count } = await tx.evidence.updateMany({
         where: { id: evidence.id, withdrawnAt: null, addedById: user.id, creative: { status: g.s.status } },
         data: { withdrawnAt: new Date(), withdrawnById: user.id },
@@ -637,6 +673,8 @@ export async function recordFinding(user: CurrentUser, input: FindingInput): Pro
 
   return run("recordFinding", async () =>
     prisma.$transaction(async (tx) => {
+      // A decision committed meanwhile closes the review: no findings after it.
+      await lockSubmission(tx, g.s, "IN_REVIEW");
       const finding = await tx.finding.create({
         data: {
           creativeId: g.s.id,
@@ -683,6 +721,7 @@ export async function updateDraftFinding(
 
   return run("updateDraftFinding", async () =>
     prisma.$transaction(async (tx) => {
+      await lockSubmission(tx, g.s, "IN_REVIEW");
       const { count } = await tx.finding.updateMany({ where: { id: finding.id, status: "DRAFT" }, data: valid.data });
       if (!count) throw new Conflict("This finding changed meanwhile. Refresh and try again.");
       await tx.findingMarket.deleteMany({ where: { findingId: finding.id } });
@@ -723,6 +762,7 @@ export async function reviewFinding(
 
   return run("reviewFinding", async () =>
     prisma.$transaction(async (tx) => {
+      await lockSubmission(tx, g.s, "IN_REVIEW");
       const now = new Date();
       const { count } = await tx.finding.updateMany({
         where: { id: finding.id, status: finding.status },
@@ -738,6 +778,15 @@ export async function reviewFinding(
       return { ok: true as const };
     }),
   );
+}
+
+/** True when two reads of a cycle's findings agree on every finding's status and severity. */
+function sameFindings(
+  a: { id: string; status: string; severity: string }[],
+  b: { id: string; status: string; severity: string }[],
+) {
+  const key = (list: typeof a) => list.map((f) => `${f.id}:${f.status}:${f.severity}`).sort().join("|");
+  return key(a) === key(b);
 }
 
 /** Publishes DRAFT findings (DRAFT -> OPEN) with history and one activity entry. */
@@ -797,6 +846,11 @@ export async function requestChanges(
         data: { status: "CHANGES_REQUESTED" },
       });
       if (!count) throw new Conflict("This submission changed while you were reviewing. Refresh and try again.");
+      // Re-check the findings under the row lock (another reviewer may have changed them).
+      const lockedFindings = await tx.finding.findMany({ where: { cycleId: ctx.cycleId }, select: { id: true, status: true, severity: true } });
+      if (!canRequestChanges(lockedFindings).ok || !sameFindings(findings, lockedFindings)) {
+        throw new Conflict("Findings changed while you were reviewing. Refresh and try again.");
+      }
       await publishDrafts(tx, g.s, user, drafts);
       // One decision per round (unique roundId) rejects a concurrent second decision.
       await tx.reviewDecision.create({
@@ -854,6 +908,9 @@ export async function completeReview(
         data: { status: "REVIEW_COMPLETE" },
       });
       if (!count) throw new Conflict("This submission changed while you were reviewing. Refresh and try again.");
+      // The outcome was judged on these findings; refuse if another reviewer changed them meanwhile.
+      const lockedFindings = await tx.finding.findMany({ where: { cycleId: ctx.cycleId }, select: { id: true, status: true, severity: true } });
+      if (!sameFindings(findings, lockedFindings)) throw new Conflict("Findings changed while you were reviewing. Refresh and try again.");
       await publishDrafts(tx, g.s, user, drafts);
       const closed = await tx.reviewCycle.updateMany({ where: { id: ctx.cycleId, closedAt: null }, data: { closedAt: new Date() } });
       if (!closed.count) throw new Conflict("This review cycle is already closed.");

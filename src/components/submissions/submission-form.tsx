@@ -99,10 +99,12 @@ export function SubmissionForm(
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className="mb-1.5 text-small font-medium text-ink-soft">Creative type</legend>
+        {/* The type is part of what the reviewer reviewed, so it's fixed once submitted (like markets and platforms). */}
+        {!showTargeting && <input type="hidden" name="format" value={str("format")} />}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {FORMAT_ORDER.map((f) => (
             <label key={f} className={optionClasses}>
-              <input type="radio" name="format" value={f} defaultChecked={str("format") === f} className="sr-only" />
+              <input type="radio" name="format" value={f} defaultChecked={str("format") === f} disabled={!showTargeting} className="sr-only" />
               <span className="text-small font-medium text-ink">{FORMATS[f].label}</span>
               <span className="text-meta">{FORMATS[f].ratio}</span>
             </label>

@@ -183,7 +183,13 @@ export function AICompliancePanel({
           {/* Metadata pill bar */}
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-slate-50/80 px-4 py-2.5 text-caption text-muted">
             <div className="flex items-center gap-2 font-medium text-slate-800">
-              <span className="size-2 rounded-full bg-emerald-500" />
+              {/* Green only for a completed scan; a failed or partial one never looks healthy. */}
+              <span
+                aria-hidden
+                className={`size-2 rounded-full ${
+                  scanResult.status === "SUCCESS" ? "bg-emerald-500" : scanResult.status === "ERROR" ? "bg-red-600" : "bg-amber-500"
+                }`}
+              />
               <span>Model: <span className="font-mono text-ink font-semibold">{scanResult.modelUsed || "Google Gemini"}</span></span>
             </div>
             <div className="flex flex-wrap items-center gap-4 text-caption text-slate-600">
