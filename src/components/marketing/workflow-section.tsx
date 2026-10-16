@@ -10,9 +10,6 @@ import {
 const WORKFLOW_STEPS = [
   {
     step: "1",
-    role: "TEAM",
-    badgeColor: "bg-[#1A2C48] text-white",
-    cardBg: "bg-surface",
     title: "Create a Project",
     icon: FolderIcon,
     summary:
@@ -21,9 +18,6 @@ const WORKFLOW_STEPS = [
   },
   {
     step: "2",
-    role: "CLIENT",
-    badgeColor: "bg-gold-500 text-brand-900",
-    cardBg: "bg-surface",
     title: "Submit Creatives",
     icon: UploadIcon,
     summary:
@@ -32,9 +26,6 @@ const WORKFLOW_STEPS = [
   },
   {
     step: "3",
-    role: "CLIENT",
-    badgeColor: "bg-gold-500 text-brand-900",
-    cardBg: "bg-surface",
     title: "Attach Evidence",
     icon: PaperclipIcon,
     summary:
@@ -43,9 +34,6 @@ const WORKFLOW_STEPS = [
   },
   {
     step: "4",
-    role: "TEAM",
-    badgeColor: "bg-[#1A2C48] text-white",
-    cardBg: "bg-surface",
     title: "Review & Give Feedback",
     icon: ClipboardCheckIcon,
     summary:
@@ -54,9 +42,6 @@ const WORKFLOW_STEPS = [
   },
   {
     step: "5",
-    role: "CLIENT",
-    badgeColor: "bg-gold-500 text-brand-900",
-    cardBg: "bg-surface",
     title: "Revise & Resubmit",
     icon: RefreshCwIcon,
     summary:
@@ -65,9 +50,6 @@ const WORKFLOW_STEPS = [
   },
   {
     step: "6",
-    role: "SHARED",
-    badgeColor: "bg-positive-solid text-white",
-    cardBg: "bg-surface border-positive-line/80",
     title: "Approve & Track",
     icon: AwardIcon,
     summary:
@@ -101,7 +83,7 @@ export function WorkflowSection() {
         {/* Desktop Alternating Workflow with Thin Dotted Connecting Lines */}
         <div className="hidden lg:block relative max-w-5xl mx-auto">
           {/* Alternating Steps */}
-          <div className="flex flex-col gap-12">
+          <div className="flex flex-col gap-14">
             {WORKFLOW_STEPS.map((step, idx) => {
               const isEven = idx % 2 === 1; // 0, 2, 4 left; 1, 3, 5 right
               const Icon = step.icon;
@@ -110,33 +92,20 @@ export function WorkflowSection() {
                 <div key={step.step} className="relative">
                   {/* Step Row */}
                   <div className={`flex w-full ${isEven ? "justify-end" : "justify-start"}`}>
-                    <div
-                      className={`relative z-10 w-[470px] rounded-3xl border border-line/80 p-7 shadow-card transition-all hover:shadow-card-hover ${step.cardBg}`}
-                    >
+                    <div className="relative z-10 w-[470px] rounded-3xl border border-line/80 bg-surface p-7 shadow-card transition-all hover:shadow-card-hover">
                       <div className="flex items-start gap-4">
-                        {/* Step Pill on Left (Inspired by Reference 3) */}
-                        <div
-                          className={`flex flex-col items-center justify-center rounded-2xl px-2.5 py-4 shrink-0 shadow-2xs ${step.badgeColor}`}
-                          style={{ minWidth: "48px" }}
-                        >
-                          <span className="text-[10px] font-bold tracking-wider uppercase opacity-90">
-                            {step.role}
-                          </span>
-                          <span className="text-small font-bold mt-1">#{step.step}</span>
+                        {/* Clean Round Icon Container */}
+                        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-subtle border border-line/80 text-brand-600 shadow-2xs">
+                          <Icon className="size-5" />
                         </div>
 
-                        {/* Card Body */}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex size-8 items-center justify-center rounded-lg bg-subtle text-brand-600">
-                              <Icon className="size-4.5" />
-                            </div>
-                            <h3 className="text-body font-semibold text-ink">
-                              {step.title}
-                            </h3>
-                          </div>
+                        {/* Card Content */}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-body font-semibold text-ink">
+                            {step.title}
+                          </h3>
 
-                          <p className="text-small mt-3 text-ink-soft leading-relaxed">
+                          <p className="text-small mt-2.5 text-ink-soft leading-relaxed">
                             {step.summary}
                           </p>
 
@@ -150,27 +119,28 @@ export function WorkflowSection() {
                     </div>
                   </div>
 
-                  {/* SVG Thin Dotted Connector Line between current step and next step */}
+                  {/* SVG Dotted Connector Line between current step and next step */}
                   {idx < WORKFLOW_STEPS.length - 1 && (
                     <div
                       aria-hidden
-                      className="pointer-events-none absolute left-0 right-0 top-1/2 -bottom-12 z-0"
+                      className="pointer-events-none absolute left-0 right-0 top-1/2 -bottom-14 z-0"
                     >
                       <svg
                         className="w-full h-full overflow-visible"
-                        viewBox="0 0 1000 120"
+                        viewBox="0 0 1000 140"
                         preserveAspectRatio="none"
                       >
                         <path
                           d={
                             !isEven
-                              ? "M 460 30 C 600 30, 600 90, 540 90" // Left to Right curve
-                              : "M 540 30 C 400 30, 400 90, 460 90" // Right to Left curve
+                              ? "M 470 30 C 660 30, 660 110, 530 110" // Left to Right curve
+                              : "M 530 30 C 340 30, 340 110, 470 110" // Right to Left curve
                           }
                           fill="none"
-                          stroke="#CBD5E1"
-                          strokeWidth="2"
-                          strokeDasharray="4 4"
+                          stroke="#DCA858"
+                          strokeWidth="2.5"
+                          strokeDasharray="6 6"
+                          strokeLinecap="round"
                         />
                       </svg>
                     </div>
@@ -186,7 +156,7 @@ export function WorkflowSection() {
           {/* Vertical connecting line */}
           <div
             aria-hidden
-            className="pointer-events-none absolute left-6 top-8 bottom-8 w-0.5 border-l-2 border-dashed border-line-strong"
+            className="pointer-events-none absolute left-6 top-8 bottom-8 w-0.5 border-l-2 border-dashed border-gold-300"
           />
 
           <div className="flex flex-col gap-6">
@@ -194,28 +164,16 @@ export function WorkflowSection() {
               const Icon = step.icon;
               return (
                 <div key={step.step} className="relative flex items-start gap-4">
-                  {/* Step Marker Badge */}
-                  <div
-                    className={`relative z-10 flex size-12 shrink-0 items-center justify-center rounded-2xl font-bold shadow-sm ${step.badgeColor}`}
-                  >
-                    <span className="text-small">#{step.step}</span>
+                  {/* Clean Icon Marker */}
+                  <div className="relative z-10 flex size-12 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-brand-600 shadow-2xs">
+                    <Icon className="size-5" />
                   </div>
 
                   {/* Card Content */}
-                  <div
-                    className={`flex-1 rounded-2xl border border-line p-5 shadow-2xs ${step.cardBg}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Icon className="size-4.5 text-brand-600" />
-                        <h3 className="text-small font-semibold text-ink">{step.title}</h3>
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted bg-subtle px-2 py-0.5 rounded">
-                        {step.role}
-                      </span>
-                    </div>
+                  <div className="flex-1 rounded-2xl border border-line bg-surface p-5 shadow-2xs">
+                    <h3 className="text-small font-semibold text-ink">{step.title}</h3>
 
-                    <p className="text-caption mt-2.5 text-ink-soft leading-relaxed">
+                    <p className="text-caption mt-2 text-ink-soft leading-relaxed">
                       {step.summary}
                     </p>
                     <p className="text-[11px] mt-2 text-muted border-t border-line/60 pt-2 leading-relaxed">

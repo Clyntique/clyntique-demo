@@ -6,7 +6,7 @@ import { getReviewSummary } from "@/lib/data/review-queue";
 import { basePathFor, ROLE_LABEL } from "@/lib/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/states";
-import { Brand } from "./brand";
+import { BrandMark } from "./brand";
 import { HistoryGuard } from "./history-guard";
 import { LogoutButton } from "./logout-button";
 import { MobileMenu } from "./mobile-menu";
@@ -39,8 +39,8 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
         }
         mobileHeader={
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur md:hidden">
-            <Link href={home} className="rounded-md" aria-label="Clyntique overview">
-              <Brand />
+            <Link href={home} className="rounded-md flex items-center" aria-label="Clyntique overview">
+              <BrandMark width={32} />
             </Link>
             <Suspense fallback={<Skeleton className="h-9 w-20" />}>
               <PhoneMenu role={role} />
@@ -114,8 +114,8 @@ function SidebarSkeleton({ role }: { role: Role }) {
       className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-line bg-surface md:flex"
     >
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-line/60">
-        <Link href={home} className="rounded-md">
-          <Brand size="md" />
+        <Link href={home} className="rounded-md flex items-center">
+          <BrandMark width={40} />
         </Link>
       </div>
       <div className="flex-1 px-3 py-3">

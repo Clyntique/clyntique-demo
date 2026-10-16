@@ -197,8 +197,9 @@ export function PolicyLibraryView({
       {/* Main Tabs */}
       <div className="flex border-b border-line mb-6">
         <button
+          type="button"
           onClick={() => setActiveTab("RULES")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-small font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-small font-medium border-b-2 transition-all cursor-pointer active:scale-[0.99] ${
             activeTab === "RULES"
               ? "border-brand-600 text-ink font-semibold"
               : "border-transparent text-muted hover:text-ink"
@@ -209,8 +210,9 @@ export function PolicyLibraryView({
         </button>
 
         <button
+          type="button"
           onClick={() => setActiveTab("SANDBOX")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-small font-medium border-b-2 transition-colors ${
+          className={`flex items-center gap-2 px-4 py-2.5 text-small font-medium border-b-2 transition-all cursor-pointer active:scale-[0.99] ${
             activeTab === "SANDBOX"
               ? "border-brand-600 text-ink font-semibold"
               : "border-transparent text-muted hover:text-ink"

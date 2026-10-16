@@ -57,11 +57,12 @@ export function NavList({
             <li key={label} className="relative flex justify-center">
               <Link
                 href={href}
+                prefetch={true}
                 onClick={onNavigate}
                 aria-current={active ? "page" : undefined}
                 aria-label={count ? `${label} (${count} waiting)` : label}
                 className={cn(
-                  "group relative flex size-10 items-center justify-center rounded-lg transition-all",
+                  "group relative flex size-10 items-center justify-center rounded-lg transition-all cursor-pointer active:scale-95",
                   active
                     ? "bg-brand-50 text-brand-600 ring-1 ring-brand-200"
                     : "text-ink-soft hover:bg-subtle hover:text-ink",
@@ -103,12 +104,13 @@ export function NavList({
           <li key={label}>
             <Link
               href={href}
+              prefetch={true}
               onClick={onNavigate}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex items-center gap-2.5 rounded-md transition-colors",
+                "flex items-center gap-2.5 rounded-md transition-all cursor-pointer active:scale-[0.99]",
                 layout === "sidebar" ? "text-small h-9 px-2.5" : "text-body h-11 px-3",
-                active ? "bg-brand-50 font-semibold text-ink" : "font-medium text-ink-soft hover:bg-subtle hover:text-ink",
+                active ? "bg-brand-50 font-semibold text-ink shadow-2xs" : "font-medium text-ink-soft hover:bg-subtle hover:text-ink",
               )}
             >
               <Icon className={cn("size-4 shrink-0", active ? "text-brand-600" : "text-muted")} />

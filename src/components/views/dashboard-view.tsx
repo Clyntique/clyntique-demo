@@ -111,11 +111,12 @@ async function TeamDashboard({ user }: { user: CurrentUser }) {
         description={summary}
         action={
           <div className="flex items-center gap-2.5">
-            <Link href="/admin/projects/new" className={buttonClasses({ variant: "secondary" })}>
+            <Link href="/admin/projects/new" prefetch={true} className={buttonClasses({ variant: "secondary" })}>
               <PlusIcon className="size-4" /> New project
             </Link>
             <Link
               href="/admin/review"
+              prefetch={true}
               className={buttonClasses({ variant: needsReview.length ? "primary" : "secondary" })}
             >
               Open review queue
@@ -510,7 +511,7 @@ async function ClientDashboard({ user }: { user: CurrentUser }) {
         title={`Welcome back, ${firstName}`}
         description={summary}
         action={
-          <Link href="/dashboard/submissions/new" className={buttonClasses({ variant: "primary" })}>
+          <Link href="/dashboard/submissions/new" prefetch={true} className={buttonClasses({ variant: "primary" })}>
             <PlusIcon className="size-4" /> New submission
           </Link>
         }
@@ -538,6 +539,7 @@ async function ClientDashboard({ user }: { user: CurrentUser }) {
             </div>
             <Link
               href={`/dashboard/creatives/${changes[0].id}`}
+              prefetch={true}
               className={buttonClasses({ variant: "primary", className: "shrink-0 shadow-sm" })}
             >
               Respond to findings

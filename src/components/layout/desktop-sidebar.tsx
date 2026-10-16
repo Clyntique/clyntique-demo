@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { Role } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
 import { basePathFor, ROLE_LABEL } from "@/lib/navigation";
-import { Brand, BrandMark } from "./brand";
+import { BrandMark } from "./brand";
 import { ChevronRightIcon, SidebarIcon } from "@/components/ui/icons";
 import { useSidebar } from "./sidebar-context";
 import { Avatar } from "@/components/ui/avatar";
@@ -40,23 +40,19 @@ export function DesktopSidebar({ role, user, counts }: DesktopSidebarProps) {
         isCollapsed ? "w-18" : "w-60"
       )}
     >
-      {/* Top Header: Brand Logo & Collapse Toggle */}
+      {/* Top Header: Brand Mark (C & Globe only, no name) & Collapse Toggle */}
       <div
         className={cn(
-          "flex items-center pt-4 pb-3 border-b border-line/60 transition-all",
-          isCollapsed ? "flex-col gap-3 px-2" : "justify-between px-4"
+          "flex items-center pt-5 pb-4 border-b border-line/60 transition-all",
+          isCollapsed ? "flex-col gap-3.5 px-2" : "justify-between px-4.5"
         )}
       >
         <Link
           href={home}
-          className="rounded-md focus-visible:outline-2 focus-visible:outline-brand-600"
+          className="rounded-lg focus-visible:outline-2 focus-visible:outline-brand-600 transition-transform hover:scale-105 flex items-center"
           aria-label="Clyntique home"
         >
-          {isCollapsed ? (
-            <BrandMark width={32} className="mx-auto" />
-          ) : (
-            <Brand size="md" />
-          )}
+          <BrandMark width={isCollapsed ? 34 : 40} className={isCollapsed ? "mx-auto" : ""} />
         </Link>
 
         {/* Toggle Button */}

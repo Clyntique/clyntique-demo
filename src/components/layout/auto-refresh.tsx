@@ -1,25 +1,30 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, startTransition } from "react";
 import { useRouter } from "next/navigation";
 
 /*
  * Refresh-based status visibility (not real-time sync). While the tab is
  * visible, the current page's server data is re-fetched every INTERVAL_MS and
- * whenever the user comes back to the tab, so a client sees the team's
- * feedback and the team sees resubmissions without reloading by hand.
+ * when the user returns to the tab after a substantial break, so a client sees
+ * the team's feedback and the team sees resubmissions without reloading by hand.
  *
- * router.refresh() re-renders server components only: client state, typed
- * text and open forms are kept. It is skipped while the user is typing in a
- * field, so nothing re-renders under their cursor.
+ * router.refresh() runs inside startTransition to keep user interactions (clicks,
+ * tab switches, button presses) immediately responsive and non-blocked.
  */
 
 const INTERVAL_MS = 30_000;
+const TAB_RETURN_DEBOUNCE_MS = 15_000;
 
 function userIsEditing() {
   const el = document.activeElement;
   if (!el) return false;
-  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || (el as HTMLElement).isContentEditable;
+  return (
+    el instanceof HTMLInputElement ||
+    el instanceof HTMLTextAreaElement ||
+    el instanceof HTMLSelectElement ||
+    (el as HTMLElement).isContentEditable
+  );
 }
 
 export function AutoRefresh() {
@@ -30,19 +35,28 @@ export function AutoRefresh() {
     const refresh = () => {
       if (document.visibilityState !== "visible" || userIsEditing()) return;
       last = Date.now();
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
     };
+
     const timer = window.setInterval(refresh, INTERVAL_MS);
-    // Coming back to the tab after a while: refresh at once.
-    const onVisible = () => {
-      if (document.visibilityState === "visible" && Date.now() - last > 5_000) refresh();
+
+    // Coming back to the tab after an inactive period: refresh in background
+    const onVisibilityChange = () => {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - last > TAB_RETURN_DEBOUNCE_MS
+      ) {
+        refresh();
+      }
     };
-    document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onVisible);
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onVisible);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [router]);
 
