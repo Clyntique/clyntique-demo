@@ -19,6 +19,7 @@ import { CheckIcon, UploadIcon } from "@/components/ui/icons";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { FormError } from "@/components/forms/form-error";
 import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
+import { UploadStalledError, withStallGuard } from "@/lib/upload-stall";
 
 // CLIENT remediation controls while changes are requested: respond to a
 // finding, add or withdraw supporting evidence, and resubmit. Every action is
@@ -148,17 +149,23 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
       const uploadKey = crypto.randomUUID();
       setPhase({ name: "uploading", percent: 0 });
       try {
-        const blob = await upload(evidencePathFor(creativeId, uploadKey, kind.extension), file, {
+        const controller = new AbortController();
+        const blob = await withStallGuard(controller, (progress) => upload(evidencePathFor(creativeId, uploadKey, kind.extension), file, {
           access: "private",
           handleUploadUrl: "/api/evidence/upload",
           clientPayload: JSON.stringify({ creativeId, uploadKey, fileName: file.name }),
           contentType: kind.mimeType,
-          onUploadProgress: ({ percentage }) => setPhase({ name: "uploading", percent: Math.round(percentage) }),
-        });
+          abortSignal: controller.signal,
+          onUploadProgress: ({ percentage }) => {
+            progress();
+            setPhase({ name: "uploading", percent: Math.round(percentage) });
+          },
+        }));
         uploaded = { uploadKey, url: blob.url, fileName: file.name };
         uploadedRef.current = { file, value: uploaded };
       } catch (e) {
         setPhase({ name: "idle" });
+        if (e instanceof UploadStalledError) return setError(e.message);
         const message = e instanceof Error ? e.message.replace(/^Vercel Blob:\s*/i, "") : "";
         return setError(/unsupported|sign in|no longer exists|isn't|can't/i.test(message) ? message : "The upload didn't finish. Check your connection and try again.");
       }

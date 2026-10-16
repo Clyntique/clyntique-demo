@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { RATE_LIMIT_MESSAGE, beginAttempt, clientAddress, markSucceeded, rateLimitEnabled, type AttemptTicket } from "@/lib/auth/rate-limit";
+import { RATE_LIMIT_MESSAGE, beginAttempt, beginSignupAttempt, clientAddress, markSucceeded, rateLimitEnabled, type AttemptTicket } from "@/lib/auth/rate-limit";
 import { createSession } from "@/lib/auth/session";
 import { signInAsDemoAccount } from "@/lib/auth/demo-login";
 import { DUPLICATE_ACCOUNT_MESSAGE, clientSignupEnabled, normalizeEmail, validateSignup, type SignupField } from "@/lib/auth/registration";
@@ -93,16 +93,17 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
   const valid = validateSignup(raw);
   if (!valid.ok) return { fieldErrors: valid.fieldErrors, values };
 
-  // Same limiter as sign-in (when enabled), under its own email scope.
-  let ticket: AttemptTicket | null = null;
-  if (rateLimitEnabled()) {
-    try {
-      ticket = await beginAttempt(`signup:${valid.data.email}`, clientAddress(await headers()));
-    } catch (error) {
-      console.error("Signup rate limit unavailable", error instanceof Error ? error.name : "unknown error");
-    }
-    if (ticket?.blocked) return { error: "Too many attempts. Please wait a few minutes and try again.", values };
+  // Always limited, whatever LOGIN_RATE_LIMIT says, and every sign-up counts
+  // (successful ones too), so accounts can't be created in bulk. Unlike
+  // sign-in this fails closed: no limiter, no new accounts.
+  let ticket: AttemptTicket;
+  try {
+    ticket = await beginSignupAttempt(valid.data.email, clientAddress(await headers()));
+  } catch (error) {
+    console.error("Signup rate limit unavailable", error instanceof Error ? error.name : "unknown error");
+    return { error: "Sign-up is temporarily unavailable. Please try again later.", values };
   }
+  if (ticket.blocked) return { error: "Too many attempts. Please wait a few minutes and try again.", values };
 
   const existing = await prisma.user.findUnique({ where: { email: valid.data.email }, select: { id: true } });
   if (existing) return { fieldErrors: { email: DUPLICATE_ACCOUNT_MESSAGE }, values };
@@ -127,7 +128,6 @@ export async function signup(_prev: SignupState, formData: FormData): Promise<Si
     return { error: "Something went wrong. Please try again.", values };
   }
 
-  if (ticket) await markSucceeded(ticket).catch(() => undefined);
   await createSession({ userId: user.id, role: user.role });
   return { signedIn: true };
 }

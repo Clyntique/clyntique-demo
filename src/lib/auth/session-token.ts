@@ -15,8 +15,9 @@ export type SessionPayload = {
 
 function getSecretKey() {
   const secret = process.env.SESSION_SECRET;
-  if (!secret || secret.length < 32) {
-    throw new Error("SESSION_SECRET must be set to at least 32 characters.");
+  // The .env.example placeholder is long enough to pass the length check, so refuse it explicitly.
+  if (!secret || secret.length < 32 || secret.startsWith("REPLACE_WITH")) {
+    throw new Error("SESSION_SECRET must be set to a random value of at least 32 characters.");
   }
   return new TextEncoder().encode(secret);
 }

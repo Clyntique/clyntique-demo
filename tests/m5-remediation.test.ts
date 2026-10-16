@@ -198,6 +198,7 @@ describe("withdrawing evidence", () => {
   });
 
   it("records the withdrawal (never a delete) for evidence added since the last submission", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("CHANGES_REQUESTED");
     setRound(); // last round submitted 10:00
     h.prisma.evidence.findUnique.mockResolvedValue(row());
@@ -253,6 +254,7 @@ describe("responses", () => {
   });
 
   it("are added, never edited: the form action creates a new response each time", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     h.user = CLIENT_A;
     setSubmission("CHANGES_REQUESTED");
     setRound();
@@ -270,6 +272,7 @@ describe("responses", () => {
   // are requested, so a submission in the TEAM queue (SUBMITTED / IN_REVIEW)
   // only carries responses that were formally resubmitted.
   it("a draft response writes no activity and leaves the submission untouched", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("CHANGES_REQUESTED");
     setRound();
     h.prisma.finding.findUnique.mockResolvedValue({ id: "f1", creativeId: "s1", cycleId: "c1", status: "OPEN", publishedAt: new Date() });
@@ -278,7 +281,9 @@ describe("responses", () => {
     expect(h.prisma.finding.updateMany.mock.calls[0][0]).toMatchObject({ where: { id: "f1", status: "OPEN" }, data: { status: "RESPONDED" } });
     expect(h.prisma.activity.create).not.toHaveBeenCalled();
     expect(h.prisma.creative.update).not.toHaveBeenCalled();
-    expect(h.prisma.creative.updateMany).not.toHaveBeenCalled();
+    // Only the row-lock no-op: it writes the loaded "updated" time back unchanged.
+    expect(h.prisma.creative.updateMany).toHaveBeenCalledTimes(1);
+    expect(Object.keys(h.prisma.creative.updateMany.mock.calls[0][0].data)).toEqual(["updatedAt"]);
   });
 
   it("can't be added once resubmitted or while the team reviews", async () => {
