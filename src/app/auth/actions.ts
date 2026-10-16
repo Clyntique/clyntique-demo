@@ -6,6 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { RATE_LIMIT_MESSAGE, beginAttempt, clientAddress, markSucceeded, rateLimitEnabled, type AttemptTicket } from "@/lib/auth/rate-limit";
 import { createSession } from "@/lib/auth/session";
+import { signInAsDemoAccount } from "@/lib/auth/demo-login";
+import { DUPLICATE_ACCOUNT_MESSAGE, clientSignupEnabled, normalizeEmail, validateSignup, type SignupField } from "@/lib/auth/registration";
+import { Prisma } from "@/generated/prisma/client";
+import type { Role } from "@/generated/prisma/enums";
 
 // signedIn: the session cookie is set; the form then loads /auth/continue as
 // a new document (see src/app/auth/continue/route.ts).
@@ -58,4 +62,82 @@ export async function login(
   }
   await createSession({ userId: user.id, role: user.role });
   return { signedIn: true };
+}
+
+// ---------------------------------------------------------------------------
+// Client self-registration (CLIENT accounts only; see lib/auth/registration.ts)
+
+export type SignupState =
+  | {
+      error?: string;
+      fieldErrors?: Partial<Record<SignupField, string>>;
+      // Echoed back so the form keeps what was typed. Never includes passwords.
+      values?: { name: string; email: string };
+      signedIn?: true;
+    }
+  | undefined;
+
+export async function signup(_prev: SignupState, formData: FormData): Promise<SignupState> {
+  const raw = {
+    name: String(formData.get("name") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    password: String(formData.get("password") ?? ""),
+    confirmPassword: String(formData.get("confirmPassword") ?? ""),
+  };
+  const values = { name: raw.name.trim(), email: normalizeEmail(raw.email) };
+
+  if (!clientSignupEnabled()) {
+    return { error: "Self-registration isn't open. Contact your Clyntique administrator for access.", values };
+  }
+
+  const valid = validateSignup(raw);
+  if (!valid.ok) return { fieldErrors: valid.fieldErrors, values };
+
+  // Same limiter as sign-in (when enabled), under its own email scope.
+  let ticket: AttemptTicket | null = null;
+  if (rateLimitEnabled()) {
+    try {
+      ticket = await beginAttempt(`signup:${valid.data.email}`, clientAddress(await headers()));
+    } catch (error) {
+      console.error("Signup rate limit unavailable", error instanceof Error ? error.name : "unknown error");
+    }
+    if (ticket?.blocked) return { error: "Too many attempts. Please wait a few minutes and try again.", values };
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: valid.data.email }, select: { id: true } });
+  if (existing) return { fieldErrors: { email: DUPLICATE_ACCOUNT_MESSAGE }, values };
+
+  let user: { id: string; role: Role };
+  try {
+    user = await prisma.user.create({
+      data: {
+        name: valid.data.name,
+        email: valid.data.email,
+        role: "CLIENT", // fixed on the server: self-registration never creates TEAM accounts
+        passwordHash: await hashPassword(valid.data.password),
+      },
+      select: { id: true, role: true },
+    });
+  } catch (error) {
+    // Two sign-ups for the same email at once: the unique index decides.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return { fieldErrors: { email: DUPLICATE_ACCOUNT_MESSAGE }, values };
+    }
+    console.error("Signup failed", error instanceof Error ? error.name : "unknown error");
+    return { error: "Something went wrong. Please try again.", values };
+  }
+
+  if (ticket) await markSucceeded(ticket).catch(() => undefined);
+  await createSession({ userId: user.id, role: user.role });
+  return { signedIn: true };
+}
+
+// ---------------------------------------------------------------------------
+// Quick demo login (off unless DEMO_LOGIN=enabled; never on Vercel Production)
+
+export type DemoLoginState = { error?: string; signedIn?: true } | undefined;
+
+export async function demoLogin(_prev: DemoLoginState, formData: FormData): Promise<DemoLoginState> {
+  const result = await signInAsDemoAccount(formData.get("account"));
+  return result.ok ? { signedIn: true } : { error: result.error };
 }
