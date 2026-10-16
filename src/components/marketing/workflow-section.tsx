@@ -80,21 +80,21 @@ export function WorkflowSection() {
           </p>
         </div>
 
-        {/* Desktop Alternating Workflow with Thin Dotted Connecting Lines */}
-        <div className="hidden lg:block relative max-w-5xl mx-auto">
-          {/* Alternating Steps */}
-          <div className="flex flex-col gap-14">
-            {WORKFLOW_STEPS.map((step, idx) => {
-              const isEven = idx % 2 === 1; // 0, 2, 4 left; 1, 3, 5 right
-              const Icon = step.icon;
+        {/* Desktop Alternating Snake Workflow with Seamless Grid-Anchored Connectors */}
+        <div className="hidden lg:block relative max-w-4xl mx-auto">
+          {WORKFLOW_STEPS.map((step, idx) => {
+            const isLeft = idx % 2 === 0; // 0, 2, 4 = Col 1 (Left); 1, 3, 5 = Col 2 (Right)
+            const Icon = step.icon;
+            const hasNext = idx < WORKFLOW_STEPS.length - 1;
 
-              return (
-                <div key={step.step} className="relative">
-                  {/* Step Row */}
-                  <div className={`flex w-full ${isEven ? "justify-end" : "justify-start"}`}>
-                    <div className="relative z-10 w-[470px] rounded-3xl border border-line/80 bg-surface p-7 shadow-card transition-all hover:shadow-card-hover">
+            return (
+              <div key={step.step} className="w-full">
+                {/* 2-Column Row for the Card */}
+                <div className="grid grid-cols-2 gap-x-12 items-start">
+                  <div className={isLeft ? "col-start-1" : "col-start-2"}>
+                    <div className="w-full rounded-3xl border border-line/80 bg-surface p-7 shadow-card transition-all hover:shadow-card-hover">
                       <div className="flex items-start gap-4">
-                        {/* Clean Round Icon Container */}
+                        {/* Category Icon */}
                         <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-subtle border border-line/80 text-brand-600 shadow-2xs">
                           <Icon className="size-5" />
                         </div>
@@ -118,37 +118,54 @@ export function WorkflowSection() {
                       </div>
                     </div>
                   </div>
-
-                  {/* SVG Dotted Connector Line between current step and next step */}
-                  {idx < WORKFLOW_STEPS.length - 1 && (
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute left-0 right-0 top-1/2 -bottom-14 z-0"
-                    >
-                      <svg
-                        className="w-full h-full overflow-visible"
-                        viewBox="0 0 1000 140"
-                        preserveAspectRatio="none"
-                      >
-                        <path
-                          d={
-                            !isEven
-                              ? "M 470 30 C 660 30, 660 110, 530 110" // Left to Right curve
-                              : "M 530 30 C 340 30, 340 110, 470 110" // Right to Left curve
-                          }
-                          fill="none"
-                          stroke="#DCA858"
-                          strokeWidth="2.5"
-                          strokeDasharray="6 6"
-                          strokeLinecap="round"
-                        />
-                      </svg>
-                    </div>
-                  )}
                 </div>
-              );
-            })}
-          </div>
+
+                {/* S-Curve Connector between this step and the next step */}
+                {hasNext && (
+                  <div
+                    aria-hidden
+                    className="relative w-full h-20 my-[-2px] pointer-events-none"
+                  >
+                    <svg
+                      viewBox="0 0 100 100"
+                      preserveAspectRatio="none"
+                      className="w-full h-full overflow-visible"
+                    >
+                      {isLeft ? (
+                        /* Left Card Bottom (25%) -> Right Card Top (75%) */
+                        <>
+                          <circle cx="25" cy="2" r="3" fill="#DCA858" />
+                          <path
+                            d="M 25 0 C 25 60, 75 40, 75 100"
+                            stroke="#DCA858"
+                            strokeWidth="2.5"
+                            strokeDasharray="5 5"
+                            strokeLinecap="round"
+                            fill="none"
+                          />
+                          <circle cx="75" cy="98" r="3" fill="#DCA858" />
+                        </>
+                      ) : (
+                        /* Right Card Bottom (75%) -> Left Card Top (25%) */
+                        <>
+                          <circle cx="75" cy="2" r="3" fill="#DCA858" />
+                          <path
+                            d="M 75 0 C 75 60, 25 40, 25 100"
+                            stroke="#DCA858"
+                            strokeWidth="2.5"
+                            strokeDasharray="5 5"
+                            strokeLinecap="round"
+                            fill="none"
+                          />
+                          <circle cx="25" cy="98" r="3" fill="#DCA858" />
+                        </>
+                      )}
+                    </svg>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         {/* Mobile / Tablet Vertical Connected Timeline */}
@@ -156,7 +173,7 @@ export function WorkflowSection() {
           {/* Vertical connecting line */}
           <div
             aria-hidden
-            className="pointer-events-none absolute left-6 top-8 bottom-8 w-0.5 border-l-2 border-dashed border-gold-300"
+            className="pointer-events-none absolute left-6 top-8 bottom-8 w-0.5 border-l-2 border-dashed border-gold-400"
           />
 
           <div className="flex flex-col gap-6">

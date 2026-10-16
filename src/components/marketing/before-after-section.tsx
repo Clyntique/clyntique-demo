@@ -1,9 +1,11 @@
 import {
+  AlertIcon,
   FolderIcon,
   LayersIcon,
   PaperclipIcon,
   ClipboardCheckIcon,
   AwardIcon,
+  MessageIcon,
 } from "@/components/ui/icons";
 
 export function BeforeAfterSection() {
@@ -39,7 +41,7 @@ export function BeforeAfterSection() {
             className="pointer-events-none absolute left-1/2 top-10 bottom-10 hidden -translate-x-1/2 border-l border-dashed border-line-strong/80 lg:block"
           />
 
-          {/* LEFT: BEFORE (Creative Chaos with Confusing Loop Image) */}
+          {/* LEFT: BEFORE (Creative Chaos - Clean background, restored elements) */}
           <div className="flex flex-col">
             {/* Column Label */}
             <div className="flex items-center gap-3 border-b border-line pb-3 mb-6">
@@ -49,21 +51,71 @@ export function BeforeAfterSection() {
               <span className="text-micro text-muted">The typical review nightmare</span>
             </div>
 
-            {/* Confusing Loop Illustration Container */}
-            <div className="relative flex flex-col items-center justify-center rounded-3xl border border-line/80 bg-gradient-to-br from-white via-slate-50 to-amber-50/20 p-6 sm:p-8 shadow-card min-h-[480px]">
-              <div className="relative w-full max-w-[340px] sm:max-w-[380px] aspect-square rounded-2xl overflow-hidden border border-line/80 shadow-xs bg-white p-2">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/images/confusing-loop.jpg"
-                  alt="Endless confusing review loop with conflicting feedback and chaotic revision cycles"
-                  className="w-full h-full object-contain rounded-xl"
-                />
+            {/* Clean Box with Scattered Reality Elements */}
+            <div className="relative min-h-[480px] rounded-3xl border border-line/80 bg-[#F7F8FA] p-6 sm:p-8 overflow-hidden shadow-card">
+              {/* Scattered Item 1: Message Feedback */}
+              <div className="relative z-10 max-w-[290px] sm:max-w-[310px] rounded-2xl border border-line bg-surface p-4 shadow-sm -rotate-2 hover:rotate-0 transition-transform">
+                <div className="flex items-center gap-2 text-caption font-semibold text-critical-ink">
+                  <MessageIcon className="size-4 text-critical-solid" />
+                  <span>Slack / Email thread #42</span>
+                </div>
+                <p className="text-small mt-2 font-medium text-ink">
+                  Feedback scattered across messages.
+                </p>
+                <p className="text-caption mt-1 text-muted">
+                  &ldquo;Wait, did legal approve the revised claim on WhatsApp or Gmail?&rdquo;
+                </p>
               </div>
 
-              <div className="mt-5 text-center max-w-sm">
-                <p className="text-small font-semibold text-ink">The Endless Revision Loop</p>
-                <p className="text-caption mt-1.5 text-muted leading-relaxed">
-                  Feedback scattered across messages, conflicting file versions, missing substantiation, and repeated back-and-forth cycles.
+              {/* Scattered Item 2: Version Confusion */}
+              <div className="relative z-10 sm:ml-auto max-w-[270px] rounded-2xl border border-amber-200 bg-amber-50/90 p-4 shadow-sm rotate-2 hover:rotate-0 transition-transform mt-3">
+                <div className="flex items-center gap-1.5 text-caption font-semibold text-amber-800">
+                  <LayersIcon className="size-4 text-amber-700" />
+                  <span>Conflicting Assets</span>
+                </div>
+                <p className="text-small mt-2 font-medium text-ink">
+                  Multiple creative versions.
+                </p>
+                <div className="mt-2 text-[11px] font-mono text-muted bg-white/80 rounded px-2 py-1 border border-amber-200">
+                  ad_v2_final_REVISED_new.mp4
+                </div>
+              </div>
+
+              {/* Scattered Item 3: Missing Evidence */}
+              <div className="relative z-10 max-w-[300px] rounded-2xl border border-critical-line bg-critical-soft/50 p-4 shadow-sm -rotate-2 hover:rotate-0 transition-transform mt-3">
+                <div className="flex items-center gap-1.5 text-caption font-semibold text-critical-strong">
+                  <AlertIcon className="size-4 text-critical-solid" />
+                  <span>Unsubstantiated Claim</span>
+                </div>
+                <p className="text-small mt-2 font-medium text-ink">
+                  Missing supporting evidence.
+                </p>
+                <p className="text-caption mt-1 text-muted">
+                  No source doc attached for &ldquo;Top Rated in 2026&rdquo;.
+                </p>
+              </div>
+
+              {/* Scattered Item 4: Unclear Approval Status */}
+              <div className="relative z-10 sm:ml-auto max-w-[280px] rounded-2xl border border-line bg-surface p-4 shadow-sm rotate-1 hover:rotate-0 transition-transform mt-3">
+                <div className="flex items-center justify-between text-caption font-semibold text-muted">
+                  <span>Sign-Off Status</span>
+                  <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-ink-soft">UNKNOWN</span>
+                </div>
+                <p className="text-small mt-2 font-medium text-ink">
+                  Unclear approval status.
+                </p>
+                <p className="text-caption mt-1 text-muted">
+                  Nobody knows whether the campaign is greenlit to launch.
+                </p>
+              </div>
+
+              {/* Scattered Item 5: Repeated Back-and-Forth */}
+              <div className="relative z-10 max-w-[290px] rounded-2xl border border-line bg-surface p-3.5 shadow-sm -rotate-1 hover:rotate-0 transition-transform mt-3">
+                <p className="text-small font-medium text-ink">
+                  Repeated back-and-forth.
+                </p>
+                <p className="text-caption mt-0.5 text-muted">
+                  Days spent clarifying basic feedback and asking for re-uploads.
                 </p>
               </div>
             </div>
