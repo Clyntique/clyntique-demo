@@ -63,6 +63,7 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
     clearAnalysisCache();
     resetAIProvider();
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
   });
 
   describe("1. Candidate Policy Mappings & Source Verification Governance (Requirement 6)", () => {
@@ -289,6 +290,7 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
               sectionTitle: "Endorsements",
               directUrl: "https://ftc.gov",
               excerpt: "Disclose clearly",
+              sourceVerificationStatus: "VERIFIED",
             },
           ],
         },
@@ -340,6 +342,7 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
       const applicable = filterApplicableVerifiedRules(mockRules, {
         markets: ["US"],
         platforms: ["META"],
+        industry: "HEALTHCARE",
       });
 
       expect(applicable.length).toBe(1);
@@ -366,6 +369,10 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
         platforms: [{ creativeId: "cre-test-japan", platform: { code: "LINE", name: "Line" } }],
         versions: [{ id: "ver-1", versionNumber: 1, fileUrl: null, mimeType: null }],
       });
+
+      h.prisma.submissionRound.findMany.mockResolvedValueOnce([
+        { versionId: "ver-1", submittedName: "Tokyo Clinic Ad", submittedDescription: null, submittedContext: null, version: { id: "ver-1", versionNumber: 1, fileUrl: null, mimeType: null } },
+      ]);
 
       // No rules match Japan / Line
       h.prisma.policyRule.findMany.mockResolvedValueOnce([]);
@@ -408,6 +415,11 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
         versions: [{ id: "ver-1", versionNumber: 1, fileUrl: null, mimeType: null }],
       });
 
+      h.prisma.submissionRound.findMany.mockResolvedValueOnce([
+        { versionId: "ver-1", submittedName: "US Aesthetic Ad", submittedDescription: null, submittedContext: null, version: { id: "ver-1", versionNumber: 1, fileUrl: null, mimeType: null } },
+      ]);
+      vi.stubEnv("POLICY_DEFAULT_INDUSTRY", "HEALTHCARE");
+
       // Only US-FTC-DISC-01 is approved in DB
       h.prisma.policyRule.findMany.mockResolvedValueOnce([
         {
@@ -445,7 +457,17 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
               approvedAt: new Date(),
               createdBy: { id: "u-1", name: "Author" },
               approvedBy: { id: "u-2", name: "Approver" },
-              sources: [],
+              sources: [
+                {
+                  id: "cit-1",
+                  sourceId: "src-1",
+                  sectionReference: "16 CFR 255.5",
+                  sectionTitle: "Disclosure",
+                  directUrl: "https://www.ecfr.gov/current/title-16/part-255",
+                  excerpt: null,
+                  source: { name: "FTC Endorsement Guides", authorityName: "FTC", verificationStatus: "VERIFIED" },
+                },
+              ],
             },
           ],
         },
@@ -508,6 +530,10 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
       expect(result.findings[0].policyCitation.ruleCode).toBe("US-FTC-DISC-01");
       // Hallucinated EU rule was discarded
       expect(result.findings.some((f) => f.policyCitation.ruleCode === "EU-GDPR-ART-88-FAKE")).toBe(false);
+      expect(result.discardedSuggestions).toBe(1);
+      // The citation is rebuilt from the Policy Library record, not taken from the model.
+      expect(result.findings[0].policyCitation.ruleVersionId).toBe("v-1");
+      expect(result.findings[0].policyCitation.officialUrl).toBe("https://www.ecfr.gov/current/title-16/part-255");
     });
   });
 
@@ -568,6 +594,11 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
         versions: [{ id: "ver-cached-1", versionNumber: 1, fileUrl: null, mimeType: null }],
       });
 
+      h.prisma.submissionRound.findMany.mockResolvedValue([
+        { versionId: "ver-cached-1", submittedName: "Cached Creative", submittedDescription: null, submittedContext: null, version: { id: "ver-cached-1", versionNumber: 1, fileUrl: null, mimeType: null } },
+      ]);
+      vi.stubEnv("POLICY_DEFAULT_INDUSTRY", "HEALTHCARE");
+
       h.prisma.policyRule.findMany.mockResolvedValue([
         {
           id: "r1",
@@ -604,7 +635,17 @@ describe("M7B: Real Google Gemini AI Integration & Compliance Grounding", () => 
               approvedAt: new Date(),
               createdBy: { id: "u1", name: "A" },
               approvedBy: { id: "u2", name: "B" },
-              sources: [],
+              sources: [
+                {
+                  id: "cit-1",
+                  sourceId: "src-1",
+                  sectionReference: "16 CFR 255.5",
+                  sectionTitle: "Disclosure",
+                  directUrl: "https://www.ecfr.gov/current/title-16/part-255",
+                  excerpt: null,
+                  source: { name: "FTC Endorsement Guides", authorityName: "FTC", verificationStatus: "VERIFIED" },
+                },
+              ],
             },
           ],
         },

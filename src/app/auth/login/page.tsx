@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Brand, BrandMark } from "@/components/layout/brand";
 import { REVIEW_DISCLAIMER } from "@/lib/workflow/labels";
 import { FileTextIcon, ShieldIcon, CheckCircleIcon } from "@/components/ui/icons";
+import { AuthExtras } from "@/components/auth/auth-extras";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Sign in · Clyntique" };
@@ -119,6 +120,9 @@ export default function LoginPage() {
             <div className="rounded-2xl border border-line bg-surface p-7 shadow-card sm:p-9">
               <LoginForm />
             </div>
+
+            {/* Sign-up link and demo logins: render only when enabled on the server */}
+            <AuthExtras />
 
             <p className="text-caption mt-6 text-center text-muted/80 lg:hidden leading-relaxed">
               {REVIEW_DISCLAIMER}

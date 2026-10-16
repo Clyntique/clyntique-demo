@@ -93,6 +93,22 @@ approvals stay in history on the version they were made on. If a client submits 
 version that is no longer the newest, it is rejected and they are asked to review the new one.
 Drafts stay drafts until the team shares them.
 
+## Demo-readiness features (feature/demo-workflow-completion)
+
+All are **off by default** and switched on per environment:
+
+| Variable | Effect |
+| --- | --- |
+| `CLIENT_SIGNUP=enabled` | `/auth/signup` creates CLIENT accounts (bcrypt, 12+ chars with a letter and a number, duplicate and Clyntique-domain emails refused). TEAM accounts can't self-register. |
+| `DEMO_LOGIN=enabled` | Three quick logins on the sign-in page (Team, Client 1, Client 2) for the fixed demo accounts. Ignored when `VERCEL_ENV=production`. Demo sessions never get policy-admin rights and stop working as soon as the flag is unset. |
+| `POLICY_DEFAULT_INDUSTRY` | Industry used to match industry-specific Policy Library rules (unset = unknown: only `GENERAL` rules can apply). |
+| `POLICY_CANDIDATE_IMPORT=enabled` | Allows the "import research candidates" action. Keep unset until explicitly authorized. |
+
+Sample data for an **isolated** demo database (refuses `cyntique_demo`): run `prisma/seed.ts` for the three
+accounts, then `SEED_CONFIRM_DATABASE=<db> npm run db:demo-fixtures -- --apply` (dry run without `--apply`).
+With `BLOB_READ_WRITE_TOKEN` set it uploads small sample images; `--synthetic-policy` adds one clearly
+labelled synthetic test rule for exercising AI grounding in test environments only.
+
 ## Scripts
 
 | Script             | Purpose                                       |
@@ -103,5 +119,6 @@ Drafts stay drafts until the team shares them.
 | `npm run db:check` | Test the DB connection (read-only)            |
 | `npm run db:push`  | Legacy: never against the shared database     |
 | `npm run db:seed`  | Demo users: dry run (see "Demo users")        |
+| `npm run db:demo-fixtures` | Sample demo data, isolated databases only (dry run by default) |
 | `npm test`         | Unit tests (Vitest; mocked, no DB or Blob)    |
 | `npm run blob:orphans` | List (or delete) unreferenced Blob uploads |

@@ -165,7 +165,7 @@ export function AICompliancePanel({
           <h4 className="text-small font-semibold text-ink">Ready for AI Compliance Scan</h4>
           <p className="text-caption mt-1.5 max-w-md text-muted leading-relaxed">
             Execute Google Gemini multimodal analysis to inspect the creative image, extract visual text,
-            detect promotional claims, and verify against approved US, UAE, Meta, TikTok, and Google policies.
+            detect promotional claims, and check them only against active, verified policies in the Policy Library.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2 text-micro text-muted">
             <span className="rounded bg-slate-100 px-2 py-0.5 font-medium">Multimodal OCR</span>
@@ -213,7 +213,7 @@ export function AICompliancePanel({
                   </p>
                   <div className="pt-2">
                     <Link
-                      href="/admin/policies"
+                      href="/admin/policy-library"
                       className="inline-flex items-center gap-1.5 text-small font-semibold text-brand-700 hover:text-brand-900"
                     >
                       <span>Manage & Approve Policies in Library</span>
@@ -222,6 +222,19 @@ export function AICompliancePanel({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Failed scan: never shown as "no findings" */}
+          {scanResult.status === "ERROR" && (
+            <div role="alert" className="rounded-xl border border-danger-line bg-danger-soft p-5 text-danger-ink shadow-xs">
+              <div className="flex items-center gap-2.5 font-semibold text-small">
+                <AlertIcon className="size-5 shrink-0" />
+                <span>AI scan failed — manual review required</span>
+              </div>
+              <p className="text-caption mt-1.5 text-slate-700">
+                {scanResult.summary || "The AI scan did not complete."} No findings were produced, so nothing about this creative has been checked by AI.
+              </p>
             </div>
           )}
 
@@ -241,8 +254,15 @@ export function AICompliancePanel({
           {/* Executive Summary */}
           {scanResult.summary && scanResult.status === "SUCCESS" && (
             <div className="rounded-xl border border-line bg-slate-50/50 p-4">
-              <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1.5">Executive Summary</p>
+              <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1.5">AI Summary · not a compliance decision</p>
               <p className="text-small font-medium text-ink leading-relaxed">{scanResult.summary}</p>
+              {scanResult.rulesChecked && scanResult.rulesChecked.length > 0 && (
+                <p className="text-caption mt-2 text-muted">
+                  Checked against {scanResult.rulesChecked.length} approved {scanResult.rulesChecked.length === 1 ? "policy" : "policies"}:{" "}
+                  {scanResult.rulesChecked.map((r) => `${r.code} v${r.versionNumber}`).join(", ")}
+                  {scanResult.discardedSuggestions ? `. ${scanResult.discardedSuggestions} suggestion(s) discarded for citing no approved policy.` : "."}
+                </p>
+              )}
             </div>
           )}
 
@@ -291,7 +311,8 @@ export function AICompliancePanel({
             </div>
           )}
 
-          {/* Grounded Policy Findings List */}
+          {/* Grounded Policy Findings List (successful scans only) */}
+          {scanResult.status === "SUCCESS" && (
           <div className="flex flex-col gap-3 border-t border-line pt-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -311,10 +332,10 @@ export function AICompliancePanel({
                   <CheckIcon className="size-4" />
                 </div>
                 <p className="text-small font-medium text-ink">
-                  No policy violations detected
+                  No AI suggestions
                 </p>
                 <p className="text-caption mt-0.5 text-muted">
-                  The creative complies with all currently approved, applicable policies for this jurisdiction.
+                  Nothing was flagged against the approved policies checked. This is not a compliance clearance; the reviewer still decides.
                 </p>
               </div>
             ) : (
@@ -359,7 +380,9 @@ export function AICompliancePanel({
                       <div className="rounded-lg border border-line bg-slate-50/80 p-3 text-caption">
                         <div className="flex items-center justify-between gap-2">
                           <span className="font-semibold text-ink">
-                            Official Regulatory Citation: {f.policyCitation.sectionReference}
+                            Policy citation: {f.policyCitation.ruleCode}
+                            {f.policyCitation.ruleVersionNumber ? ` v${f.policyCitation.ruleVersionNumber}` : ""}
+                            {f.policyCitation.sectionReference ? ` · ${f.policyCitation.sectionReference}` : ""}
                           </span>
                           {f.policyCitation.officialUrl && (
                             <a
@@ -368,7 +391,7 @@ export function AICompliancePanel({
                               rel="noreferrer"
                               className="inline-flex items-center gap-1 font-medium text-brand-700 hover:text-brand-900"
                             >
-                              <span>Official Document</span>
+                              <span>Source</span>
                               <ExternalLinkIcon className="size-3" />
                             </a>
                           )}
@@ -418,7 +441,7 @@ export function AICompliancePanel({
                           </div>
                         )}
                         <span className="text-caption text-muted">
-                          {isAccepted ? "Published under reviewer authority" : "Requires human reviewer confirmation"}
+                          {isAccepted ? "Draft finding: team-only until you request changes or complete the review" : "Requires human reviewer confirmation"}
                         </span>
                       </div>
                     </div>
@@ -427,6 +450,7 @@ export function AICompliancePanel({
               </div>
             )}
           </div>
+          )}
         </div>
       )}
     </div>

@@ -17,6 +17,8 @@ const DEMO_POLICY_ADMIN_EMAILS = new Set([
 
 export function isPolicyAdmin(user: CurrentUser): boolean {
   if (user.role !== "TEAM") return false;
+  // Quick demo-login sessions never get policy administration rights.
+  if (user.demoSession) return false;
   // Enforces explicit isPolicyAdmin column from PostgreSQL, or recognized policy administrator email
   return user.isPolicyAdmin === true || DEMO_POLICY_ADMIN_EMAILS.has(user.email);
 }

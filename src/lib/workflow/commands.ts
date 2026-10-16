@@ -595,6 +595,12 @@ export type FindingInput = {
   actionDetails: string;
   marketCodes?: string[];
   platformCodes?: string[];
+  /**
+   * Optional cited Policy Library rule version. Only set by server code that
+   * has already checked the rule is active, verified and applicable (the AI
+   * suggestion flow); never taken from a form.
+   */
+  ruleVersionId?: string;
 };
 
 async function validateFinding(input: Omit<FindingInput, "creativeId">) {
@@ -643,6 +649,7 @@ export async function recordFinding(user: CurrentUser, input: FindingInput): Pro
           requiredAction,
           actionDetails,
           status: "DRAFT",
+          ruleVersionId: input.ruleVersionId ?? null,
           markets: { create: markets.codes.map((marketCode) => ({ marketCode })) },
           platforms: { create: platforms.codes.map((platformCode) => ({ platformCode })) },
         },

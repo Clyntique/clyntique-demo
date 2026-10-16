@@ -454,7 +454,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
       });
 
       expect(aiResult.hasCoverage).toBe(false);
-      expect(aiResult.insufficientCoverageReason).toContain("No active, verified rules available");
+      expect(aiResult.insufficientCoverageReason).toContain("Insufficient policy coverage — manual review required.");
       expect(aiResult.matches.length).toBe(0);
     });
 
@@ -497,7 +497,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
 
       expect(aiResult.hasCoverage).toBe(false);
       expect(aiResult.insufficientCoverageReason).toContain("JP");
-      expect(aiResult.insufficientCoverageReason).toContain("Human TEAM compliance review required");
+      expect(aiResult.insufficientCoverageReason).toContain("Insufficient policy coverage — manual review required.");
     });
   });
 });

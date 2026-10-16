@@ -15,11 +15,15 @@ export interface DetectedClaim {
 
 export interface GroundedPolicyCitation {
   ruleId: string;
+  /** The exact approved rule version cited (set by the server, from the database). */
+  ruleVersionId?: string;
+  ruleVersionNumber?: number;
   ruleCode: string;
   ruleTitle: string;
   authorityType: "REGULATION" | "PLATFORM_POLICY" | "INTERNAL_RISK";
   jurisdictionCode: string;
   platformCode?: string | null;
+  sourceName?: string;
   sectionReference: string;
   officialUrl?: string;
   excerpt?: string;
@@ -45,6 +49,10 @@ export interface AIAnalysisResult {
   findings: AISuggestedFinding[];
   summary: string;
   error?: string;
+  /** The approved rules this scan was checked against (empty when coverage is insufficient). */
+  rulesChecked?: Array<{ code: string; title: string; versionNumber: number }>;
+  /** Model suggestions dropped because they cited no applicable approved rule. */
+  discardedSuggestions?: number;
 }
 
 export interface GroundedPolicyRuleContext {

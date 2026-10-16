@@ -37,6 +37,8 @@ export interface PolicySourceSection {
   sectionTitle: string;
   directUrl: string;
   excerpt: string;
+  /** Verification status of the cited PolicySource (independent source check). */
+  sourceVerificationStatus?: PolicyVerificationStatus;
 }
 
 export interface PolicyRuleVersion {

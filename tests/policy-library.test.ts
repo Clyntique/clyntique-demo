@@ -310,7 +310,7 @@ describe("Clyntique Compliance Policy Library", () => {
       });
 
       expect(result.hasCoverage).toBe(false);
-      expect(result.insufficientCoverageReason).toMatch(/Insufficient verified policy coverage for market/);
+      expect(result.insufficientCoverageReason).toMatch(/^Insufficient policy coverage — manual review required\. No active, verified policy covers market\(s\): JP/);
       expect(result.matches.length).toBe(0);
       expect(result.disclaimer).toBeTruthy();
     });

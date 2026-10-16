@@ -143,6 +143,16 @@ export async function importCandidatesServerAction(): Promise<{
 }> {
   try {
     const user = await requireRole("TEAM");
+    // Research candidates are unverified drafts with known source flaws. Importing
+    // them needs explicit authorization, so it is off unless the deployment sets
+    // POLICY_CANDIDATE_IMPORT=enabled. Imported candidates stay UNVERIFIED and
+    // PENDING_APPROVAL either way.
+    if (process.env.POLICY_CANDIDATE_IMPORT !== "enabled") {
+      return {
+        ok: false,
+        error: "Importing research candidates is disabled. It needs explicit authorization and independent source verification first.",
+      };
+    }
     const result = await importCandidatePoliciesToDb(user);
     return {
       ok: true,

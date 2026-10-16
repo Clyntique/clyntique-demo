@@ -9,6 +9,8 @@ export const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000;
 export type SessionPayload = {
   userId: string;
   role: Role;
+  /** Set for quick demo-login sessions (src/lib/auth/demo-login.ts). */
+  demo?: true;
 };
 
 function getSecretKey() {
@@ -20,7 +22,7 @@ function getSecretKey() {
 }
 
 export async function encodeSession(payload: SessionPayload, expiresAt: Date) {
-  return new SignJWT({ userId: payload.userId, role: payload.role })
+  return new SignJWT({ userId: payload.userId, role: payload.role, ...(payload.demo ? { demo: true } : {}) })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(expiresAt)
@@ -41,7 +43,7 @@ export async function decodeSession(
     ) {
       return null;
     }
-    return { userId: payload.userId, role: payload.role };
+    return { userId: payload.userId, role: payload.role, ...(payload.demo === true ? { demo: true as const } : {}) };
   } catch {
     return null;
   }

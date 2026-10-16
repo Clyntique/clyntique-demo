@@ -17,6 +17,7 @@
     "db:migrate:status": "prisma migrate status",
     "db:restore": "tsx prisma/db-restore.ts",
     "db:grant-policy-admin": "tsx prisma/grant-policy-admin.ts",
+    "db:demo-fixtures": "node --conditions=react-server --import tsx prisma/demo-fixtures.ts",
     "blob:orphans": "tsx prisma/blob-orphans.ts",
     "test": "vitest run"
   },

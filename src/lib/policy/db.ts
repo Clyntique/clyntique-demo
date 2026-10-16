@@ -122,6 +122,7 @@ export async function getDbPolicyRules(criteria?: PolicyFilterCriteria): Promise
         sectionTitle: s.sectionTitle,
         directUrl: s.directUrl,
         excerpt: s.excerpt ?? "",
+        sourceVerificationStatus: s.source.verificationStatus,
       })),
     }));
 

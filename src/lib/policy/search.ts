@@ -138,22 +138,23 @@ export function findGroundedRulesForContext(
   const checkedJurisdictions = [...new Set(context.markets.map((m) => m.toUpperCase()))];
   const checkedPlatforms = [...new Set(context.platforms.map((p) => p.toUpperCase()))];
 
-  // 1. Verify policy coverage for target markets
-  const knownJurisdictions = new Set(["US", "AE", "GLOBAL"]);
+  // 1. Verify policy coverage for target markets: only jurisdictions that have
+  // at least one active, verified rule count as covered.
+  const knownJurisdictions = new Set(["GLOBAL", ...activeRules.map((r) => r.jurisdictionCode.toUpperCase())]);
   const unsupportedMarkets = checkedJurisdictions.filter((m) => !knownJurisdictions.has(m));
 
   if (unsupportedMarkets.length > 0) {
     return {
       hasCoverage: false,
-      insufficientCoverageReason: `Insufficient verified policy coverage for market(s): ${unsupportedMarkets.join(
+      insufficientCoverageReason: `Insufficient policy coverage — manual review required. No active, verified policy covers market(s): ${unsupportedMarkets.join(
         ", "
-      )}. Clyntique Policy Library currently has verified coverage for US, UAE, and Global ad platforms. Human TEAM compliance review required.`,
+      )}.`,
       matches: [],
       groundedRulesCount: 0,
       checkedJurisdictions,
       checkedPlatforms,
       disclaimer:
-        "AI compliance suggestions are deterministically grounded in verified Clyntique policy versions. All suggestions require human TEAM reviewer confirmation before publishing to clients.",
+        "AI compliance suggestions are grounded only in active, verified Clyntique policy versions. All suggestions require human TEAM reviewer confirmation before publishing to clients.",
     };
   }
 
@@ -179,7 +180,7 @@ export function findGroundedRulesForContext(
   if (scopeApplicableRules.length === 0) {
     return {
       hasCoverage: false,
-      insufficientCoverageReason: `No active, verified rules available for target combination of markets (${checkedJurisdictions.join(
+      insufficientCoverageReason: `Insufficient policy coverage — manual review required. No active, verified rules available for target combination of markets (${checkedJurisdictions.join(
         ", "
       )}) and platforms (${checkedPlatforms.join(", ")}).`,
       matches: [],

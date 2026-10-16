@@ -55,7 +55,8 @@ export async function getTeamMetrics(user: CurrentUser, now = new Date()): Promi
   const weekAgo = new Date(now.getTime() - WEEK);
 
   const [activePolicyCount, completedDecisions] = await Promise.all([
-    prisma.policyRuleVersion.count({ where: { status: "ACTIVE" } }),
+    // Counts only rule versions a reviewer (and the AI) may actually rely on.
+    prisma.policyRuleVersion.count({ where: { status: "ACTIVE", verificationStatus: "VERIFIED" } }),
     prisma.reviewDecision.findMany({
       where: { kind: "FINAL", createdAt: { gte: weekAgo }, creative: { workflow: "SUBMISSION_REVIEW" } },
       select: {

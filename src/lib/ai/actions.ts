@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { recordFinding } from "@/lib/workflow/commands";
-import { analyzeCreativeCompliance } from "./service";
+import { analyzeCreativeCompliance, applicableRuleForAcceptance, citationFor } from "./service";
 import type { AIAnalysisResult, AISuggestedFinding } from "./types";
 import type { FindingSeverity } from "@/generated/prisma/enums";
 
@@ -28,20 +28,32 @@ export async function runAICreativeScan(
     }
 
     const result = await analyzeCreativeCompliance(user, {
-      creativeId,
-      versionId,
-      forceRefresh,
+      creativeId: String(creativeId ?? ""),
+      versionId: versionId ? String(versionId) : undefined,
+      forceRefresh: Boolean(forceRefresh),
     });
 
     return { ok: true, result };
   } catch (err) {
     return {
       ok: false,
-      error: err instanceof Error ? err.message : "Failed to run AI creative compliance scan.",
+      error: err instanceof Error ? err.message : "Failed to run AI creative scan.",
     };
   }
 }
 
+function mapSeverity(severity: unknown): FindingSeverity {
+  if (severity === "CRITICAL" || severity === "MAJOR") return "HIGH";
+  if (severity === "MINOR") return "LOW";
+  return "MEDIUM";
+}
+
+/**
+ * A TEAM reviewer accepts one AI suggestion as a DRAFT finding (team-only until
+ * they request changes or complete the review). The cited rule is re-checked
+ * on the server and linked by its exact approved version; the citation the
+ * browser sends back is ignored.
+ */
 export async function acceptAIFindingAction(params: {
   creativeId: string;
   finding: AISuggestedFinding;
@@ -58,28 +70,27 @@ export async function acceptAIFindingAction(params: {
     }
 
     const { finding, creativeId, marketCodes = [], platformCodes = [] } = params;
-
-    // Map AI severity to Prisma FindingSeverity
-    let mappedSeverity: FindingSeverity = "MEDIUM";
-    if (finding.severity === "CRITICAL" || finding.severity === "MAJOR") {
-      mappedSeverity = "HIGH";
-    } else if (finding.severity === "MODERATE") {
-      mappedSeverity = "MEDIUM";
-    } else if (finding.severity === "MINOR") {
-      mappedSeverity = "LOW";
+    const rule = await applicableRuleForAcceptance(user, String(creativeId ?? ""), String(finding?.policyCitation?.ruleCode ?? ""));
+    if (!rule) {
+      return {
+        ok: false,
+        error: "The cited policy is not an active, verified policy for this submission, so this suggestion can't be accepted. Record a finding manually if needed.",
+      };
     }
-
-    const formattedExplanation = `${finding.explanation}\n\n[Grounded Policy Citation: ${finding.policyCitation.ruleCode} — ${finding.policyCitation.ruleTitle} (${finding.policyCitation.sectionReference})]`;
+    const citation = citationFor(rule);
+    const section = citation.sectionReference ? ` (${citation.sectionReference})` : "";
+    const explanation = `${String(finding.explanation ?? "").trim()}\n\nPolicy cited: ${citation.ruleCode} v${citation.ruleVersionNumber} — ${citation.ruleTitle}${section}. Suggested by AI and accepted by a TEAM reviewer.`;
 
     const res = await recordFinding(user, {
       creativeId,
-      issue: finding.issue,
-      explanation: formattedExplanation,
-      severity: mappedSeverity,
-      requiredAction: finding.requiredAction,
-      actionDetails: finding.actionDetails,
+      issue: String(finding.issue ?? ""),
+      explanation,
+      severity: mapSeverity(finding.severity),
+      requiredAction: String(finding.requiredAction ?? ""),
+      actionDetails: String(finding.actionDetails ?? ""),
       marketCodes,
       platformCodes,
+      ruleVersionId: rule.currentVersion.id,
     });
 
     if (!res.ok) {
