@@ -1,9 +1,10 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Brand, BrandMark } from "@/components/layout/brand";
 import { REVIEW_DISCLAIMER } from "@/lib/workflow/labels";
 import { FileTextIcon, ShieldIcon, CheckCircleIcon } from "@/components/ui/icons";
-import { AuthExtras } from "@/components/auth/auth-extras";
 import { LoginForm } from "./login-form";
+import { AuthExtras } from "@/components/auth/auth-extras";
 
 export const metadata: Metadata = { title: "Sign in · Clyntique" };
 
@@ -96,12 +97,12 @@ export default function LoginPage() {
         {/* Mobile / Tablet Header Banner */}
         <div className="relative z-10 flex items-center justify-between border-b border-line bg-surface/90 backdrop-blur px-6 py-5 lg:hidden">
           <Brand size="md" className="select-none" />
-          <span className="text-micro font-semibold uppercase tracking-wider text-muted">Sign In</span>
+          <span className="text-micro font-semibold uppercase tracking-wider text-muted">Workspace Auth</span>
         </div>
 
         {/* Center: Sign-In Container */}
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 py-10 sm:px-8">
-          <div className="w-full max-w-[430px]">
+          <div className="w-full max-w-[440px]">
             {/* Script "Welcome Back" Header */}
             <div className="mb-6 text-center">
               <span className="font-script text-4xl text-brand-600 block leading-none">
@@ -112,16 +113,18 @@ export default function LoginPage() {
                 Sign in to your workspace
               </h2>
               <p className="text-body mt-1.5 text-muted">
-                Enter the credentials for your authorized Clyntique account.
+                Enter your credentials to access your workspace.
               </p>
             </div>
 
             {/* Form Card */}
             <div className="rounded-2xl border border-line bg-surface p-7 shadow-card sm:p-9">
-              <LoginForm />
+              <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-subtle/70" />}>
+                <LoginForm />
+              </Suspense>
             </div>
 
-            {/* Sign-up link and demo logins: render only when enabled on the server */}
+            {/* Auth extras: signup link + demo logins (render only when enabled on the server) */}
             <AuthExtras />
 
             <p className="text-caption mt-6 text-center text-muted/80 lg:hidden leading-relaxed">
