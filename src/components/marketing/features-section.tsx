@@ -1,3 +1,5 @@
+"use client";
+
 import {
   UsersIcon,
   LayersIcon,
@@ -6,6 +8,7 @@ import {
   TrendingUpIcon,
   SparklesIcon,
 } from "@/components/ui/icons";
+import { ScrollReveal } from "@/components/ui/scroll-reveal";
 
 const FEATURES = [
   {
@@ -57,11 +60,11 @@ export function FeaturesSection() {
     <section
       id="features"
       aria-label="Clyntique Product Features"
-      className="relative w-full border-b border-line/60 bg-surface py-20 sm:py-28"
+      className="relative w-full border-b border-line/60 bg-surface py-20 sm:py-28 overflow-hidden"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <div className="mb-16 text-center sm:mb-20">
+        <ScrollReveal animation="fade-up" className="mb-16 text-center sm:mb-20">
           <div className="inline-flex items-center gap-2 rounded-full border border-line bg-subtle px-3.5 py-1 text-micro font-semibold uppercase tracking-wider text-muted">
             <span>Enterprise Capabilities</span>
           </div>
@@ -71,41 +74,46 @@ export function FeaturesSection() {
           <p className="text-body mt-3 max-w-2xl mx-auto text-ink-soft text-balance">
             Every feature is engineered to eliminate ambiguity and keep marketing teams moving forward with confidence.
           </p>
-        </div>
+        </ScrollReveal>
 
-        {/* 6-Feature Grid */}
+        {/* 6-Feature Grid with Staggered Entrance Animations */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 sm:gap-8">
           {FEATURES.map((feature, idx) => {
             const Icon = feature.icon;
+            const delay = (idx % 3) * 100;
             return (
-              <div
+              <ScrollReveal
                 key={idx}
-                className="group relative flex flex-col justify-between rounded-2xl border border-line/80 bg-surface p-7 shadow-2xs hover:border-brand-600/60 hover:shadow-card transition-all duration-200"
+                animation="fade-up"
+                delayMs={delay}
+                className="h-full"
               >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex size-11 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors">
-                      <Icon className="size-5.5" />
+                <div className="group relative flex h-full flex-col justify-between rounded-2xl border border-line/80 bg-surface p-7 shadow-2xs hover:border-brand-600/60 hover:shadow-card hover:-translate-y-1 transition-all duration-300">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex size-11 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors duration-200">
+                        <Icon className="size-5.5" />
+                      </div>
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted bg-subtle px-2.5 py-1 rounded-full border border-line/60">
+                        {feature.badge}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted bg-subtle px-2.5 py-1 rounded-full border border-line/60">
-                      {feature.badge}
-                    </span>
+
+                    <h3 className="text-body font-semibold text-ink mt-5 group-hover:text-brand-600 transition-colors">
+                      {feature.title}
+                    </h3>
+
+                    <p className="text-small mt-2 text-ink-soft leading-relaxed">
+                      {feature.description}
+                    </p>
                   </div>
 
-                  <h3 className="text-body font-semibold text-ink mt-5 group-hover:text-brand-600 transition-colors">
-                    {feature.title}
-                  </h3>
-
-                  <p className="text-small mt-2 text-ink-soft leading-relaxed">
-                    {feature.description}
-                  </p>
+                  <div className="mt-6 pt-4 border-t border-line/50 flex items-center gap-1.5 text-micro font-medium text-brand-600 opacity-90 group-hover:opacity-100">
+                    <span>Learn more</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
                 </div>
-
-                <div className="mt-6 pt-4 border-t border-line/50 flex items-center gap-1.5 text-micro font-medium text-brand-600 opacity-90 group-hover:opacity-100">
-                  <span>Learn more</span>
-                  <span className="group-hover:translate-x-0.5 transition-transform">→</span>
-                </div>
-              </div>
+              </ScrollReveal>
             );
           })}
         </div>

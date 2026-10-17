@@ -1,16 +1,19 @@
+"use client";
+
 import { BookOpenIcon, ShieldIcon, SparklesIcon, CheckCircleIcon } from "@/components/ui/icons";
+import { ScrollReveal } from "@/components/ui/scroll-reveal";
 
 export function PolicyLibrarySection() {
   return (
     <section
       id="policy-ai"
       aria-label="AI Policy Library and Grounded Review"
-      className="relative w-full border-b border-line/60 bg-[#FAF9F7] py-20 sm:py-28"
+      className="relative w-full border-b border-line/60 bg-[#FAF9F7] py-20 sm:py-28 overflow-hidden"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 gap-12 lg:grid-cols-12 lg:gap-16 items-center">
           {/* Left Column: Context & Guarantees */}
-          <div className="lg:col-span-6 flex flex-col">
+          <ScrollReveal animation="fade-up" className="lg:col-span-6 flex flex-col">
             <div className="inline-flex items-center gap-2 rounded-full border border-gold-300 bg-gold-50 px-3.5 py-1 text-micro font-semibold uppercase tracking-wider text-gold-700 w-fit">
               <SparklesIcon className="size-3.5" />
               <span>Grounded Intelligence</span>
@@ -67,11 +70,11 @@ export function PolicyLibrarySection() {
               <span className="font-semibold text-ink-soft block mb-1">Notice on Compliance & Legal Scope</span>
               Clyntique provides AI-assisted review and workflow organization for human teams. It does not provide legal advice, automatic regulatory approval, or platform acceptance guarantees.
             </div>
-          </div>
+          </ScrollReveal>
 
           {/* Right Column: Visual Policy Citation UI Card Mockup */}
-          <div className="lg:col-span-6">
-            <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-card">
+          <ScrollReveal animation="fade-up" delayMs={150} className="lg:col-span-6">
+            <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-card hover:shadow-card-hover transition-shadow">
               <div className="flex items-center justify-between border-b border-line pb-4">
                 <div className="flex items-center gap-2.5">
                   <div className="flex size-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-2xs">
@@ -118,7 +121,7 @@ export function PolicyLibrarySection() {
               {/* Human Reviewer Action Pill */}
               <div className="mt-5 flex items-center justify-between pt-2">
                 <div className="flex items-center gap-2 text-micro text-muted">
-                  <span className="size-2 rounded-full bg-positive-solid" />
+                  <span className="size-2 rounded-full bg-positive-solid animate-pulse" />
                   <span>Human reviewer verification required</span>
                 </div>
                 <span className="text-micro font-semibold text-brand-600">
@@ -126,7 +129,7 @@ export function PolicyLibrarySection() {
                 </span>
               </div>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </div>
     </section>

@@ -267,3 +267,46 @@
   letter-spacing: 0.01em;
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * Marketing animations: gentle floating, breathing glow, smooth fades
+ */
+@keyframes float-subtle-1 {
+  0%, 100% {
+    transform: translateY(0px) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(-0.5deg);
+  }
+}
+
+@keyframes float-subtle-2 {
+  0%, 100% {
+    transform: translateY(0px) rotate(2deg);
+  }
+  50% {
+    transform: translateY(-6px) rotate(3deg);
+  }
+}
+
+@keyframes float-subtle-3 {
+  0%, 100% {
+    transform: translateY(0px) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(-4px) rotate(0deg);
+  }
+}
+
+.animate-float-1 {
+  animation: float-subtle-1 5s ease-in-out infinite;
+}
+
+.animate-float-2 {
+  animation: float-subtle-2 6.5s ease-in-out infinite 0.7s;
+}
+
+.animate-float-3 {
+  animation: float-subtle-3 5.8s ease-in-out infinite 1.4s;
+}
+
