@@ -131,20 +131,81 @@ function WorkflowConnector({ isLeftToRight, isExposed }: ConnectorProps) {
   );
 }
 
+/*
+ * Phone and tablet layout: a numbered vertical timeline. Each rail segment
+ * turns gold and each node lights up as the next step scrolls into view.
+ */
+function MobileWorkflowTimeline({ exposedSteps }: { exposedSteps: boolean[] }) {
+  return (
+    <ol className="relative mx-auto max-w-xl lg:hidden">
+      {WORKFLOW_STEPS.map((step, idx) => {
+        const Icon = step.icon;
+        const isStepExposed = exposedSteps[idx];
+        const number = String(idx + 1).padStart(2, "0");
+
+        return (
+          <li
+            key={step.step}
+            data-step-idx={idx}
+            className="relative pb-6 pl-14 last:pb-0"
+          >
+            {/* Rail segment down to the next step's node */}
+            {idx < WORKFLOW_STEPS.length - 1 && (
+              <div aria-hidden className="pointer-events-none absolute left-5 top-10 bottom-0 w-px -translate-x-1/2 bg-line">
+                <div
+                  className="h-full w-full origin-top bg-gold-500 transition-transform duration-700 ease-out"
+                  style={{ transform: `scaleY(${exposedSteps[idx + 1] ? 1 : 0})` }}
+                />
+              </div>
+            )}
+            {/* Numbered node on the rail */}
+            <div
+              aria-hidden
+              className={`absolute left-0 top-0 z-10 flex size-10 items-center justify-center rounded-full border text-[12px] font-semibold tabular-nums transition-colors duration-500 ${
+                isStepExposed
+                  ? "border-gold-500 bg-gold-50 text-gold-700"
+                  : "border-line bg-surface text-faint"
+              }`}
+            >
+              {number}
+            </div>
+
+            <div
+              className={`rounded-2xl border border-line/80 bg-surface p-4 shadow-2xs transition-all duration-700 ease-out sm:p-5 ${
+                isStepExposed ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line/80 bg-subtle text-brand-600">
+                  <Icon className="size-4" />
+                </div>
+                <h3 className="text-body font-semibold leading-snug text-ink">
+                  <span className="sr-only">Step {step.step}: </span>
+                  {step.title}
+                </h3>
+              </div>
+
+              <p className="text-small mt-3 leading-relaxed text-ink-soft">{step.summary}</p>
+
+              <p className="text-caption mt-3 flex gap-2 rounded-xl bg-gold-50 px-3 py-2.5 leading-relaxed text-ink-soft">
+                <span aria-hidden className="mt-[7px] size-1.5 shrink-0 rounded-full bg-gold-500" />
+                <span>{step.detail}</span>
+              </p>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 export function WorkflowSection() {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
   const [exposedSteps, setExposedSteps] = useState<boolean[]>(() =>
     new Array(WORKFLOW_STEPS.length).fill(false)
   );
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    if (!("IntersectionObserver" in window)) {
-      setExposedSteps(new Array(WORKFLOW_STEPS.length).fill(true));
-      return;
-    }
-
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -165,7 +226,8 @@ export function WorkflowSection() {
       { threshold: 0.15, rootMargin: "0px 0px -40px 0px" }
     );
 
-    const stepElements = containerRef.current?.querySelectorAll("[data-step-idx]");
+    // Observes both layouts; the hidden one (display: none) never intersects.
+    const stepElements = sectionRef.current?.querySelectorAll("[data-step-idx]");
     stepElements?.forEach((el) => observer.observe(el));
 
     return () => observer.disconnect();
@@ -173,6 +235,7 @@ export function WorkflowSection() {
 
   return (
     <section
+      ref={sectionRef}
       id="workflow"
       aria-label="Product Workflow Journey"
       className="relative w-full border-b border-line/60 bg-canvas py-20 sm:py-28 overflow-hidden"
@@ -193,7 +256,7 @@ export function WorkflowSection() {
         </div>
 
         {/* Desktop Alternating Snake Workflow with Animated Grid-Anchored Connectors */}
-        <div ref={containerRef} className="hidden lg:block relative max-w-4xl mx-auto">
+        <div className="hidden lg:block relative max-w-4xl mx-auto">
           {WORKFLOW_STEPS.map((step, idx) => {
             const isLeft = idx % 2 === 0;
             const Icon = step.icon;
@@ -257,53 +320,7 @@ export function WorkflowSection() {
           })}
         </div>
 
-        {/* Mobile / Tablet Vertical Connected Timeline with Scroll Entrance */}
-        <div className="block lg:hidden relative max-w-xl mx-auto">
-          {/* Vertical connecting line with solid gold stroke */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-6 top-8 bottom-8 w-[1.5px] bg-gold-400"
-            style={{
-              strokeDasharray: "2, 0",
-            }}
-          />
-
-          <div className="flex flex-col gap-6">
-            {WORKFLOW_STEPS.map((step, idx) => {
-              const Icon = step.icon;
-              const isStepExposed = exposedSteps[idx];
-
-              return (
-                <div
-                  key={step.step}
-                  data-step-idx={idx}
-                  className={`relative flex items-start gap-4 transition-all duration-700 ease-out ${
-                    isStepExposed
-                      ? "opacity-100 translate-y-0"
-                      : "opacity-0 translate-y-6"
-                  }`}
-                >
-                  {/* Clean Icon Marker */}
-                  <div className="relative z-10 flex size-12 shrink-0 items-center justify-center rounded-2xl border border-line bg-surface text-brand-600 shadow-2xs">
-                    <Icon className="size-5" />
-                  </div>
-
-                  {/* Card Content */}
-                  <div className="flex-1 rounded-2xl border border-line bg-surface p-5 shadow-2xs hover:border-gold-400/60 transition-colors">
-                    <h3 className="text-small font-semibold text-ink">{step.title}</h3>
-
-                    <p className="text-caption mt-2 text-ink-soft leading-relaxed">
-                      {step.summary}
-                    </p>
-                    <p className="text-[11px] mt-2 text-muted border-t border-line/60 pt-2 leading-relaxed">
-                      {step.detail}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <MobileWorkflowTimeline exposedSteps={exposedSteps} />
       </div>
     </section>
   );
