@@ -74,10 +74,10 @@ export function PolicyLibrarySection() {
 
           {/* Right Column: Visual Policy Citation UI Card Mockup */}
           <ScrollReveal animation="fade-up" delayMs={150} className="lg:col-span-6">
-            <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-card hover:shadow-card-hover transition-shadow">
-              <div className="flex items-center justify-between border-b border-line pb-4">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex size-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-2xs">
+            <div className="rounded-3xl border border-line bg-surface p-4 sm:p-8 shadow-card hover:shadow-card-hover transition-shadow">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
+                <div className="flex min-w-0 items-center gap-2.5">
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-2xs">
                     <BookOpenIcon className="size-5" />
                   </div>
                   <div>
@@ -85,15 +85,15 @@ export function PolicyLibrarySection() {
                     <span className="text-micro block text-muted">Active Rule Database · 0 Approved (Default Seed)</span>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-positive-line bg-positive-soft px-2.5 py-0.5 text-[11px] font-semibold text-positive-strong">
+                <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-positive-line bg-positive-soft px-2.5 py-0.5 text-[11px] font-semibold text-positive-strong">
                   <ShieldIcon className="size-3" />
                   <span>Rule Verified</span>
                 </span>
               </div>
 
               {/* Sample Policy Inspection Card */}
-              <div className="mt-5 rounded-2xl border border-line/80 bg-subtle/50 p-5">
-                <div className="flex items-center justify-between">
+              <div className="mt-4 rounded-2xl border border-line/80 bg-subtle/50 p-4 sm:mt-5 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                   <span className="font-mono text-micro font-semibold text-brand-600">
                     RULE-META-HEALTH-04
                   </span>
@@ -107,7 +107,7 @@ export function PolicyLibrarySection() {
                 </p>
 
                 {/* Finding Callout */}
-                <div className="mt-4 rounded-xl border border-gold-300 bg-gold-50/70 p-3.5">
+                <div className="mt-4 rounded-xl border border-gold-300 bg-gold-50/70 p-3 sm:p-3.5">
                   <div className="flex items-center gap-2 text-micro font-semibold text-gold-700">
                     <SparklesIcon className="size-3.5" />
                     <span>AI Pre-Screening Citation</span>
@@ -119,12 +119,12 @@ export function PolicyLibrarySection() {
               </div>
 
               {/* Human Reviewer Action Pill */}
-              <div className="mt-5 flex items-center justify-between pt-2">
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 pt-2 sm:mt-5">
                 <div className="flex items-center gap-2 text-micro text-muted">
                   <span className="size-2 rounded-full bg-positive-solid animate-pulse" />
                   <span>Human reviewer verification required</span>
                 </div>
-                <span className="text-micro font-semibold text-brand-600">
+                <span className="whitespace-nowrap text-micro font-semibold text-brand-600">
                   Reviewer Workspace View →
                 </span>
               </div>
