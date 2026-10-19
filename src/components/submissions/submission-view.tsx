@@ -5,6 +5,7 @@ import type { Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
 import { getSubmission, getTargetingOptions, type SubmissionDetail } from "@/lib/data/submission";
 import { getSubmissionReview, type SubmissionReview } from "@/lib/data/submission-review";
+import { getScanHistory } from "@/lib/data/lifecycle";
 import { FORMATS } from "@/lib/creative-format";
 import { formatRelative, pluralize } from "@/lib/format";
 import { getUploadLimits } from "@/lib/media";
@@ -80,7 +81,11 @@ export async function SubmissionView({
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
   const canManageEvidence = role === "CLIENT" && authorize(user, "MANAGE_EVIDENCE", facts).ok;
-  const [targeting, review] = await Promise.all([editable ? getTargetingOptions() : Promise.resolve(null), reviewLoad]);
+  const [targeting, review, scanHistory] = await Promise.all([
+    editable ? getTargetingOptions() : Promise.resolve(null),
+    reviewLoad,
+    role === "TEAM" ? getScanHistory(user, creativeId) : Promise.resolve([]),
+  ]);
   if (!review) notFound();
   const chat = await chatLoad;
 
@@ -213,6 +218,8 @@ export async function SubmissionView({
             inReview={inReview}
             markets={submission.markets}
             platforms={submission.platforms}
+            history={scanHistory}
+            recordHref={`${basePathFor(role)}/creatives/${submission.id}/record`}
           />
         ),
       }
@@ -267,6 +274,11 @@ export async function SubmissionView({
           <span className="text-caption rounded-full bg-surface px-2.5 py-0.5 text-muted ring-1 ring-line ring-inset">
             {format.label} · {format.ratio}
           </span>
+          {finalDecision && (
+            <Link href={`${base}/creatives/${submission.id}/record`} className="text-caption rounded-full bg-surface px-2.5 py-0.5 text-brand-700 ring-1 ring-line ring-inset hover:bg-subtle">
+              Review record
+            </Link>
+          )}
           {role === "CLIENT" && chat && (
             <Link href={`/dashboard/messages/new?about=${submission.id}`} className={buttonClasses({ variant: "secondary", size: "sm", className: "ml-auto" })}>
               <MessageIcon /> Chat with reviewer

@@ -24,7 +24,26 @@ describe("prisma/migrations", () => {
       "20261012190000_round_snapshot",
       "20261014220000_compliance_policy_library",
       "20261019180000_reviewer_chat",
+      "20261019190000_lifecycle_records",
     ]);
+  });
+
+  it("the lifecycle-records migration (Oct 19 sprint) only creates and adds, and keeps history on RESTRICT", () => {
+    const body = statements("20261019190000_lifecycle_records");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|ALTER TABLE "\w+" ADD COLUMN|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 40));
+    expect(new Set(kinds)).toEqual(new Set(["CREATE TYPE", "CREATE TABLE", "CREATE INDEX", "ALTER TABLE \"ReviewCycle\" ADD COLUMN", "ALTER TABLE \"ReviewCycle\" ADD CONSTRAINT", "ALTER TABLE \"AIScanRun\" ADD CONSTRAINT", "ALTER TABLE \"AIScanRuleCheck\" ADD CONSTRAINT", "ALTER TABLE \"ExternalSubmission\" ADD CONSTRAINT", "ALTER TABLE \"ExternalOutcome\" ADD CONSTRAINT", "ALTER TABLE \"PolicyRuleEvent\" ADD CONSTRAINT"]));
+    for (const table of ["AIScanRun", "AIScanRuleCheck", "ExternalSubmission", "ExternalOutcome", "PolicyRuleEvent"]) expect(body).toContain(`CREATE TABLE "${table}"`);
+    expect(body).toContain('ALTER TABLE "ReviewCycle" ADD COLUMN     "reasonKind" "ReviewCycleReason"');
+    expect(body).toMatch(/ADD COLUMN\s+"triggerRuleVersionId" TEXT/);
+    // Rule versions and users referenced by history can't be deleted from under it.
+    expect(body).toMatch(/"AIScanRuleCheck" ADD CONSTRAINT[^;]*"ruleVersionId"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"ReviewCycle" ADD CONSTRAINT[^;]*"triggerRuleVersionId"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"ExternalSubmission" ADD CONSTRAINT[^;]*"versionId"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"PolicyRuleEvent" ADD CONSTRAINT[^;]*"ruleId"[^;]*ON DELETE RESTRICT/);
   });
 
   it("the round-snapshot migration adds three nullable columns and only fills those new columns", () => {

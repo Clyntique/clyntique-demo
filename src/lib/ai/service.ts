@@ -57,6 +57,8 @@ async function submittedSnapshot(creativeId: string, versionId?: string) {
     where: { creativeId },
     orderBy: { submittedAt: "desc" },
     select: {
+      id: true,
+      cycleId: true,
       versionId: true,
       submittedName: true,
       submittedDescription: true,
@@ -97,6 +99,56 @@ async function applicableRulesFor(creativeId: string) {
 
 function emptyResult(status: AIAnalysisResult["status"], summary: string, extra: Partial<AIAnalysisResult> = {}): AIAnalysisResult {
   return { status, extractedVisualText: [], detectedClaims: [], findings: [], summary, ...extra };
+}
+
+type ScanContext = {
+  creativeId: string;
+  versionId: string;
+  cycleId: string | null;
+  roundId: string | null;
+  initiatedById: string;
+  rulesChecked: { ruleVersionId: string; ruleCode: string; ruleVersionNumber: number }[];
+  promptVersion?: string;
+};
+
+/**
+ * Persists one scan as it ran (Oct 19 sprint: AI scan history). Every outcome
+ * is recorded, including insufficient coverage and provider failures, so the
+ * review record and later impact analysis know exactly which approved rule
+ * versions a submitted version was checked against. Only server-validated
+ * suggestions are stored, never the raw provider output, and never a provider
+ * error message. A failed write never hides the scan result from the
+ * reviewer; the result then simply carries no scanId.
+ */
+async function recordScan(ctx: ScanContext, result: AIAnalysisResult): Promise<AIAnalysisResult> {
+  try {
+    const run = await prisma.aIScanRun.create({
+      data: {
+        creativeId: ctx.creativeId,
+        versionId: ctx.versionId,
+        cycleId: ctx.cycleId,
+        roundId: ctx.roundId,
+        initiatedById: ctx.initiatedById,
+        status: result.status,
+        modelUsed: result.modelUsed ?? null,
+        promptVersion: ctx.promptVersion ?? null,
+        summary: result.summary,
+        errorName: result.error ?? null,
+        // Plain JSON copies of the validated result (never the raw provider output).
+        extractedVisualText: JSON.parse(JSON.stringify(result.extractedVisualText)),
+        detectedClaims: JSON.parse(JSON.stringify(result.detectedClaims)),
+        suggestedFindings: JSON.parse(JSON.stringify(result.findings)),
+        discardedSuggestions: result.discardedSuggestions ?? 0,
+        executionTimeMs: result.executionTimeMs ?? null,
+        rulesChecked: { create: ctx.rulesChecked },
+      },
+      select: { id: true, createdAt: true },
+    });
+    return { ...result, scanId: run.id, scannedAt: run.createdAt.toISOString() };
+  } catch (err) {
+    console.error("AI scan history write failed", err instanceof Error ? err.name : "unknown error");
+    return result;
+  }
 }
 
 /**
@@ -145,10 +197,21 @@ export async function analyzeCreativeCompliance(
   const scope = await applicableRulesFor(accessible.id);
   if (!scope) throw new Error("This submission is not available.");
   const { creative, markets, platforms, rules: applicableRules } = scope;
+  const provider = params.provider ?? defaultProvider;
+  const scanContext: ScanContext = {
+    creativeId: accessible.id,
+    versionId: snapshot.version.id,
+    cycleId: snapshot.cycleId,
+    roundId: snapshot.id,
+    initiatedById: user.id,
+    rulesChecked: applicableRules.map((r) => ({ ruleVersionId: r.currentVersion.id, ruleCode: r.code, ruleVersionNumber: r.currentVersion.versionNumber })),
+    promptVersion: provider.promptVersion,
+  };
 
   if (applicableRules.length === 0) {
     // Never cached: a policy approved a minute later must be used at once.
-    return emptyResult("INSUFFICIENT_COVERAGE", INSUFFICIENT_POLICY_COVERAGE, { rulesChecked: [] });
+    // Recorded, so the review record shows that no verified rule covered this.
+    return recordScan(scanContext, emptyResult("INSUFFICIENT_COVERAGE", INSUFFICIENT_POLICY_COVERAGE, { rulesChecked: [] }));
   }
 
   const rulesChecked = applicableRules.map((r) => ({
@@ -220,17 +283,19 @@ export async function analyzeCreativeCompliance(
     groundedRules: groundedRulesContext,
   };
 
-  // 6. Invoke the provider. Any failure is reported as such.
-  const provider = params.provider ?? defaultProvider;
+  // 6. Invoke the provider. Any failure is reported as such (and recorded).
   let rawResult: AIAnalysisResult;
   try {
     rawResult = await provider.analyzeCreative(input);
   } catch (err) {
     console.error("AI scan failed", err instanceof Error ? err.name : "unknown error");
-    return emptyResult("ERROR", "The AI scan failed. No findings were produced; review this creative manually.", {
-      error: err instanceof Error ? err.name : "Provider error", // never the provider's message: it can echo request details
-      rulesChecked,
-    });
+    return recordScan(
+      scanContext,
+      emptyResult("ERROR", "The AI scan failed. No findings were produced; review this creative manually.", {
+        error: err instanceof Error ? err.name : "Provider error", // never the provider's message: it can echo request details
+        rulesChecked,
+      }),
+    );
   }
 
   if (rawResult.status !== "SUCCESS") {
@@ -238,7 +303,7 @@ export async function analyzeCreativeCompliance(
     // pass through findings from an incomplete scan.
     const summary =
       rawResult.status === "INSUFFICIENT_COVERAGE" ? INSUFFICIENT_POLICY_COVERAGE : rawResult.summary || "The AI scan did not complete.";
-    return emptyResult(rawResult.status, summary, { error: rawResult.error, modelUsed: rawResult.modelUsed, rulesChecked });
+    return recordScan(scanContext, emptyResult(rawResult.status, summary, { error: rawResult.error, modelUsed: rawResult.modelUsed, rulesChecked }));
   }
 
   // 7. Server-side validation: every finding must cite an applicable rule, and
@@ -263,8 +328,9 @@ export async function analyzeCreativeCompliance(
     discardedSuggestions: discarded,
   };
 
-  analysisCache.set(cacheKey, { result: finalResult, timestamp: Date.now() });
-  return finalResult;
+  const recorded = await recordScan(scanContext, finalResult);
+  analysisCache.set(cacheKey, { result: recorded, timestamp: Date.now() });
+  return recorded;
 }
 
 /** The citation for a rule's current version, taken only from the database. */

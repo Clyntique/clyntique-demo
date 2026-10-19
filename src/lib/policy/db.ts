@@ -243,6 +243,11 @@ export async function createDbPolicyRule(
       });
     }
 
+    // Rule history (Oct 19 sprint): append-only, nothing is activated here.
+    await tx.policyRuleEvent.create({
+      data: { ruleId: rule.id, versionId: version.id, kind: "RULE_CREATED", actorId: user.id, note: `v1 created as ${version.status}; not active until approved.` },
+    });
+
     return rule.id;
   });
 
@@ -324,6 +329,10 @@ export async function proposeDbRuleVersion(
       data: { updatedAt: new Date() },
     });
 
+    await tx.policyRuleEvent.create({
+      data: { ruleId: rule.id, versionId: version.id, kind: "VERSION_PROPOSED", actorId: user.id, note: `v${nextVersionNumber} proposed: ${input.changeSummary.trim()}` },
+    });
+
     return version.id;
   });
 
@@ -373,6 +382,7 @@ export async function approveDbRuleVersion(
 
   await prisma.$transaction(async (tx) => {
     // Deprecate earlier active versions for this rule
+    const superseded = await tx.policyRuleVersion.findMany({ where: { ruleId, status: "ACTIVE", id: { not: versionId } }, select: { versionNumber: true } });
     await tx.policyRuleVersion.updateMany({
       where: { ruleId, status: "ACTIVE", id: { not: versionId } },
       data: { status: "DEPRECATED", effectiveTo: now },
@@ -398,6 +408,23 @@ export async function approveDbRuleVersion(
     await tx.policyRule.update({
       where: { id: ruleId },
       data: { currentVersionNumber: targetVersion.versionNumber, updatedAt: now },
+    });
+
+    // The rule-change event impact analysis starts from (Oct 19 sprint).
+    await tx.policyRuleEvent.create({
+      data: {
+        ruleId,
+        versionId,
+        kind: "VERSION_APPROVED",
+        actorId: user.id,
+        note: [
+          `v${targetVersion.versionNumber} approved and verified`,
+          superseded.length ? `supersedes ${superseded.map((v) => `v${v.versionNumber}`).join(", ")}` : "first active version",
+          auditNote?.trim() ? auditNote.trim() : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      },
     });
   });
 
@@ -438,6 +465,16 @@ export async function retireDbRule(
     await tx.policyRule.update({
       where: { id: ruleId },
       data: { updatedAt: now },
+    });
+
+    await tx.policyRuleEvent.create({
+      data: {
+        ruleId,
+        versionId: activeVersions[0]?.id ?? null,
+        kind: "RULE_RETIRED",
+        actorId: user.id,
+        note: [activeVersions.length ? `retired ${activeVersions.map((v) => `v${v.versionNumber}`).join(", ")}` : "no active version", auditNote?.trim() || null].filter(Boolean).join(" · "),
+      },
     });
   });
 }

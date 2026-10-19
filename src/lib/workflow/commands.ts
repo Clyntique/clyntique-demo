@@ -1,7 +1,28 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
-import type { CreativeFormat, EvidenceType, FindingAction, FindingSeverity, ReviewOutcome } from "@/generated/prisma/enums";
-import { CreativeFormat as CreativeFormats, EvidenceType as EvidenceTypes, FindingAction as FindingActions, FindingSeverity as Severities, ReviewOutcome as Outcomes } from "@/generated/prisma/enums";
+import type {
+  CreativeFormat,
+  EvidenceType,
+  ExternalDestinationType,
+  ExternalOutcomeKind,
+  ExternalRecordBasis,
+  FindingAction,
+  FindingSeverity,
+  ReviewCycleReason,
+  ReviewOutcome,
+} from "@/generated/prisma/enums";
+import {
+  CreativeFormat as CreativeFormats,
+  EvidenceType as EvidenceTypes,
+  ExternalDestinationType as DestinationTypes,
+  ExternalOutcomeKind as OutcomeKinds,
+  ExternalRecordBasis as RecordBases,
+  FindingAction as FindingActions,
+  FindingSeverity as Severities,
+  ReviewCycleReason as CycleReasons,
+  ReviewOutcome as Outcomes,
+} from "@/generated/prisma/enums";
+import { EXTERNAL_DESTINATION_LABEL, EXTERNAL_OUTCOME_LABEL, REVIEW_CYCLE_REASON_LABEL } from "./labels";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { EVIDENCE_MAX_BYTES, evidenceKindFor, evidencePathMatches } from "@/lib/evidence-files";
 import { UPLOAD_KEY_PATTERN } from "@/lib/media";
@@ -34,7 +55,7 @@ const fail = (error: string) => ({ ok: false as const, error });
 
 class Conflict extends Error {}
 
-const LIMITS = { name: 120, description: 1000, context: 2000, finding: 300, text: 4000, note: 2000 };
+const LIMITS = { name: 120, description: 1000, context: 2000, finding: 300, text: 4000, note: 2000, reference: 200 };
 
 function isUniqueViolation(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
@@ -929,6 +950,241 @@ export async function completeReview(
       });
       await activity(tx, g.s, user, "REVIEW_COMPLETED", `Review completed for “${g.s.name}” (V${ctx.versionNumber})`);
       return { ok: true as const };
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Re-review (Oct 19 sprint): the next review cycle on a completed submission.
+
+export type ReopenInput = {
+  creativeId: string;
+  reason: string;
+  note: string;
+  /** The approved policy rule version that triggered this re-review (POLICY_CHANGE only). */
+  triggerRuleVersionId?: string;
+};
+
+/**
+ * TEAM opens review cycle N+1 on a completed submission. The previous cycle
+ * stays closed with its findings and decisions untouched; nothing is copied
+ * into the new cycle (old findings remain visible under their own cycle, and
+ * the reviewer records new ones explicitly). The new cycle's round 1 is the
+ * newest version, which is the version the last decision was about (clients
+ * can't upload while a review is complete). The guarded status update and the
+ * unique (creativeId, number) key refuse a second concurrent reopen.
+ */
+export async function openReviewCycle(user: CurrentUser, input: ReopenInput): Promise<CommandResult<{ cycleId: string; cycleNumber: number; roundId: string }>> {
+  const g = await guard(user, "REOPEN_REVIEW", input.creativeId);
+  if (!g.ok) return g;
+  const bad = checkTransition("REOPEN_REVIEW", g.s, user);
+  if (bad) return fail(bad);
+  const reason = Object.values(CycleReasons).find((r) => r === input.reason) as ReviewCycleReason | undefined;
+  if (!reason) return fail("Choose why this submission needs another review.");
+  const note = clean(input.note, LIMITS.note);
+  if (note === null) return fail(`Keep the note under ${LIMITS.note} characters.`);
+  if (!note || note.length < 10) return fail("Explain, in a sentence, why another review is needed. The client will see it.");
+
+  let triggerRuleVersionId: string | null = null;
+  if (input.triggerRuleVersionId) {
+    if (reason !== "POLICY_CHANGE") return fail("A policy rule version can only be cited for a policy-change re-review.");
+    const version = await prisma.policyRuleVersion.findUnique({
+      where: { id: String(input.triggerRuleVersionId) },
+      select: { id: true, rule: { select: { code: true } }, versionNumber: true },
+    });
+    if (!version) return fail("That policy rule version doesn't exist.");
+    triggerRuleVersionId = version.id;
+  }
+
+  const [current, version] = await Promise.all([currentRound(g.s.id), latestVersion(g.s.id)]);
+  if (!current || !current.cycle.closedAt) return fail("A review cycle is still open on this submission.");
+  if (!version) return fail("This submission has no file to review.");
+
+  return run("openReviewCycle", async () =>
+    prisma.$transaction(async (tx) => {
+      const { count } = await tx.creative.updateMany({
+        where: { id: g.s.id, workflow: "SUBMISSION_REVIEW", status: "REVIEW_COMPLETE" },
+        data: { status: "SUBMITTED" },
+      });
+      if (!count) throw new Conflict("This submission changed meanwhile. Refresh and try again.");
+      const cycle = await tx.reviewCycle.create({
+        data: {
+          creativeId: g.s.id,
+          number: current.cycle.number + 1, // unique (creativeId, number) rejects a concurrent duplicate
+          openedById: user.id,
+          openedReason: note,
+          reasonKind: reason,
+          triggerRuleVersionId,
+        },
+        select: { id: true, number: true },
+      });
+      const round = await tx.submissionRound.create({
+        data: {
+          creativeId: g.s.id,
+          cycleId: cycle.id,
+          number: 1,
+          versionId: version.id,
+          submittedById: user.id,
+          note: `Re-review opened by Clyntique (${REVIEW_CYCLE_REASON_LABEL[reason].toLowerCase()}): ${note}`,
+          ...(await detailsSnapshot(tx, g.s.id)),
+        },
+        select: { id: true },
+      });
+      await activity(tx, g.s, user, "REVIEW_STARTED", `Re-review opened for “${g.s.name}” (cycle ${cycle.number}, V${version.versionNumber}): ${REVIEW_CYCLE_REASON_LABEL[reason]}`);
+      return { ok: true as const, cycleId: cycle.id, cycleNumber: cycle.number, roundId: round.id };
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// External submission and outcome records (Oct 19 sprint). Manual bookkeeping
+// only: Clyntique never submits anything to a platform or regulator, and an
+// outcome recorded here is what the client reported or what a TEAM member
+// read in the external document. Both tables are append-only.
+
+export type ExternalSubmissionInput = {
+  creativeId: string;
+  versionId: string;
+  destinationType: string;
+  destinationName: string;
+  platformCode?: string;
+  marketCode?: string;
+  /** ISO date (YYYY-MM-DD) the ad or application was submitted externally. */
+  submittedOn: string;
+  externalReference?: string;
+  note?: string;
+  /** TEAM only; a client's record is always CLIENT_REPORTED. */
+  basis?: string;
+};
+
+function externalAction(user: CurrentUser): SubmissionAction {
+  return user.role === "CLIENT" ? "REPORT_EXTERNAL" : "RECORD_EXTERNAL";
+}
+
+function basisFor(user: CurrentUser, requested: string | undefined): ExternalRecordBasis | null {
+  if (user.role === "CLIENT") return "CLIENT_REPORTED";
+  return (Object.values(RecordBases).find((b) => b === requested) as ExternalRecordBasis | undefined) ?? null;
+}
+
+/** A calendar date entered by a person: valid, not in the future, not absurdly old. */
+function parseDay(value: unknown) {
+  const text = String(value ?? "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return null;
+  const date = new Date(`${text}T00:00:00Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== text) return null;
+  if (date.getTime() > Date.now() + 24 * 60 * 60 * 1000) return null;
+  if (date.getUTCFullYear() < 2000) return null;
+  return date;
+}
+
+async function hasCompletedReview(creativeId: string) {
+  const closed = await prisma.reviewCycle.findFirst({ where: { creativeId, closedAt: { not: null } }, select: { id: true } });
+  return Boolean(closed);
+}
+
+/** CLIENT reports, or TEAM records, that a reviewed version was submitted to an ad platform or a regulator. */
+export async function recordExternalSubmission(user: CurrentUser, input: ExternalSubmissionInput): Promise<CommandResult<{ submissionId: string }>> {
+  const g = await guard(user, externalAction(user), input.creativeId);
+  if (!g.ok) return g;
+  if (!(await hasCompletedReview(g.s.id))) return fail("External submissions can be recorded once Clyntique's internal review is complete.");
+
+  const destinationType = Object.values(DestinationTypes).find((d) => d === input.destinationType) as ExternalDestinationType | undefined;
+  if (!destinationType) return fail("Choose whether this went to an advertising platform or a regulator.");
+  const destinationName = clean(input.destinationName, LIMITS.name);
+  if (!destinationName || destinationName.length < 2) return fail("Name the platform or regulator (2–120 characters).");
+  const basis = basisFor(user, input.basis);
+  if (!basis) return fail("Say whether this was reported by the client or checked by the team.");
+  const submittedOn = parseDay(input.submittedOn);
+  if (!submittedOn) return fail("Enter the submission date (not in the future).");
+  const externalReference = clean(input.externalReference, LIMITS.reference);
+  if (externalReference === null) return fail(`Keep the reference under ${LIMITS.reference} characters.`);
+  const note = clean(input.note, LIMITS.note);
+  if (note === null) return fail(`Keep the note under ${LIMITS.note} characters.`);
+  const platform = input.platformCode ? await validCodes("platform", [input.platformCode]) : { ok: true as const, codes: [] as string[] };
+  const market = input.marketCode ? await validCodes("market", [input.marketCode]) : { ok: true as const, codes: [] as string[] };
+  if (!platform.ok || !market.ok) return fail("Choose the platform and market from the list.");
+
+  // Only a version the team actually reviewed (part of a submitted round).
+  const reviewed = input.versionId
+    ? await prisma.submissionRound.findFirst({ where: { creativeId: g.s.id, versionId: String(input.versionId) }, select: { versionId: true, cycleId: true } })
+    : null;
+  if (!reviewed) return fail("Choose a version that was submitted for review.");
+
+  return run("recordExternalSubmission", async () =>
+    prisma.$transaction(async (tx) => {
+      const created = await tx.externalSubmission.create({
+        data: {
+          creativeId: g.s.id,
+          versionId: reviewed.versionId,
+          cycleId: reviewed.cycleId,
+          destinationType,
+          destinationName,
+          platformCode: platform.codes[0] ?? null,
+          marketCode: market.codes[0] ?? null,
+          submittedOn,
+          externalReference: externalReference || null,
+          note: note || null,
+          basis,
+          recordedById: user.id,
+        },
+        select: { id: true },
+      });
+      await activity(tx, g.s, user, "OTHER", `${EXTERNAL_DESTINATION_LABEL[destinationType]} submission to ${destinationName} recorded for “${g.s.name}”`);
+      return { ok: true as const, submissionId: created.id };
+    }),
+  );
+}
+
+export type ExternalOutcomeInput = {
+  submissionId: string;
+  kind: string;
+  outcomeOn: string;
+  note?: string;
+  /** Optional supporting document: an evidence item of the same submission. */
+  evidenceId?: string;
+  basis?: string;
+};
+
+/** CLIENT reports, or TEAM records, what the platform or regulator answered. Never a Clyntique decision. */
+export async function recordExternalOutcome(user: CurrentUser, input: ExternalOutcomeInput): Promise<CommandResult<{ outcomeId: string }>> {
+  const submission = input.submissionId
+    ? await prisma.externalSubmission.findUnique({
+        where: { id: String(input.submissionId) },
+        select: { id: true, creativeId: true, destinationName: true },
+      })
+    : null;
+  if (!submission) return fail("This external submission is no longer available.");
+  const g = await guard(user, externalAction(user), submission.creativeId);
+  if (!g.ok) return g;
+
+  const kind = Object.values(OutcomeKinds).find((k) => k === input.kind) as ExternalOutcomeKind | undefined;
+  if (!kind) return fail("Choose the outcome the platform or regulator gave.");
+  const basis = basisFor(user, input.basis);
+  if (!basis) return fail("Say whether this was reported by the client or checked by the team.");
+  const outcomeOn = parseDay(input.outcomeOn);
+  if (!outcomeOn) return fail("Enter the outcome date (not in the future).");
+  const note = clean(input.note, LIMITS.note);
+  if (note === null) return fail(`Keep the note under ${LIMITS.note} characters.`);
+  if (kind !== "APPROVED" && !note) return fail("Say what the platform or regulator asked for or objected to.");
+
+  let evidenceId: string | null = null;
+  if (input.evidenceId) {
+    const evidence = await prisma.evidence.findFirst({
+      where: { id: String(input.evidenceId), creativeId: g.s.id, withdrawnAt: null, ...(user.role === "CLIENT" ? { visibility: "SHARED" as const } : {}) },
+      select: { id: true },
+    });
+    if (!evidence) return fail("Choose a supporting document from this submission's evidence.");
+    evidenceId = evidence.id;
+  }
+
+  return run("recordExternalOutcome", async () =>
+    prisma.$transaction(async (tx) => {
+      const created = await tx.externalOutcome.create({
+        data: { submissionId: submission.id, kind, outcomeOn, note: note || null, evidenceId, basis, recordedById: user.id },
+        select: { id: true },
+      });
+      await activity(tx, g.s, user, "OTHER", `${submission.destinationName}: ${EXTERNAL_OUTCOME_LABEL[kind]} recorded for “${g.s.name}”`);
+      return { ok: true as const, outcomeId: created.id };
     }),
   );
 }

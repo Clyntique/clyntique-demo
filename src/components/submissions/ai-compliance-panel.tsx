@@ -21,7 +21,32 @@ export interface AICompliancePanelProps {
   inReview: boolean;
   markets: Array<{ code: string; name: string }>;
   platforms: Array<{ code: string; name: string }>;
+  /** Persisted scans of this creative, newest first (Oct 19 sprint). */
+  history?: ScanHistoryEntry[];
+  /** Where the full record (all scans, rule versions, cycles) lives. */
+  recordHref?: string;
 }
+
+export type ScanHistoryEntry = {
+  id: string;
+  versionNumber: number;
+  cycleNumber: number | null;
+  status: "SUCCESS" | "INSUFFICIENT_COVERAGE" | "RATE_LIMITED" | "ERROR";
+  createdAt: string;
+  initiatedByName: string;
+  modelUsed: string | null;
+  promptVersion: string | null;
+  rulesChecked: string[];
+  suggestedCount: number;
+  claimCount: number;
+};
+
+const SCAN_STATUS_LABEL: Record<ScanHistoryEntry["status"], string> = {
+  SUCCESS: "Completed",
+  INSUFFICIENT_COVERAGE: "No verified rules covered this scope",
+  RATE_LIMITED: "Not run (service busy)",
+  ERROR: "Failed",
+};
 
 export function AICompliancePanel({
   creativeId,
@@ -30,6 +55,8 @@ export function AICompliancePanel({
   inReview,
   markets,
   platforms,
+  history = [],
+  recordHref,
 }: AICompliancePanelProps) {
   const [isScanning, startScanTransition] = useTransition();
   const [isAccepting, startAcceptTransition] = useTransition();
@@ -459,6 +486,47 @@ export function AICompliancePanel({
           )}
         </div>
       )}
+
+      {/* Scan history: every persisted run, with the rule versions it was checked against (Oct 19 sprint). */}
+      <div className="flex flex-col gap-2 border-t border-line pt-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h4 className="text-small font-semibold text-ink">Scan history</h4>
+          {recordHref && (
+            <Link href={recordHref} className="text-caption text-brand-700 hover:underline">
+              Full review record
+            </Link>
+          )}
+        </div>
+        {history.length === 0 ? (
+          <p className="text-caption text-muted">No scan has been recorded for this submission yet. Every run is kept, including failures and runs with no rule coverage.</p>
+        ) : (
+          <ul className="flex flex-col gap-1.5">
+            {history.slice(0, 8).map((h) => (
+              <li key={h.id} className="rounded-lg border border-line bg-subtle/40 px-3 py-2 text-caption">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="font-medium text-ink">
+                    V{h.versionNumber}
+                    {h.cycleNumber != null ? ` · cycle ${h.cycleNumber}` : ""}
+                  </span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-micro font-semibold", h.status === "SUCCESS" ? "bg-positive-soft text-positive-ink" : h.status === "INSUFFICIENT_COVERAGE" ? "bg-subtle text-ink-soft" : "bg-attention-soft text-attention-ink")}>
+                    {SCAN_STATUS_LABEL[h.status]}
+                  </span>
+                  <span className="text-muted">
+                    {new Date(h.createdAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })} · {h.initiatedByName}
+                  </span>
+                </div>
+                <p className="mt-0.5 text-muted">
+                  {h.rulesChecked.length ? `Rules: ${h.rulesChecked.join(", ")}` : "No approved rule version covered this scope"}
+                  {h.status === "SUCCESS" ? ` · ${h.claimCount} claims · ${h.suggestedCount} suggestions` : ""}
+                  {h.modelUsed ? ` · ${h.modelUsed}` : ""}
+                  {h.promptVersion ? ` · prompt ${h.promptVersion}` : ""}
+                </p>
+              </li>
+            ))}
+            {history.length > 8 && <li className="text-caption text-muted">{history.length - 8} older scans are on the review record.</li>}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

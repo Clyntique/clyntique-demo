@@ -37,6 +37,8 @@ function getGeminiClient(): GoogleGenAI {
 
 export class GeminiAIProvider implements AIComplianceProvider {
   public readonly name = "Google Gemini";
+  /** Bumped whenever the grounding prompt below changes, so scan history says which prompt ran. */
+  public readonly promptVersion = "grounded-2026-10-16";
 
   async analyzeCreative(input: CreativeAnalysisInput): Promise<AIAnalysisResult> {
     const startTime = Date.now();
