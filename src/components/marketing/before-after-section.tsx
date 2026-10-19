@@ -135,16 +135,16 @@ export function BeforeAfterSection() {
             </div>
 
             {/* Structured Connected Stacked Cards */}
-            <div className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-card">
+            <div className="flex flex-col gap-3 rounded-3xl border border-line bg-surface p-3 sm:p-8 shadow-card">
               {/* Card 1 */}
-              <div className="flex items-start gap-4 rounded-2xl border border-line/70 bg-white p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600">
+              <div className="flex items-start gap-3 sm:gap-4 rounded-2xl border border-line/70 bg-white p-3.5 sm:p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
+                <div className="flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600">
                   <FolderIcon className="size-5.5" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
                     <h3 className="text-body font-semibold text-ink">One organized workspace</h3>
-                    <span className="text-[10px] font-semibold text-brand-600 uppercase tracking-wider bg-brand-50 px-2 py-0.5 rounded-full">
+                    <span className="mt-0.5 shrink-0 whitespace-nowrap text-[10px] font-semibold text-brand-600 uppercase tracking-wider bg-brand-50 px-2 py-0.5 rounded-full">
                       Step 1
                     </span>
                   </div>
@@ -160,14 +160,14 @@ export function BeforeAfterSection() {
               </div>
 
               {/* Card 2 */}
-              <div className="flex items-start gap-4 rounded-2xl border border-line/70 bg-white p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600">
+              <div className="flex items-start gap-3 sm:gap-4 rounded-2xl border border-line/70 bg-white p-3.5 sm:p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
+                <div className="flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600">
                   <LayersIcon className="size-5.5" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
                     <h3 className="text-body font-semibold text-ink">Centralized submissions</h3>
-                    <span className="text-[10px] font-semibold text-brand-600 uppercase tracking-wider bg-brand-50 px-2 py-0.5 rounded-full">
+                    <span className="mt-0.5 shrink-0 whitespace-nowrap text-[10px] font-semibold text-brand-600 uppercase tracking-wider bg-brand-50 px-2 py-0.5 rounded-full">
                       Step 2
                     </span>
                   </div>
@@ -183,14 +183,14 @@ export function BeforeAfterSection() {
               </div>
 
               {/* Card 3 */}
-              <div className="flex items-start gap-4 rounded-2xl border border-line/70 bg-white p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gold-50 border border-gold-200 text-gold-700">
+              <div className="flex items-start gap-3 sm:gap-4 rounded-2xl border border-line/70 bg-white p-3.5 sm:p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
+                <div className="flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-gold-50 border border-gold-200 text-gold-700">
                   <PaperclipIcon className="size-5.5" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
                     <h3 className="text-body font-semibold text-ink">Evidence attached to creatives</h3>
-                    <span className="text-[10px] font-semibold text-gold-700 uppercase tracking-wider bg-gold-100/70 px-2 py-0.5 rounded-full">
+                    <span className="mt-0.5 shrink-0 whitespace-nowrap text-[10px] font-semibold text-gold-700 uppercase tracking-wider bg-gold-100/70 px-2 py-0.5 rounded-full">
                       Step 3
                     </span>
                   </div>
@@ -206,14 +206,14 @@ export function BeforeAfterSection() {
               </div>
 
               {/* Card 4 */}
-              <div className="flex items-start gap-4 rounded-2xl border border-line/70 bg-white p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600">
+              <div className="flex items-start gap-3 sm:gap-4 rounded-2xl border border-line/70 bg-white p-3.5 sm:p-4 shadow-2xs hover:border-brand-600/50 hover:shadow-sm transition-all duration-200">
+                <div className="flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 border border-brand-100 text-brand-600">
                   <ClipboardCheckIcon className="size-5.5" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
                     <h3 className="text-body font-semibold text-ink">Clear review and revision stages</h3>
-                    <span className="text-[10px] font-semibold text-brand-600 uppercase tracking-wider bg-brand-50 px-2 py-0.5 rounded-full">
+                    <span className="mt-0.5 shrink-0 whitespace-nowrap text-[10px] font-semibold text-brand-600 uppercase tracking-wider bg-brand-50 px-2 py-0.5 rounded-full">
                       Step 4
                     </span>
                   </div>
@@ -229,14 +229,14 @@ export function BeforeAfterSection() {
               </div>
 
               {/* Card 5 */}
-              <div className="flex items-start gap-4 rounded-2xl border border-positive-line bg-positive-soft/40 p-4 shadow-2xs hover:border-positive-strong/60 transition-all duration-200">
-                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-positive-soft border border-positive-line text-positive-strong">
+              <div className="flex items-start gap-3 sm:gap-4 rounded-2xl border border-positive-line bg-positive-soft/40 p-3.5 sm:p-4 shadow-2xs hover:border-positive-strong/60 transition-all duration-200">
+                <div className="flex size-9 sm:size-11 shrink-0 items-center justify-center rounded-xl bg-positive-soft border border-positive-line text-positive-strong">
                   <AwardIcon className="size-5.5" />
                 </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
                     <h3 className="text-body font-semibold text-positive-ink">Traceable approvals and progress</h3>
-                    <span className="text-[10px] font-semibold text-positive-strong uppercase tracking-wider bg-positive-soft px-2 py-0.5 rounded-full border border-positive-line">
+                    <span className="mt-0.5 shrink-0 whitespace-nowrap text-[10px] font-semibold text-positive-strong uppercase tracking-wider bg-positive-soft px-2 py-0.5 rounded-full border border-positive-line">
                       Resolved
                     </span>
                   </div>
