@@ -35,6 +35,7 @@ import { SubmissionSteps } from "@/components/ui/submission-steps";
 import { StatusBadge, TonePill } from "@/components/ui/status-badge";
 import { ActivityList } from "@/components/workspace/activity-feed";
 import { CreativeThumb } from "@/components/workspace/creative-card";
+import { MessagesCard } from "@/components/messages/messages-card";
 
 /*
  * Clyntique Enterprise Dashboard View.
@@ -347,6 +348,9 @@ async function TeamDashboard({ user }: { user: CurrentUser }) {
             )}
           </section>
 
+          {/* Client messages */}
+          <MessagesCard user={user} />
+
           {/* Recent Operational Activity */}
           <section aria-label="Recent Activity" className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
             <div className="flex items-center justify-between border-b border-line px-5 py-4">
@@ -644,6 +648,9 @@ async function ClientDashboard({ user }: { user: CurrentUser }) {
 
       {/* Review Process Stepper */}
       <HowItWorks />
+
+      {/* Chat with the reviewer */}
+      <MessagesCard user={user} />
 
       {/* Submissions Section */}
       <div className="space-y-8">
