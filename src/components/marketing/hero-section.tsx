@@ -5,8 +5,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRightIcon, CheckCircleIcon, ShieldIcon, SparklesIcon } from "@/components/ui/icons";
 
-const HERO_BG_SRC = "/images/hero/hero-bg-v2.jpg";
+const HERO_BG_SRC = "/images/hero/hero-bg-v2.png";
 const CLOUDS_SRC = "/images/hero/clouds.png";
+
+// The cloud artwork is cut flush to its left and bottom edges; feather those
+// edges so no straight line shows once the cloud overhangs the next section.
+// Applied to the <img>, so the mirrored right cloud is feathered on its right.
+const CLOUD_MASK =
+  "linear-gradient(to top, transparent 0%, #000 16%), linear-gradient(to right, transparent 0%, #000 10%)";
+const cloudMaskStyle = {
+  maskImage: CLOUD_MASK,
+  maskComposite: "intersect",
+  WebkitMaskImage: CLOUD_MASK,
+  WebkitMaskComposite: "source-in",
+} as React.CSSProperties;
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const smoothstep = (a: number, b: number, v: number) => {
@@ -82,7 +94,8 @@ export function HeroSection() {
         leftCloudRef.current.style.opacity = String(cloudOpacity);
       }
       if (rightCloudRef.current) {
-        rightCloudRef.current.style.transform = `translate3d(${-travelX}px, ${y}px, 0) scale(${scale})`;
+        // Slightly lower and smaller than the left so the mirrored art never reads as symmetric.
+        rightCloudRef.current.style.transform = `translate3d(${-travelX}px, ${drift - rise * 0.82}px, 0) scale(${scale * 0.94})`;
         rightCloudRef.current.style.opacity = String(cloudOpacity);
       }
 
@@ -176,7 +189,7 @@ export function HeroSection() {
             />
           </div>
           {/* Navy wash for text contrast and depth. */}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0A111E]/70 via-[#1A2C48]/40 to-[#0F172A]/70" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0A111E]/60 via-[#1A2C48]/45 to-[#1A2C48]/20" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_35%,_rgba(0,0,0,0.35)_100%)]" />
         </div>
 
@@ -237,23 +250,23 @@ export function HeroSection() {
         <div
           ref={mistRef}
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-20 opacity-0 will-change-[opacity] bg-[radial-gradient(ellipse_at_50%_60%,_#FFFFFF_0%,_#FAF9F9_55%,_#F3F1EE_100%)] motion-reduce:hidden"
+          className="pointer-events-none absolute inset-0 z-20 opacity-0 will-change-[opacity] bg-[radial-gradient(ellipse_at_50%_60%,_#FFFFFF_0%,_#F5F7FA_45%,_#FAF9F9_80%)] motion-reduce:hidden"
         />
 
         {/* Foreground cloud formations, overhanging into the next section. */}
         <div
           ref={leftCloudRef}
           aria-hidden
-          className="pointer-events-none absolute -bottom-[14svh] -left-[22vw] z-30 w-[95vw] origin-bottom-left will-change-transform sm:-left-[16vw] sm:w-[70vw] lg:w-[58vw]"
+          className="pointer-events-none absolute -bottom-[8svh] -left-[28vw] z-30 w-[160vw] origin-bottom-left will-change-transform sm:-left-[14vw] sm:w-[110vw] lg:-left-[3vw] lg:w-[80vw]"
         >
-          <Image src={CLOUDS_SRC} alt="" width={1600} height={900} sizes="(min-width: 1024px) 58vw, (min-width: 640px) 70vw, 95vw" className="h-auto w-full select-none" draggable={false} />
+          <Image src={CLOUDS_SRC} alt="" width={1376} height={768} sizes="(min-width: 1024px) 80vw, (min-width: 640px) 110vw, 160vw" className="h-auto w-full select-none" style={cloudMaskStyle} draggable={false} />
         </div>
         <div
           ref={rightCloudRef}
           aria-hidden
-          className="pointer-events-none absolute -bottom-[14svh] -right-[22vw] z-30 w-[95vw] origin-bottom-right will-change-transform sm:-right-[16vw] sm:w-[70vw] lg:w-[58vw]"
+          className="pointer-events-none absolute -bottom-[8svh] -right-[28vw] z-30 w-[160vw] origin-bottom-right will-change-transform sm:-right-[14vw] sm:w-[110vw] lg:-right-[3vw] lg:w-[80vw]"
         >
-          <Image src={CLOUDS_SRC} alt="" width={1600} height={900} sizes="(min-width: 1024px) 58vw, (min-width: 640px) 70vw, 95vw" className="h-auto w-full -scale-x-100 select-none" draggable={false} />
+          <Image src={CLOUDS_SRC} alt="" width={1376} height={768} sizes="(min-width: 1024px) 80vw, (min-width: 640px) 110vw, 160vw" className="h-auto w-full -scale-x-100 select-none" style={cloudMaskStyle} draggable={false} />
         </div>
       </section>
     </div>
