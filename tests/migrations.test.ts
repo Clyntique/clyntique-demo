@@ -16,13 +16,14 @@ const sql = (folder: string) => readFileSync(join(dir, folder, "migration.sql"),
 const statements = (folder: string) => sql(folder).replace(/--.*$/gm, "");
 
 describe("prisma/migrations", () => {
-  it("starts with the 0_init baseline, followed by the submission-workflow, evidence-files, round-snapshot, and compliance-policy-library migrations", () => {
+  it("starts with the 0_init baseline, followed by the submission-workflow, evidence-files, round-snapshot, compliance-policy-library, and reviewer-chat migrations", () => {
     expect(folders).toEqual([
       "0_init",
       "20261009180000_submission_workflow",
       "20261011090000_evidence_files",
       "20261012190000_round_snapshot",
       "20261014220000_compliance_policy_library",
+      "20261019180000_reviewer_chat",
     ]);
   });
 
@@ -93,5 +94,21 @@ describe("prisma/migrations", () => {
     expect(body).toContain('FOREIGN KEY ("versionId") REFERENCES "PolicyRuleVersion"("id") ON DELETE RESTRICT');
     // Unverified default checks (Requirement 1)
     expect(body).toContain('"verificationStatus" "PolicyVerificationStatus" NOT NULL DEFAULT \'UNVERIFIED\'');
+  });
+
+  it("the reviewer-chat migration only creates the Conversation and Message tables (with their keys and indexes)", () => {
+    const body = statements("20261019180000_reviewer_chat");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.replace(/\s+/g, " ").match(/^(CREATE TABLE "\w+"|CREATE (UNIQUE )?INDEX "[\w]+" ON "\w+"|ALTER TABLE "\w+" ADD CONSTRAINT "[\w]+" FOREIGN KEY)/)?.[1]);
+    expect(kinds.every(Boolean)).toBe(true);
+    expect(body).toContain('CREATE TABLE "Conversation"');
+    expect(body).toContain('CREATE TABLE "Message"');
+    expect(body).toContain('CREATE UNIQUE INDEX "Conversation_clientId_subjectKey_key" ON "Conversation"("clientId", "subjectKey")');
+    // Only the two new tables are altered; no row is inserted.
+    expect([...body.matchAll(/ALTER TABLE "(\w+)"/g)].every((m) => ["Conversation", "Message"].includes(m[1]))).toBe(true);
+    expect(body).not.toMatch(/\bINSERT\b/i);
   });
 });

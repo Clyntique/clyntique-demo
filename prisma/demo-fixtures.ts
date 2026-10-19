@@ -103,6 +103,54 @@ async function latestRound(creativeId: string) {
   return r;
 }
 
+// Sample reviewer-chat conversations: one about a submitted submission (the
+// reviewer's reply is unread by the client) and one General question from the
+// other client (unread by the Team). Skipped for a subject that already has a
+// conversation. Chat tables must exist (migration 20261019180000_reviewer_chat).
+async function sampleChat(team: CurrentUser, client1: CurrentUser, client2: CurrentUser) {
+  const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000);
+  async function seed(client: CurrentUser, creativeId: string | null, messages: { from: CurrentUser; body: string; minutes: number; read: boolean }[]) {
+    const subjectKey = creativeId ?? "general";
+    if (await prisma.conversation.findUnique({ where: { clientId_subjectKey: { clientId: client.id, subjectKey } }, select: { id: true } })) {
+      console.log(`demo-fixtures: skip chat (exists) for ${client.email} / ${subjectKey}`);
+      return;
+    }
+    await prisma.conversation.create({
+      data: {
+        clientId: client.id,
+        creativeId,
+        subjectKey,
+        lastMessageAt: minutesAgo(Math.min(...messages.map((m) => m.minutes))),
+        messages: {
+          create: messages.map((m) => ({
+            senderId: m.from.id,
+            senderRole: m.from.role,
+            body: m.body,
+            createdAt: minutesAgo(m.minutes),
+            readAt: m.read ? minutesAgo(m.minutes - 5) : null,
+            readById: m.read ? (m.from.role === "CLIENT" ? team.id : client.id) : null,
+          })),
+        },
+      },
+    });
+    console.log(`demo-fixtures: created sample chat for ${client.email} / ${subjectKey}`);
+  }
+
+  const clinic = await prisma.creative.findFirst({
+    where: { name: "[SAMPLE] Clinic hours announcement — Feed post", project: { clientId: client1.id }, rounds: { some: {} } },
+    select: { id: true },
+  });
+  if (clinic) {
+    await seed(client1, clinic.id, [
+      { from: client1, body: "Hi, could you tell me what date range the finding about opening hours needs? Our extended hours start on 3 November.", minutes: 180, read: true },
+      { from: team, body: "Thanks for asking. Please state the start date (3 November) and, if the extended hours are temporary, an end date. Then respond on the finding and resubmit. (Sample message for demo testing.)", minutes: 95, read: false },
+    ]);
+  }
+  await seed(client2, null, [
+    { from: client2, body: "Hello, we plan to run the checkup reminder on TikTok as well. Is there anything we should prepare in advance? (Sample message for demo testing.)", minutes: 40, read: false },
+  ]);
+}
+
 async function main() {
   const dbName = databaseNameOf(process.env.DATABASE_URL);
   if (!dbName) fail("DATABASE_URL is missing or has no database name.");
@@ -133,6 +181,7 @@ async function main() {
     const exists = await prisma.project.findFirst({ where: { name: plan.project, clientId: plan.client.id }, select: { id: true } });
     console.log(`demo-fixtures: ${exists ? "skip (exists)" : "create"} project for ${plan.client.email}: ${plan.project}`);
   }
+  console.log("demo-fixtures: create sample reviewer-chat conversations (skipped if present)");
   if (SYNTHETIC_POLICY) console.log("demo-fixtures: create SYNTHETIC-TEST-01 (synthetic test policy, GLOBAL, GENERAL) if missing");
   if (!APPLY) {
     console.log("demo-fixtures: dry run only. Nothing was written.");
@@ -227,6 +276,14 @@ async function main() {
       platformCodes: ["META"],
     }));
     console.log("demo-fixtures: created Client 2 sample data");
+  }
+
+  try {
+    await sampleChat(team, client1, client2);
+  } catch (error) {
+    // Chat tables not created yet (migration 20261019180000_reviewer_chat not applied): everything else is already written.
+    if ((error as { code?: string }).code !== "P2021") throw error;
+    console.log("demo-fixtures: reviewer-chat tables not found, skipped sample conversations (apply the migration, then re-run).");
   }
 
   if (SYNTHETIC_POLICY && !(await prisma.policyRule.findUnique({ where: { code: "SYNTHETIC-TEST-01" } }))) {

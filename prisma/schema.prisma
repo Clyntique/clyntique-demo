@@ -173,6 +173,11 @@ model User {
   isPolicyAdmin              Boolean             @default(false)
   createdPolicyRuleVersions  PolicyRuleVersion[] @relation("RuleVersionCreatedBy")
   approvedPolicyRuleVersions PolicyRuleVersion[] @relation("RuleVersionApprovedBy")
+
+  clientConversations   Conversation[] @relation("ConversationClient")
+  reviewerConversations Conversation[] @relation("ConversationReviewer")
+  sentMessages          Message[]      @relation("MessageSender")
+  readMessages          Message[]      @relation("MessageReader")
 }
 
 // A campaign/client project, e.g. "Acme Health — Q4 Campaign".
@@ -223,6 +228,8 @@ model Creative {
   markets    SubmissionMarket[]
   platforms  SubmissionPlatform[]
   activities Activity[]
+
+  conversations Conversation[]
 
   @@index([projectId])
   @@index([createdById])
@@ -733,3 +740,54 @@ model PolicyRuleVersionSource {
   @@index([sourceId])
 }
 
+// ---------------------------------------------------------------------------
+// Reviewer chat. A client's conversation with the Clyntique human reviewers,
+// about one submitted submission or in general. It is NOT part of the formal
+// review: chat never changes a status, finding, decision or evidence, and is
+// not written to the project Activity timeline.
+
+model Conversation {
+  id                 String   @id @default(cuid())
+  clientId           String
+  // Null = the client's general conversation (also used for drafts and
+  // earlier-workflow creatives, which TEAM must not learn about).
+  creativeId         String?
+  // "general" or the creative id: one conversation per client and subject.
+  subjectKey         String
+  // Future routing: the reviewer handling this client or submission. Null = the
+  // shared Team inbox (every TEAM user), which is all the MVP uses.
+  assignedReviewerId String?
+  lastMessageAt      DateTime @default(now())
+  createdAt          DateTime @default(now())
+
+  client           User      @relation("ConversationClient", fields: [clientId], references: [id], onDelete: Restrict)
+  creative         Creative? @relation(fields: [creativeId], references: [id], onDelete: SetNull)
+  assignedReviewer User?     @relation("ConversationReviewer", fields: [assignedReviewerId], references: [id], onDelete: SetNull)
+  messages         Message[]
+
+  @@unique([clientId, subjectKey])
+  @@index([assignedReviewerId, lastMessageAt])
+  @@index([lastMessageAt])
+  @@index([creativeId])
+}
+
+// Append-only: messages are never edited or deleted. readAt is set the first
+// time the other side opens the conversation.
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String
+  // Snapshot of the sender's role, so history stays correct if roles change.
+  senderRole     Role
+  body           String
+  createdAt      DateTime  @default(now())
+  readAt         DateTime?
+  readById       String?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Restrict)
+  readBy       User?        @relation("MessageReader", fields: [readById], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([conversationId, senderRole, readAt])
+}
