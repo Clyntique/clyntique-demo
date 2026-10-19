@@ -25,7 +25,7 @@ export type SubmissionFacts = {
   projectClientId: string;
 };
 
-export const CLIENT_ACTIONS = ["EDIT_DRAFT", "UPLOAD_VERSION", "MANAGE_EVIDENCE", "SUBMIT", "RESUBMIT", "RESPOND_TO_FINDING"] as const;
+export const CLIENT_ACTIONS = ["EDIT_DRAFT", "UPLOAD_VERSION", "MANAGE_EVIDENCE", "SUBMIT", "RESUBMIT", "RESPOND_TO_FINDING", "REPORT_EXTERNAL"] as const;
 export const TEAM_ACTIONS = [
   "START_REVIEW",
   "RECORD_FINDING",
@@ -36,6 +36,8 @@ export const TEAM_ACTIONS = [
   "DISMISS_FINDING",
   "COMPLETE_REVIEW",
   "ADD_REVIEWER_EVIDENCE",
+  "RECORD_EXTERNAL",
+  "REOPEN_REVIEW",
 ] as const;
 
 export type ClientAction = (typeof CLIENT_ACTIONS)[number];
@@ -66,6 +68,12 @@ const ALLOWED_IN: Record<Exclude<SubmissionAction, "VIEW">, readonly CreativeSta
   DISMISS_FINDING: ["IN_REVIEW"],
   COMPLETE_REVIEW: ["IN_REVIEW"],
   ADD_REVIEWER_EVIDENCE: ["IN_REVIEW"],
+  // External submission and outcome records (Oct 19 sprint): any time after
+  // the first internal review completed; the command checks for a closed cycle.
+  REPORT_EXTERNAL: ["REVIEW_COMPLETE", "SUBMITTED", "IN_REVIEW", "CHANGES_REQUESTED"],
+  RECORD_EXTERNAL: ["REVIEW_COMPLETE", "SUBMITTED", "IN_REVIEW", "CHANGES_REQUESTED"],
+  // A new review cycle can only start once the previous one is complete.
+  REOPEN_REVIEW: ["REVIEW_COMPLETE"],
 };
 
 /** Whether the actor may see this submission at all. */

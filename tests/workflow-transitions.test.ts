@@ -40,8 +40,11 @@ describe("status transition engine", () => {
     }
   });
 
-  it("has no way out of REVIEW_COMPLETE, no skipping review, and no legacy statuses", () => {
-    expect(nextStatuses("REVIEW_COMPLETE")).toEqual([]);
+  it("REVIEW_COMPLETE leads only to a TEAM re-review (back to SUBMITTED), no skipping review, and no legacy statuses", () => {
+    // Oct 19 sprint: REOPEN_REVIEW is the one way out of a completed review; it
+    // opens a new cycle and is TEAM-only (see workflow-commands / lifecycle tests).
+    expect(nextStatuses("REVIEW_COMPLETE")).toEqual(["SUBMITTED"]);
+    expect(TRANSITIONS.REOPEN_REVIEW).toEqual({ from: "REVIEW_COMPLETE", to: "SUBMITTED", role: "TEAM" });
     expect(nextStatuses("DRAFT")).toEqual(["SUBMITTED"]);
     expect(nextStatuses("SUBMITTED")).toEqual(["IN_REVIEW"]);
     expect(nextStatuses("CHANGES_REQUESTED")).toEqual(["SUBMITTED"]);

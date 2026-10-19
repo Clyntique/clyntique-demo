@@ -6,6 +6,7 @@ import type { CreativeStatus, Role } from "@/generated/prisma/enums";
  *   DRAFT --SUBMIT--> SUBMITTED --START_REVIEW--> IN_REVIEW
  *   IN_REVIEW --REQUEST_CHANGES--> CHANGES_REQUESTED --RESUBMIT--> SUBMITTED
  *   IN_REVIEW --COMPLETE_REVIEW--> REVIEW_COMPLETE   (outcome guards in findings.ts)
+ *   REVIEW_COMPLETE --REOPEN_REVIEW--> SUBMITTED     (TEAM opens the next review cycle; Oct 19 sprint)
  *
  * This is the only place status transitions are defined. Commands apply them
  * with a conditional update (`where: { status: from }`), so a stale page or a
@@ -13,7 +14,7 @@ import type { CreativeStatus, Role } from "@/generated/prisma/enums";
  * ARCHIVED never appear here: they belong to the legacy workflow.
  */
 
-export type WorkflowAction = "SUBMIT" | "START_REVIEW" | "REQUEST_CHANGES" | "RESUBMIT" | "COMPLETE_REVIEW";
+export type WorkflowAction = "SUBMIT" | "START_REVIEW" | "REQUEST_CHANGES" | "RESUBMIT" | "COMPLETE_REVIEW" | "REOPEN_REVIEW";
 
 export type Transition = { from: CreativeStatus; to: CreativeStatus; role: Role };
 
@@ -23,6 +24,9 @@ export const TRANSITIONS: Record<WorkflowAction, Transition> = {
   REQUEST_CHANGES: { from: "IN_REVIEW", to: "CHANGES_REQUESTED", role: "TEAM" },
   RESUBMIT: { from: "CHANGES_REQUESTED", to: "SUBMITTED", role: "CLIENT" },
   COMPLETE_REVIEW: { from: "IN_REVIEW", to: "REVIEW_COMPLETE", role: "TEAM" },
+  // Re-review: a completed submission goes back to the queue in a NEW cycle.
+  // The previous cycle, its findings and its decisions are never changed.
+  REOPEN_REVIEW: { from: "REVIEW_COMPLETE", to: "SUBMITTED", role: "TEAM" },
 };
 
 export type TransitionResult = { ok: true; transition: Transition } | { ok: false; error: string };
