@@ -39,3 +39,8 @@ Vercel builds the branch against the general Preview `DATABASE_URL`, which is th
 6. Only then: client AI pre-check on its own feature branch (Decision 2).
 
 Nothing merges to `main` and nothing reaches Production without a separate approval.
+
+## Update, Oct 19 late evening
+- **Correction:** `bb4fdd2` did not contain `5399c0f` (fail-soft on a database without the lifecycle tables): the merge of PR #4 was taken at `9dc364b`, one commit early, so the "known behaviour on the Vercel Preview" above was not yet true for this branch. Merged as `0a813ec`. Re-checked: `tsc` clean, ESLint 0 errors, vitest 31 files / **396 passed**, build OK.
+- **CEO decision 18:42 UTC: no new Render database.** Plan, read-only inspection commands, Option A (second logical database on the existing instance) and Option B (backup-first apply to the shared database): `shared-db-migration-plan-oct20.md`. New read-only `npm run db:preflight`; verified apply and rollback scripts in `sql/`; `prisma/db-restore.ts` now covers all 34 tables (it knew 22).
+- Step 1 of the isolated-preview document is superseded (see its header note); Steps 2 to 6 still apply.

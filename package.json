@@ -13,6 +13,7 @@
     "db:check": "tsx prisma/db-check.ts",
     "db:target": "tsx prisma/db-target.ts",
     "db:inventory": "tsx prisma/db-inventory.ts",
+    "db:preflight": "tsx prisma/db-preflight.ts",
     "db:export": "tsx prisma/db-export.ts",
     "db:migrate:status": "prisma migrate status",
     "db:restore": "tsx prisma/db-restore.ts",

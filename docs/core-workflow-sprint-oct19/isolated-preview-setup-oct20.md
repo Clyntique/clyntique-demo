@@ -1,5 +1,7 @@
 # Isolated Preview database and storage — exact setup steps (Oct 20)
 
+> **Update, Oct 19 evening (CEO decision 18:42 UTC): no new Render database will be purchased.** Step 1 below is replaced by creating a second logical database `clyntique_demo_preview` on the **existing** Render instance; see `shared-db-migration-plan-oct20.md` §3 (Option A). Steps 2 to 6 apply unchanged, with `DATABASE_URL` = the existing External Database URL whose last path segment is `/clyntique_demo_preview`. The host in Step 4's check is then the **same** host `dpg-db3sfh8m7kps73ft1vc0-a`; the database name is what must differ.
+
 For: the integrated branch `demo/integration-oct22-v2`. Goal: that branch's Vercel Preview uses its **own** Render database and its **own** Blob store. Production, the shared `cyntique_demo` database (host `dpg-db3sfh8m7kps73ft1vc0-a`), and every other Preview stay exactly as they are.
 
 This revises the Oct 16 draft (`/mnt/project-files/clyntique/demo-workflow-completion/isolated-preview-setup.md`) for the new branch and the two new migrations.
