@@ -14,7 +14,7 @@
  */
 
 export const PASSWORD_MIN = 12;
-export const PASSWORD_MAX = 128; // bcrypt only uses the first 72 bytes; this keeps input bounded
+export const PASSWORD_MAX = 72; // bcrypt ignores everything after the first 72 bytes
 export const NAME_MIN = 2;
 export const NAME_MAX = 80;
 export const EMAIL_MAX = 254;
@@ -53,7 +53,9 @@ export function normalizeEmail(value: string) {
 
 export function passwordProblem(password: string, email = ""): string | null {
   if (password.length < PASSWORD_MIN) return `Use at least ${PASSWORD_MIN} characters.`;
-  if (password.length > PASSWORD_MAX) return `Use at most ${PASSWORD_MAX} characters.`;
+  if (password.length > PASSWORD_MAX || new TextEncoder().encode(password).length > PASSWORD_MAX) {
+    return `Use at most ${PASSWORD_MAX} characters (fewer if it has accented letters or symbols).`;
+  }
   if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) return "Include at least one letter and one number.";
   if (/^\s|\s$/.test(password)) return "Don't start or end the password with a space.";
   if (COMMON_PASSWORDS.has(password.toLowerCase())) return "This password is too easy to guess. Choose another.";

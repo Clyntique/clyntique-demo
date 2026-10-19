@@ -276,6 +276,7 @@ describe("activity", () => {
   }
 
   it("withdrawing unsubmitted evidence writes no activity the team could read", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("CHANGES_REQUESTED");
     h.prisma.evidence.findUnique.mockResolvedValue({ id: "e1", creativeId: "s1", title: "Draft", origin: "CLIENT_SUBMITTED", addedById: CLIENT_A.id, withdrawnAt: null, createdAt: at("11:00") });
     h.prisma.submissionRound.findFirst.mockResolvedValue({ submittedAt: ROUND1 });
@@ -437,7 +438,7 @@ describe("Stage D: private client work doesn't move the submission's updated tim
 describe("Stage E: client detail edits while changes are requested don't move the updated time", () => {
   it("updateDraft writes the existing updatedAt back outside drafts", async () => {
     const was = at("09:30");
-    h.prisma.creative.findUnique.mockResolvedValue({ id: "s1", name: "P", workflow: "SUBMISSION_REVIEW", status: "CHANGES_REQUESTED", projectId: "p", updatedAt: was, project: { clientId: CLIENT_A.id } });
+    h.prisma.creative.findUnique.mockResolvedValue({ id: "s1", name: "P", workflow: "SUBMISSION_REVIEW", status: "CHANGES_REQUESTED", projectId: "p", updatedAt: was, format: "STORY", project: { clientId: CLIENT_A.id } });
     h.prisma.creative.updateMany.mockResolvedValue({ count: 1 });
     expect((await cmd.updateDraft(CLIENT_A, "s1", { name: "Promo v2", format: "STORY" })).ok).toBe(true);
     expect(h.prisma.creative.updateMany.mock.calls[0][0].data).toMatchObject({ name: "Promo v2", updatedAt: was });

@@ -328,6 +328,7 @@ describe("acceptAIFindingAction", () => {
   });
 
   it("records a DRAFT finding linked to the exact rule version, with the database citation", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setupCreative(h.prisma);
     // recordFinding: the submission is in review with an open round.
     h.prisma.creative.findUnique.mockResolvedValueOnce({
