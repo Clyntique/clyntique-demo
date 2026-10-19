@@ -2,6 +2,7 @@ import "server-only";
 import type { CreativeStatus, PolicyRuleEventKind } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
+import { isMissingTable, LifecycleUnavailableError } from "./lifecycle";
 
 /*
  * Rule-change impact analysis (Oct 19 sprint, TEAM only).
@@ -90,7 +91,10 @@ export async function getPolicyImpact(user: CurrentUser): Promise<PolicyImpact |
         },
       },
     }),
-  ]);
+  ]).catch((error: unknown) => {
+    if (isMissingTable(error)) throw new LifecycleUnavailableError();
+    throw error;
+  });
 
   const changes: RuleChange[] = [];
   for (const rule of rules) {

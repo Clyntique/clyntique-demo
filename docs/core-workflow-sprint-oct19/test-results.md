@@ -1,6 +1,6 @@
 # Test results — Oct 19 sprint
 
-All runs on branch `feature/core-workflow-sprint-oct19` at commit `c85a1f3` (before the docs commit), in the sprint container. No shared database or Blob store was contacted: unit tests mock Prisma; the real-DB check refuses any non-local `DATABASE_URL`.
+All runs on branch `feature/core-workflow-sprint-oct19` at commit `c85a1f3` plus the fail-soft commit that followed the Vercel Preview build, in the sprint container. No shared database or Blob store was contacted: unit tests mock Prisma; the real-DB check refuses any non-local `DATABASE_URL`.
 
 ## 1. TypeScript
 ```
@@ -19,10 +19,10 @@ Both errors pre-exist on `main` (Antigravity's homepage files) and were reported
 
 ## 3. Unit tests (`npx vitest run`)
 ```
- Test Files  29 passed (29)
-      Tests  367 passed (367)
+ Test Files  30 passed (30)
+      Tests  371 passed (371)
 ```
-Base with PR #1 merged: 332. New today: 35.
+Base with PR #1 merged: 332. New today: 39.
 
 | Suite | Tests | What it proves |
 |---|---|---|
@@ -31,6 +31,7 @@ Base with PR #1 merged: 332. New today: 35.
 | `tests/scan-history.test.ts` (new) | 7 | Success run recorded with creative, exact version, cycle, round, user, prompt version, rule versions evaluated, only validated suggestions (invented citation dropped), nothing unsubmitted; insufficient coverage recorded with no rules and no model call; thrown provider error recorded as ERROR with error *name* only (message with a secret-looking URL never stored); rate-limited answer recorded with findings dropped; failed history write never hides the result; cached repeat not recorded twice, forced re-run is; CLIENT refused, nothing recorded. |
 | `tests/policy-rule-events.test.ts` (new) | 5 | RULE_CREATED on create (note says not active until approved); VERSION_PROPOSED with change summary; VERSION_APPROVED only after maker-checker and verified sources, naming the superseded version; RULE_RETIRED keeps version rows; non-admin TEAM writes nothing. |
 | `tests/migrations.test.ts` (+1) | 9 | New folder in the ordered list; lifecycle migration contains only CREATE TYPE/TABLE/INDEX and ADD COLUMN/CONSTRAINT on the expected tables; RESTRICT on rule-version, version and rule FKs; the "no destructive statements" check now also covers it. |
+| `tests/lifecycle-unavailable.test.ts` (new) | 4 | On a database without the lifecycle tables (Prisma P2021): the Team submission page's scan history degrades to empty; the record and impact loaders raise `LifecycleUnavailableError`, which their pages turn into a plain notice; any other DB error still surfaces; a client never triggers the history query. Added because Vercel built a Preview of this branch against the shared database, which has not received the migration. |
 | `tests/workflow-transitions.test.ts` (updated) | 7 | `REVIEW_COMPLETE` now leads only to `SUBMITTED` via TEAM-only `REOPEN_REVIEW`; wrong-role rejection covers it. |
 | All 23 pre-existing suites | 317 | Unchanged and passing: submissions, review, remediation, findings, policy, AI grounding, auth, rate limit, proxy, security headers, seeds, scope. |
 
