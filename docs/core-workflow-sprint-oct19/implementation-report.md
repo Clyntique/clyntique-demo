@@ -72,11 +72,14 @@ Untouched: homepage/marketing files, auth pages, dashboards, nav, app shell, `pa
 |---|---|
 | `npx tsc --noEmit` | clean |
 | `npx eslint .` | 2 errors, both pre-existing in Antigravity's homepage files (`marketing/workflow-section.tsx`, `ui/scroll-reveal.tsx`); identical to `main`. PR #2 removes one of them. |
-| `npx vitest run` | 29 files, **367 passed** (332 on the base with PR #1, +35 new) |
+| `npx vitest run` | 30 files, **371 passed** (332 on the base with PR #1, +39 new) |
 | Real-DB check (`vitest.db.config.ts` against local `clyntique_sprint`) | 4 passed: submit → review → complete → external record → outcome; AI scan persisted and client-filtered; re-review keeps cycle 1 intact and refuses a duplicate; rule event written and read by the impact page |
 | `npm run build` | succeeds; new routes are dynamic (`◐`) like the existing creative pages |
 
 See `test-results.md` for the full output and what each suite proves.
+
+## Preview note
+Vercel built a Preview of this branch automatically (`clyntique-demo-git-feature-core-workflow-sprint-oct19-clyntique.vercel.app`). It runs against the shared database, which does **not** have the new tables, and no migration was run. The code was therefore made fail-soft: the existing submission page shows an empty scan history, and the record and impact pages show a one-line "not available on this environment yet" notice instead of an error. Everything pre-existing works on that Preview; the new features need the migration first.
 
 ## Rules honoured
 

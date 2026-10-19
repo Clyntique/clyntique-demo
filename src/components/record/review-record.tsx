@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
-import { getCitableRuleVersions, getLifecycle, type CycleView, type ExternalSubmissionView, type ScanView } from "@/lib/data/lifecycle";
+import { getCitableRuleVersions, getLifecycle, LifecycleUnavailableError, type CycleView, type ExternalSubmissionView, type ScanView } from "@/lib/data/lifecycle";
 import { getSubmission } from "@/lib/data/submission";
 import { getSubmissionReview, type DecisionView, type EvidenceView, type FindingView } from "@/lib/data/submission-review";
 import { FORMATS } from "@/lib/creative-format";
@@ -92,13 +92,19 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 export async function ReviewRecord({ role, params }: { role: Role; params: Promise<{ creativeId: string }> }) {
   const [user, { creativeId }] = await Promise.all([requireRole(role), params]);
-  const [submission, review, lifecycle, ruleVersions] = await Promise.all([
+  const [submission, review, lifecycleOrUnavailable, ruleVersions] = await Promise.all([
     getSubmission(user, creativeId),
     getSubmissionReview(user, creativeId),
-    getLifecycle(user, creativeId),
+    getLifecycle(user, creativeId).catch((error: unknown) => {
+      if (error instanceof LifecycleUnavailableError) return "unavailable" as const;
+      throw error;
+    }),
     getCitableRuleVersions(user),
   ]);
-  if (!submission || !review || !lifecycle) notFound();
+  if (!submission || !review) notFound();
+  if (lifecycleOrUnavailable === "unavailable") return <Unavailable href={`${basePathFor(role)}/creatives/${submission.id}`} />;
+  const lifecycle = lifecycleOrUnavailable;
+  if (!lifecycle) notFound();
 
   const team = role === "TEAM";
   const base = basePathFor(role);
@@ -244,6 +250,21 @@ export async function ReviewRecord({ role, params }: { role: Role; params: Promi
 }
 
 // ---------------------------------------------------------------------------
+
+function Unavailable({ href }: { href: string }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <h1 className="text-page-title text-ink">Review record</h1>
+      <p className="text-small rounded-md border border-line bg-subtle px-4 py-3 text-ink-soft">
+        The review record isn&apos;t available on this environment yet: its database hasn&apos;t received the lifecycle records update. Everything else about this
+        submission is unaffected.
+      </p>
+      <Link href={href} className="text-small text-brand-700 underline">
+        Back to the submission
+      </Link>
+    </div>
+  );
+}
 
 function CycleCard({ cycle, decisions, findings, team }: { cycle: CycleView; decisions: DecisionView[]; findings: FindingView[]; team: boolean }) {
   const final = decisions.find((d) => d.kind === "FINAL");

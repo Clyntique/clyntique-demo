@@ -2,7 +2,7 @@
 
 Status labels follow the Oct 19 audit: **COMPLETE & VERIFIED** (works on the sprint branch and is proven by automated tests, including a real-database run), **IMPLEMENTED BUT NOT FULLY VERIFIED** (code and unit tests exist, not exercised end to end in a browser on this branch), **PARTIALLY IMPLEMENTED**, **NOT IMPLEMENTED**, **BLOCKED**.
 
-"Verified" here means verified on the sprint branch in the sprint container (unit tests + the real-DB check against the local PostgreSQL + production build). Nothing was verified on Preview or Production, which this branch has not been deployed to.
+"Verified" here means verified on the sprint branch in the sprint container (unit tests + the real-DB check against the local PostgreSQL + production build). Vercel auto-built a Preview of this branch, but that Preview's database lacks the new tables (no migration was run), so the new features cannot be verified there yet; existing pages were kept working on it.
 
 | # | Stage | Existing functionality (before today) | New today | Test evidence | Remaining gaps | Demo readiness (Oct 22) | Migration required |
 |---|---|---|---|---|---|---|---|

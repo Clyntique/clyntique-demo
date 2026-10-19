@@ -9,6 +9,7 @@ import type {
 } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import type { AISuggestedFinding, DetectedClaim, ExtractedVisualText } from "@/lib/ai/types";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { authorize } from "@/lib/workflow/policy";
 import { overallExternalStatus, statusByDestination, submissionStatus, type ExternalStatusKey } from "@/lib/workflow/external";
@@ -110,6 +111,22 @@ function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
 
+/**
+ * Thrown when the lifecycle tables don't exist in the connected database
+ * (the Oct 19 migration has not been applied there yet). Pages show a plain
+ * notice instead of a 500; nothing else on the site depends on these tables.
+ */
+export class LifecycleUnavailableError extends Error {
+  constructor() {
+    super("The lifecycle records migration has not been applied to this database.");
+    this.name = "LifecycleUnavailableError";
+  }
+}
+
+export function isMissingTable(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021";
+}
+
 export async function getLifecycle(user: CurrentUser, creativeId: string): Promise<Lifecycle | null> {
   if (!creativeId || typeof creativeId !== "string") return null;
   const creative = await prisma.creative.findFirst({
@@ -200,7 +217,10 @@ export async function getLifecycle(user: CurrentUser, creativeId: string): Promi
       orderBy: { createdAt: "asc" },
       select: { id: true, title: true },
     }),
-  ]);
+  ]).catch((error: unknown) => {
+    if (isMissingTable(error)) throw new LifecycleUnavailableError();
+    throw error;
+  });
 
   // A client sees reviewer names as "Clyntique reviewer", as elsewhere.
   const who = (name: string, role: string) => (team || role === "CLIENT" ? name : "Clyntique reviewer");
@@ -295,7 +315,20 @@ export async function getCitableRuleVersions(user: CurrentUser): Promise<{ id: s
  * TEAM: the compact scan history for the AI panel (serialisable for the client
  * component). Same scope as getLifecycle; CLIENT gets nothing from here.
  */
-export async function getScanHistory(user: CurrentUser, creativeId: string) {
+export async function getScanHistory(user: CurrentUser, creativeId: string): Promise<ScanHistoryEntry[]> {
+  // The submission page must keep working on a database without the
+  // lifecycle tables (e.g. a Preview before the migration is applied).
+  try {
+    return await loadScanHistory(user, creativeId);
+  } catch (error) {
+    if (isMissingTable(error)) return [];
+    throw error;
+  }
+}
+
+export type ScanHistoryEntry = Awaited<ReturnType<typeof loadScanHistory>>[number];
+
+async function loadScanHistory(user: CurrentUser, creativeId: string) {
   if (user.role !== "TEAM" || !creativeId) return [];
   const creative = await prisma.creative.findFirst({
     where: { AND: [{ id: creativeId, workflow: "SUBMISSION_REVIEW" }, creativeScope(user)] },
