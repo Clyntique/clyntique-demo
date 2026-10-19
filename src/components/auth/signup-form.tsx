@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import Link from "next/link";
 import { signup } from "@/app/auth/actions";
 
 /*
@@ -70,12 +69,6 @@ export function SignupForm() {
         {pending || signedIn ? "Creating account…" : "Create client account"}
       </button>
 
-      <p className="text-center text-caption text-muted">
-        Already have an account?{" "}
-        <Link href="/auth/login" className="font-medium text-brand-700 hover:text-brand-900">
-          Sign in
-        </Link>
-      </p>
     </form>
   );
 }
