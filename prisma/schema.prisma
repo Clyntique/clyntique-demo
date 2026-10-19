@@ -173,6 +173,11 @@ model User {
   isPolicyAdmin              Boolean             @default(false)
   createdPolicyRuleVersions  PolicyRuleVersion[] @relation("RuleVersionCreatedBy")
   approvedPolicyRuleVersions PolicyRuleVersion[] @relation("RuleVersionApprovedBy")
+  // Lifecycle records (Oct 19 sprint)
+  aiScanRuns                 AIScanRun[]          @relation("ScanInitiatedBy")
+  externalSubmissions        ExternalSubmission[] @relation("ExternalSubmissionRecordedBy")
+  externalOutcomes           ExternalOutcome[]    @relation("ExternalOutcomeRecordedBy")
+  policyRuleEvents           PolicyRuleEvent[]    @relation("PolicyRuleEventActor")
 }
 
 // A campaign/client project, e.g. "Acme Health — Q4 Campaign".
@@ -223,6 +228,8 @@ model Creative {
   markets    SubmissionMarket[]
   platforms  SubmissionPlatform[]
   activities Activity[]
+  aiScanRuns          AIScanRun[]
+  externalSubmissions ExternalSubmission[]
 
   @@index([projectId])
   @@index([createdById])
@@ -256,6 +263,8 @@ model CreativeVersion {
   resolvedFindings Finding[]         @relation("FindingResolvedIn")
   findingResponses FindingResponse[]
   evidence         Evidence[]
+  aiScanRuns          AIScanRun[]
+  externalSubmissions ExternalSubmission[]
 
   // A creative can never have two versions with the same number.
   @@unique([creativeId, versionNumber])
@@ -293,6 +302,7 @@ model Evidence {
   withdrawnBy User?             @relation("EvidenceWithdrawnBy", fields: [withdrawnById], references: [id], onDelete: Restrict)
   version     CreativeVersion?  @relation(fields: [versionId], references: [id], onDelete: SetNull)
   findings    FindingEvidence[]
+  externalOutcomes ExternalOutcome[]
 
   @@index([creativeId])
 }
@@ -352,6 +362,13 @@ model ReviewCycle {
   rounds    SubmissionRound[]
   decisions ReviewDecision[]
   findings  Finding[]
+  // Re-review (Oct 19 sprint): why a cycle after the first was opened, and
+  // the policy version that triggered it, if any. Cycle 1 has neither.
+  reasonKind           ReviewCycleReason?
+  triggerRuleVersionId String?
+  triggerRuleVersion   PolicyRuleVersion? @relation("CycleTriggerRuleVersion", fields: [triggerRuleVersionId], references: [id], onDelete: Restrict)
+  aiScanRuns           AIScanRun[]
+  externalSubmissions  ExternalSubmission[]
 
   @@unique([creativeId, number])
 }
@@ -379,6 +396,7 @@ model SubmissionRound {
   submittedBy User              @relation("RoundSubmittedBy", fields: [submittedById], references: [id], onDelete: Restrict)
   decisions   ReviewDecision[]
   responses   FindingResponse[]
+  aiScanRuns  AIScanRun[]
 
   @@unique([cycleId, number])
   @@index([creativeId])
@@ -523,6 +541,7 @@ model Market {
   children    Market[]           @relation("MarketParent")
   submissions SubmissionMarket[]
   findings    FindingMarket[]
+  externalSubmissions ExternalSubmission[]
 }
 
 model AdPlatform {
@@ -533,6 +552,7 @@ model AdPlatform {
 
   submissions SubmissionPlatform[]
   findings    FindingPlatform[]
+  externalSubmissions ExternalSubmission[]
 }
 
 model SubmissionMarket {
@@ -678,6 +698,7 @@ model PolicyRule {
   updatedAt            DateTime            @updatedAt
 
   versions             PolicyRuleVersion[]
+  events               PolicyRuleEvent[]
 
   @@index([jurisdictionCode, platformCode])
   @@index([authorityType, category])
@@ -710,6 +731,9 @@ model PolicyRuleVersion {
   approvedBy              User?                    @relation("RuleVersionApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
   sources                 PolicyRuleVersionSource[]
   findings                Finding[]
+  scanChecks              AIScanRuleCheck[]
+  triggeredCycles         ReviewCycle[]            @relation("CycleTriggerRuleVersion")
+  events                  PolicyRuleEvent[]
 
   @@unique([ruleId, versionNumber])
   @@index([status, verificationStatus])
@@ -733,3 +757,168 @@ model PolicyRuleVersionSource {
   @@index([sourceId])
 }
 
+
+// ---------------------------------------------------------------------------
+// Lifecycle records (Oct 19 sprint). All additive.
+
+// Why a review cycle after the first was opened (cycle 1 never has one).
+enum ReviewCycleReason {
+  POLICY_CHANGE     // an approved policy rule version changed
+  EXTERNAL_OUTCOME  // a platform or regulator rejected it or asked for changes
+  CLIENT_UPDATE     // the client changed the creative or its claims
+  EVIDENCE_EXPIRED  // supporting evidence is no longer valid
+  TEAM_REQUEST      // a reviewer asked for another look
+}
+
+enum AIScanStatus {
+  SUCCESS
+  INSUFFICIENT_COVERAGE
+  RATE_LIMITED
+  ERROR
+}
+
+// One AI scan as it was run: which submitted version, which approved rule
+// versions were checked, and what the server-validated result was. Append
+// only. Raw provider output and secrets are never stored: suggestions are the
+// validated ones with citations rebuilt from the Policy Library.
+model AIScanRun {
+  id                   String       @id @default(cuid())
+  creativeId           String
+  versionId            String
+  cycleId              String?
+  roundId              String?
+  initiatedById        String
+  status               AIScanStatus
+  modelUsed            String?
+  promptVersion        String?
+  summary              String
+  // Provider error name only (never the message, which can echo request details).
+  errorName            String?
+  extractedVisualText  Json         @default("[]")
+  detectedClaims       Json         @default("[]")
+  suggestedFindings    Json         @default("[]")
+  discardedSuggestions Int          @default(0)
+  executionTimeMs      Int?
+  createdAt            DateTime     @default(now())
+
+  creative    Creative         @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  version     CreativeVersion  @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  cycle       ReviewCycle?     @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+  round       SubmissionRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
+  initiatedBy User             @relation("ScanInitiatedBy", fields: [initiatedById], references: [id], onDelete: Restrict)
+  rulesChecked AIScanRuleCheck[]
+
+  @@index([creativeId, createdAt])
+  @@index([versionId])
+}
+
+// The exact approved rule versions one scan was checked against. Historical
+// references are permanently preserved (onDelete Restrict on the version).
+model AIScanRuleCheck {
+  scanId            String
+  ruleVersionId     String
+  ruleCode          String // snapshot, for display without a join
+  ruleVersionNumber Int
+
+  scan        AIScanRun         @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  ruleVersion PolicyRuleVersion @relation(fields: [ruleVersionId], references: [id], onDelete: Restrict)
+
+  @@id([scanId, ruleVersionId])
+  @@index([ruleVersionId])
+}
+
+enum ExternalDestinationType {
+  AD_PLATFORM
+  REGULATOR
+}
+
+// Where a record came from. CLIENT_REPORTED is what the client told us;
+// TEAM_VERIFIED means a TEAM member checked the external document themselves.
+// Neither is a Clyntique approval.
+enum ExternalRecordBasis {
+  CLIENT_REPORTED
+  TEAM_VERIFIED
+}
+
+enum ExternalOutcomeKind {
+  APPROVED           // reported as approved by the platform or regulator
+  CHANGES_REQUESTED  // the platform or regulator asked for changes
+  REJECTED
+}
+
+// A manual record that a reviewed version was submitted to an ad platform or
+// a regulator. Clyntique never submits anything itself: this is bookkeeping.
+// Append only; there is no edit or delete.
+model ExternalSubmission {
+  id                String                  @id @default(cuid())
+  creativeId        String
+  versionId         String
+  cycleId           String?
+  destinationType   ExternalDestinationType
+  destinationName   String
+  platformCode      String?
+  marketCode        String?
+  submittedOn       DateTime
+  externalReference String?
+  note              String?
+  basis             ExternalRecordBasis
+  recordedById      String
+  createdAt         DateTime                @default(now())
+
+  creative   Creative        @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  version    CreativeVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  cycle      ReviewCycle?    @relation(fields: [cycleId], references: [id], onDelete: SetNull)
+  platform   AdPlatform?     @relation(fields: [platformCode], references: [code], onDelete: Restrict)
+  market     Market?         @relation(fields: [marketCode], references: [code], onDelete: Restrict)
+  recordedBy User            @relation("ExternalSubmissionRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+  outcomes   ExternalOutcome[]
+
+  @@index([creativeId, createdAt])
+  @@index([versionId])
+}
+
+// What the platform or regulator answered, as reported or verified. Append
+// only: a later outcome supersedes an earlier one but never replaces it.
+model ExternalOutcome {
+  id           String              @id @default(cuid())
+  submissionId String
+  kind         ExternalOutcomeKind
+  outcomeOn    DateTime
+  note         String?
+  // Optional supporting document, from the submission's evidence.
+  evidenceId   String?
+  basis        ExternalRecordBasis
+  recordedById String
+  createdAt    DateTime            @default(now())
+
+  submission ExternalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  evidence   Evidence?          @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  recordedBy User               @relation("ExternalOutcomeRecordedBy", fields: [recordedById], references: [id], onDelete: Restrict)
+
+  @@index([submissionId, createdAt])
+}
+
+enum PolicyRuleEventKind {
+  RULE_CREATED
+  VERSION_PROPOSED
+  VERSION_APPROVED
+  RULE_RETIRED
+}
+
+// Append-only history of changes to a policy rule, written by the Policy
+// Library commands. Impact analysis starts from VERSION_APPROVED events.
+model PolicyRuleEvent {
+  id        String              @id @default(cuid())
+  ruleId    String
+  versionId String?
+  kind      PolicyRuleEventKind
+  actorId   String
+  note      String?
+  createdAt DateTime            @default(now())
+
+  rule    PolicyRule         @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  version PolicyRuleVersion? @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  actor   User               @relation("PolicyRuleEventActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([ruleId, createdAt])
+}
