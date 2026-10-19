@@ -228,7 +228,7 @@ export async function analyzeCreativeCompliance(
   } catch (err) {
     console.error("AI scan failed", err instanceof Error ? err.name : "unknown error");
     return emptyResult("ERROR", "The AI scan failed. No findings were produced; review this creative manually.", {
-      error: err instanceof Error ? err.message : "Provider error",
+      error: err instanceof Error ? err.name : "Provider error", // never the provider's message: it can echo request details
       rulesChecked,
     });
   }

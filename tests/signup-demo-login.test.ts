@@ -52,6 +52,9 @@ describe("signup validation", () => {
     expect(passwordProblem("password1234")).toMatch(/too easy/);
     expect(passwordProblem("samrivera2026x", "samrivera@clinic.example")).toMatch(/email address/);
     expect(passwordProblem("x".repeat(120) + "123456789")).toMatch(/at most/);
+    // bcrypt only uses 72 bytes: longer passwords (in bytes, not characters) are refused, not silently truncated.
+    expect(passwordProblem("a1" + "é".repeat(40))).toMatch(/at most/);
+    expect(passwordProblem("a1" + "b".repeat(70))).toBeNull();
     expect(passwordProblem(STRONG)).toBeNull();
   });
 
@@ -107,6 +110,28 @@ describe("signup action", () => {
     const race = await signup(undefined, form(valid));
     expect(race?.fieldErrors?.email).toMatch(/already exists/);
     expect(h.createSession).not.toHaveBeenCalled();
+  });
+
+  it("is always rate limited (even with LOGIN_RATE_LIMIT off) and every sign-up counts", async () => {
+    vi.stubEnv("CLIENT_SIGNUP", "enabled");
+    h.prisma.user.create.mockResolvedValueOnce({ id: "u-new", role: "CLIENT" });
+    expect(await signup(undefined, form(valid))).toEqual({ signedIn: true });
+    expect(h.prisma.loginAttempt.createManyAndReturn).toHaveBeenCalledTimes(1);
+    // A successful sign-up is not marked succeeded, so it still counts towards the limit.
+    expect(h.prisma.loginAttempt.updateMany).not.toHaveBeenCalled();
+
+    h.prisma.loginAttempt.count.mockResolvedValue(21); // over the per-address limit
+    const blocked = await signup(undefined, form({ ...valid, email: "other@clinic.example" }));
+    expect(blocked?.error).toMatch(/Too many attempts/);
+    expect(h.prisma.user.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed when the limiter is unavailable", async () => {
+    vi.stubEnv("CLIENT_SIGNUP", "enabled");
+    h.prisma.loginAttempt.createManyAndReturn.mockRejectedValueOnce(new Error("relation does not exist"));
+    const res = await signup(undefined, form(valid));
+    expect(res?.error).toMatch(/temporarily unavailable/);
+    expect(h.prisma.user.create).not.toHaveBeenCalled();
   });
 
   it("returns field errors for invalid input", async () => {

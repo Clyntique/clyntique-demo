@@ -47,7 +47,9 @@ const upload = (creativeId: string) => ({
 });
 
 function setCurrent(status: string, workflow = "SUBMISSION_REVIEW") {
-  h.prisma.creative.findUniqueOrThrow.mockResolvedValue({ status, workflow });
+  h.prisma.creative.findUniqueOrThrow.mockResolvedValue({ status, workflow, updatedAt: new Date("2026-10-10T09:00:00Z") });
+  // The row-lock no-op succeeds only while uploads are open.
+  h.prisma.creative.updateMany.mockResolvedValue({ count: status === "DRAFT" || status === "CHANGES_REQUESTED" ? 1 : 0 });
 }
 
 beforeEach(() => {

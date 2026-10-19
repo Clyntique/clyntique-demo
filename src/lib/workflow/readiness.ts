@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { resubmissionGaps, type Unmet } from "./findings";
 
 /*
@@ -15,18 +16,18 @@ export type Readiness = {
   latestVersionNumber: number;
 };
 
-export async function loadReadiness(creativeId: string, cycleId: string): Promise<Readiness> {
+export async function loadReadiness(creativeId: string, cycleId: string, db: Prisma.TransactionClient = prisma): Promise<Readiness> {
   const [request, latest] = await Promise.all([
-    prisma.reviewDecision.findFirst({
+    db.reviewDecision.findFirst({
       where: { cycleId, kind: "CHANGES_REQUESTED" },
       orderBy: { createdAt: "desc" },
       select: { createdAt: true, version: { select: { versionNumber: true } } },
     }),
-    prisma.creativeVersion.findFirst({ where: { creativeId }, orderBy: { versionNumber: "desc" }, select: { versionNumber: true } }),
+    db.creativeVersion.findFirst({ where: { creativeId }, orderBy: { versionNumber: "desc" }, select: { versionNumber: true } }),
   ]);
   const since = request?.createdAt ?? new Date(0);
 
-  const findings = await prisma.finding.findMany({
+  const findings = await db.finding.findMany({
     where: { cycleId, status: { in: ["OPEN", "RESPONDED"] } },
     select: {
       id: true,

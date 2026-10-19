@@ -200,6 +200,18 @@ export async function finalizeVersion(input: {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const versionNumber = await prisma.$transaction(async (tx) => {
+        if (!isLegacy(creative)) {
+          // Lock the submission row before adding the version, so a submit or
+          // resubmit running at the same moment either sees this version or
+          // makes this upload fail; never a round on an older version with a
+          // newer one slipped in beside it. A no-op write: nothing visible changes.
+          const row = await tx.creative.findUniqueOrThrow({ where: { id: creative.id }, select: { status: true, updatedAt: true } });
+          const locked = await tx.creative.updateMany({
+            where: { id: creative.id, workflow: "SUBMISSION_REVIEW", status: { in: ["DRAFT", "CHANGES_REQUESTED"] }, updatedAt: row.updatedAt },
+            data: { updatedAt: row.updatedAt },
+          });
+          if (!locked.count) throw new ActionConflict("This submission was submitted meanwhile, so uploads are closed.");
+        }
         const latest = await tx.creativeVersion.findFirst({
           where: { creativeId: creative.id },
           orderBy: { versionNumber: "desc" },

@@ -74,8 +74,8 @@ export async function fetchPolicyLibraryData(
 export async function createPolicyRuleServerAction(
   input: CreatePolicyRuleInput
 ): Promise<{ ok: boolean; rule?: PolicyRule; error?: string }> {
+  const user = await requireRole("TEAM");
   try {
-    const user = await requireRole("TEAM");
     const created = await createDbPolicyRule(input, user);
     return { ok: true, rule: created };
   } catch (err) {
@@ -86,8 +86,8 @@ export async function createPolicyRuleServerAction(
 export async function proposeVersionServerAction(
   input: ProposeNewVersionInput
 ): Promise<{ ok: boolean; version?: PolicyRuleVersion; error?: string }> {
+  const user = await requireRole("TEAM");
   try {
-    const user = await requireRole("TEAM");
     const version = await proposeDbRuleVersion(input, user);
     return { ok: true, version };
   } catch (err) {
@@ -100,8 +100,8 @@ export async function approveVersionServerAction(
   versionId: string,
   auditNote?: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireRole("TEAM");
   try {
-    const user = await requireRole("TEAM");
     await approveDbRuleVersion(ruleId, versionId, user, auditNote);
     return { ok: true };
   } catch (err) {
@@ -112,8 +112,8 @@ export async function approveVersionServerAction(
 export async function verifyPolicySourceServerAction(
   sourceId: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireRole("TEAM");
   try {
-    const user = await requireRole("TEAM");
     await verifyDbPolicySource(sourceId, user);
     return { ok: true };
   } catch (err) {
@@ -125,8 +125,8 @@ export async function retireRuleServerAction(
   ruleId: string,
   auditNote?: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireRole("TEAM");
   try {
-    const user = await requireRole("TEAM");
     await retireDbRule(ruleId, user, auditNote);
     return { ok: true };
   } catch (err) {
@@ -141,8 +141,8 @@ export async function importCandidatesServerAction(): Promise<{
   message?: string;
   error?: string;
 }> {
+  const user = await requireRole("TEAM");
   try {
-    const user = await requireRole("TEAM");
     // Research candidates are unverified drafts with known source flaws. Importing
     // them needs explicit authorization, so it is off unless the deployment sets
     // POLICY_CANDIDATE_IMPORT=enabled. Imported candidates stay UNVERIFIED and

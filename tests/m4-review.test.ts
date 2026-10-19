@@ -181,6 +181,7 @@ describe("finding visibility in the data layer", () => {
 
 describe("draft findings", () => {
   it("TEAM can edit a draft finding; the edit is recorded in its history", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("IN_REVIEW");
     h.prisma.finding.findUnique.mockResolvedValue({ id: "f1", creativeId: "s1", status: "DRAFT" });
     h.prisma.finding.updateMany.mockResolvedValue({ count: 1 });
@@ -207,6 +208,7 @@ describe("draft findings", () => {
   });
 
   it("dismissing a draft finding needs a reason and is recorded", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("IN_REVIEW");
     h.prisma.finding.findUnique.mockResolvedValue({ id: "f1", creativeId: "s1", status: "DRAFT" });
     expect((await cmd.reviewFinding(TEAM, { findingId: "f1", move: "DISMISS", note: "" })).ok).toBe(false);
@@ -297,6 +299,7 @@ describe("review form actions", () => {
   });
 
   it("addFindingAction creates a DRAFT finding for TEAM and keeps values on error", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     h.user = TEAM;
     setSubmission("IN_REVIEW");
     setRound();
