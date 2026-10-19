@@ -16,7 +16,7 @@ export function BeforeAfterSection() {
     <section
       id="how-it-works"
       aria-label="Workflow transformation"
-      className="relative w-full border-b border-line/60 bg-[#FAF9F9] py-20 sm:py-28 overflow-hidden"
+      className="relative w-full border-b border-line/60 bg-white py-20 sm:py-28 overflow-hidden"
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Editorial Section Header */}

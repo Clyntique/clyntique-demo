@@ -246,11 +246,11 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Off-white mist: matches the next section's #FAF9F9 so full coverage hands over seamlessly. */}
+        {/* Mist: matches the next section's white so full coverage hands over seamlessly. */}
         <div
           ref={mistRef}
           aria-hidden
-          className="pointer-events-none absolute inset-0 z-20 opacity-0 will-change-[opacity] bg-[radial-gradient(ellipse_at_50%_60%,_#FFFFFF_0%,_#F5F7FA_45%,_#FAF9F9_80%)] motion-reduce:hidden"
+          className="pointer-events-none absolute inset-0 z-20 opacity-0 will-change-[opacity] bg-[radial-gradient(ellipse_at_50%_60%,_#FFFFFF_0%,_#F5F7FA_40%,_#FFFFFF_80%)] motion-reduce:hidden"
         />
 
         {/* Foreground cloud formations, overhanging into the next section. */}
