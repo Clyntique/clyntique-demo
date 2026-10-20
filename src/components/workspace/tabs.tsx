@@ -27,7 +27,7 @@ export function Tabs({ tabs, defaultId, label }: { tabs: TabSpec[]; defaultId: s
 
   return (
     <div className="flex min-w-0 flex-col">
-      <div role="tablist" aria-label={label} onKeyDown={onKey} className="flex gap-5 border-b border-line px-1">
+      <div role="tablist" aria-label={label} onKeyDown={onKey} className="flex gap-5 overflow-x-auto overflow-y-hidden border-b border-line px-1">
         {tabs.map((t, i) => {
           const on = t.id === active;
           return (
@@ -44,7 +44,7 @@ export function Tabs({ tabs, defaultId, label }: { tabs: TabSpec[]; defaultId: s
               tabIndex={on ? 0 : -1}
               onClick={() => setActive(t.id)}
               className={cn(
-                "text-small -mb-px flex h-10 items-center gap-2 border-b-2 font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600",
+                "text-small -mb-px flex h-10 shrink-0 items-center gap-2 border-b-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-600",
                 on ? "border-brand-600 font-semibold text-ink" : "border-transparent text-muted hover:text-ink hover:border-line-strong",
               )}
             >
