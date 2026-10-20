@@ -332,6 +332,8 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
         changeSummary: "Initial version",
       });
 
+      h.prisma.policyRuleVersion.updateMany.mockResolvedValue({ count: 1 }); // still pending
+
       h.prisma.policyRule.findMany.mockResolvedValueOnce([
         {
           id: "rule-db-1",
@@ -408,12 +410,6 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
     it("importCandidatePoliciesToDb imports sources and candidate rules as UNVERIFIED & PENDING_APPROVAL", async () => {
       const { importCandidatePoliciesToDb } = await import("@/lib/policy/db");
 
-      h.prisma.user.findFirst.mockResolvedValueOnce({
-        id: "usr-clyntique-legal-research",
-        name: "Clyntique Legal Research",
-        email: "research@clyntique.internal",
-      });
-
       // Sources do not exist yet
       h.prisma.policySource.findUnique.mockResolvedValue(null);
       // Rules do not exist yet
@@ -431,8 +427,63 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
         const data = (call[0] as { data: { status: string; verificationStatus: string; createdById: string } }).data;
         expect(data.status).toBe("PENDING_APPROVAL");
         expect(data.verificationStatus).toBe("UNVERIFIED");
-        expect(data.createdById).toBe("usr-clyntique-legal-research");
+        // The importer is the maker, so they can't also approve (maker-checker).
+        expect(data.createdById).toBe(policyAdmin.id);
       }
+    });
+  });
+
+  describe("4b. Approval guards", () => {
+    const pending = { id: "ver-db-1", ruleId: "rule-db-1", versionNumber: 1, createdById: "usr-author", status: "PENDING_APPROVAL", changeSummary: "x" };
+
+    it("an administrator can't approve candidates they imported", async () => {
+      const { importCandidatePoliciesToDb } = await import("@/lib/policy/db");
+      h.prisma.policySource.findUnique.mockResolvedValue(null);
+      h.prisma.policyRule.findUnique.mockResolvedValue(null);
+      await importCandidatePoliciesToDb(policyAdmin);
+      const created = (h.prisma.policyRuleVersion.create.mock.calls[0][0] as { data: { createdById: string; status: "PENDING_APPROVAL" } }).data;
+      expect(canApprovePolicyVersion(policyAdmin, created).allowed).toBe(false);
+      expect(h.prisma.user.create).not.toHaveBeenCalled();
+    });
+
+    it("refuses a version that belongs to a different rule", async () => {
+      const { approveDbRuleVersion } = await import("@/lib/policy/db");
+      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce({ ...pending, ruleId: "rule-other" });
+      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/not found/);
+      expect(h.prisma.policyRuleVersion.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("refuses a DRAFT version (it must be submitted for approval first)", async () => {
+      const { approveDbRuleVersion } = await import("@/lib/policy/db");
+      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce({ ...pending, status: "DRAFT" });
+      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/pending approval/);
+    });
+
+    it("refuses when the version was approved or changed meanwhile", async () => {
+      const { approveDbRuleVersion } = await import("@/lib/policy/db");
+      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce(pending);
+      h.prisma.policyRuleVersionSource.findMany.mockResolvedValueOnce([]);
+      h.prisma.policyRuleVersion.updateMany.mockResolvedValue({ count: 0 });
+      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/changed meanwhile/);
+      expect(h.prisma.policyRule.update).not.toHaveBeenCalled();
+    });
+
+    it("createDbPolicyRule never stores a submitted ACTIVE status", async () => {
+      const { createDbPolicyRule } = await import("@/lib/policy/db");
+      h.prisma.policyRule.findUnique.mockResolvedValueOnce(null);
+      h.prisma.policyRule.create.mockResolvedValueOnce({ id: "rule-db-1" });
+      h.prisma.policyRuleVersion.create.mockResolvedValueOnce({ id: "ver-db-1" });
+      await createDbPolicyRule(
+        {
+          code: "TEST-X", title: "T", authorityType: "REGULATION", jurisdictionCode: "US", industry: "HEALTHCARE", category: "DISCLOSURE",
+          summary: "s", legalExplanation: "l", remediationAction: "r", applicabilityConditions: [], effectiveFrom: new Date().toISOString(), sources: [],
+          status: "ACTIVE" as unknown as "PENDING_APPROVAL",
+        },
+        policyAdmin,
+      ).catch(() => {}); // the reload isn't mocked; only the write matters here
+      const data = (h.prisma.policyRuleVersion.create.mock.calls[0][0] as { data: { status: string; verificationStatus: string } }).data;
+      expect(data.status).toBe("PENDING_APPROVAL");
+      expect(data.verificationStatus).toBe("UNVERIFIED");
     });
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { decodeSession, encodeSession } from "@/lib/auth/session-token";
 
 const inAnHour = () => new Date(Date.now() + 60 * 60 * 1000);
@@ -21,5 +21,13 @@ describe("session token", () => {
   it("rejects an expired token", async () => {
     const token = await encodeSession({ userId: "u1", role: "TEAM" }, new Date(Date.now() - 1000));
     await expect(decodeSession(token)).resolves.toBeNull();
+  });
+});
+
+describe("SESSION_SECRET placeholder", () => {
+  it("refuses the .env.example placeholder even though it is 32+ characters", async () => {
+    vi.stubEnv("SESSION_SECRET", "REPLACE_WITH_A_LONG_RANDOM_STRING");
+    await expect(encodeSession({ userId: "u", role: "CLIENT" }, new Date(Date.now() + 60_000))).rejects.toThrow(/random value/);
+    vi.unstubAllEnvs();
   });
 });

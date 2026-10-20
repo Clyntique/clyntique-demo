@@ -178,6 +178,7 @@ describe("review actions are TEAM-only and record the reviewer", () => {
   });
 
   it("recordFinding creates a DRAFT finding on the round's version, attributed to the reviewer", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("IN_REVIEW");
     setRound();
     h.prisma.finding.create.mockResolvedValue({ id: "f1" });
@@ -276,6 +277,7 @@ describe("client responses and resubmission", () => {
   });
 
   it("a response moves the finding to RESPONDED and links only usable evidence", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("CHANGES_REQUESTED");
     setRound();
     h.prisma.finding.findUnique.mockResolvedValue({ id: "f1", creativeId: "s1", cycleId: "c1", status: "OPEN", publishedAt: new Date() });
@@ -327,6 +329,7 @@ describe("client responses and resubmission", () => {
 
 describe("reviewFinding", () => {
   it("resolving records the reviewer, note and the version it was resolved in", async () => {
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setSubmission("IN_REVIEW");
     setRound();
     h.prisma.finding.findUnique.mockResolvedValue({ id: "f1", creativeId: "s1", status: "RESPONDED" });

@@ -1,7 +1,6 @@
 "use client";
 
 import { useActionState, useEffect } from "react";
-import Link from "next/link";
 import { signup } from "@/app/auth/actions";
 
 /*
@@ -52,9 +51,9 @@ export function SignupForm() {
     <form action={action} className="flex flex-col gap-4" noValidate>
       {field("name", "Full name", { type: "text", autoComplete: "name", defaultValue: state?.values?.name, maxLength: 80 })}
       {field("email", "Work email", { type: "email", autoComplete: "email", defaultValue: state?.values?.email, maxLength: 254 })}
-      {field("password", "Password", { type: "password", autoComplete: "new-password", minLength: 12, maxLength: 128 })}
+      {field("password", "Password", { type: "password", autoComplete: "new-password", minLength: 12, maxLength: 72 })}
       <p className="-mt-2 text-caption text-muted">At least 12 characters, with a letter and a number.</p>
-      {field("confirmPassword", "Confirm password", { type: "password", autoComplete: "new-password", maxLength: 128 })}
+      {field("confirmPassword", "Confirm password", { type: "password", autoComplete: "new-password", maxLength: 72 })}
 
       {state?.error && (
         <p role="alert" className="rounded-lg border border-critical-line bg-critical-soft px-3.5 py-2.5 text-small text-critical-ink">
@@ -70,12 +69,6 @@ export function SignupForm() {
         {pending || signedIn ? "Creating account…" : "Create client account"}
       </button>
 
-      <p className="text-center text-caption text-muted">
-        Already have an account?{" "}
-        <Link href="/auth/login" className="font-medium text-brand-700 hover:text-brand-900">
-          Sign in
-        </Link>
-      </p>
     </form>
   );
 }

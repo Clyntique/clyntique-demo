@@ -14,16 +14,13 @@ interface ScrollRevealProps {
 
 export function useScrollReveal(threshold = 0.15, rootMargin = "0px 0px -40px 0px") {
   const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
+  // Browsers without IntersectionObserver show everything at once. Decided
+  // once, as the initial state, instead of in the effect (react-hooks/set-state-in-effect).
+  const [isVisible, setIsVisible] = useState(() => typeof window !== "undefined" && !("IntersectionObserver" in window));
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-
-    if (typeof window === "undefined" || !("IntersectionObserver" in window)) {
-      setIsVisible(true);
-      return;
-    }
+    if (!el || !("IntersectionObserver" in window)) return;
 
     const observer = new IntersectionObserver(
       ([entry]) => {

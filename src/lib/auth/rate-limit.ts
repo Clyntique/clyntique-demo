@@ -28,6 +28,14 @@ import { prisma } from "@/lib/prisma";
 export const WINDOW_MS = 15 * 60 * 1000;
 export const LIMITS = { emailIp: 5, email: 20, ip: 50 } as const;
 type Scope = keyof typeof LIMITS;
+type Limits = Record<Scope, number>;
+
+/**
+ * Client self-registration has its own keys (it never shares counts with
+ * sign-in) and every sign-up counts, successful or not, so one address can't
+ * create accounts in bulk: at most 20 per address and 5 per email per window.
+ */
+export const SIGNUP_LIMITS: Limits = { emailIp: 5, email: 5, ip: 20 };
 
 export function rateLimitEnabled(env: Record<string, string | undefined> = process.env) {
   return env.LOGIN_RATE_LIMIT === "enabled";
@@ -35,7 +43,7 @@ export function rateLimitEnabled(env: Record<string, string | undefined> = proce
 
 function secret() {
   const value = process.env.RATE_LIMIT_SECRET || process.env.SESSION_SECRET;
-  if (!value || value.length < 32) throw new Error("RATE_LIMIT_SECRET or SESSION_SECRET must be at least 32 characters.");
+  if (!value || value.length < 32 || value.startsWith("REPLACE_WITH")) throw new Error("RATE_LIMIT_SECRET or SESSION_SECRET must be at least 32 characters.");
   return value;
 }
 
@@ -54,12 +62,12 @@ export function clientAddress(headers: Headers) {
   return forwarded || headers.get("x-real-ip")?.trim() || "unknown";
 }
 
-export function keysFor(email: string, address: string): Record<Scope, string> {
+export function keysFor(email: string, address: string, prefix = ""): Record<Scope, string> {
   const normalized = email.trim().toLowerCase();
   return {
-    emailIp: attemptKey("emailIp", `${normalized}|${address}`),
-    email: attemptKey("email", normalized),
-    ip: attemptKey("ip", address),
+    emailIp: attemptKey("emailIp", `${prefix}${normalized}|${address}`),
+    email: attemptKey("email", `${prefix}${normalized}`),
+    ip: attemptKey("ip", `${prefix}${address}`),
   };
 }
 
@@ -69,8 +77,13 @@ export type AttemptTicket = { ids: string[]; blocked: boolean };
  * Records this attempt (as a failure until proven otherwise) and reports
  * whether any limit is now exceeded.
  */
-export async function beginAttempt(email: string, address: string, now = new Date()): Promise<AttemptTicket> {
-  const keys = keysFor(email, address);
+export async function beginAttempt(
+  email: string,
+  address: string,
+  now = new Date(),
+  { prefix = "", limits = LIMITS }: { prefix?: string; limits?: Limits } = {},
+): Promise<AttemptTicket> {
+  const keys = keysFor(email, address, prefix);
   const created = await prisma.loginAttempt.createManyAndReturn({
     data: (Object.keys(keys) as Scope[]).map((scope) => ({ key: keys[scope], succeeded: false, createdAt: now })),
     select: { id: true },
@@ -82,7 +95,7 @@ export async function beginAttempt(email: string, address: string, now = new Dat
       n: await prisma.loginAttempt.count({ where: { key: keys[scope], succeeded: false, createdAt: { gte: since } } }),
     })),
   );
-  const blocked = counts.some(({ scope, n }) => n > LIMITS[scope]);
+  const blocked = counts.some(({ scope, n }) => n > limits[scope]);
   return { ids: created.map((c) => c.id), blocked };
 }
 
@@ -96,6 +109,11 @@ export async function markSucceeded(ticket: AttemptTicket) {
 export async function pruneAttempts(olderThanMs = 24 * 60 * 60 * 1000, now = new Date()) {
   const { count } = await prisma.loginAttempt.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - olderThanMs) } } });
   return count;
+}
+
+/** Sign-up attempts: always limited (not tied to LOGIN_RATE_LIMIT) and never marked successful. */
+export function beginSignupAttempt(email: string, address: string, now = new Date()) {
+  return beginAttempt(email, address, now, { prefix: "signup:", limits: SIGNUP_LIMITS });
 }
 
 export const RATE_LIMIT_MESSAGE = "Too many sign-in attempts. Please wait a few minutes and try again.";

@@ -51,6 +51,11 @@ export function createPrismaMock() {
     policyRuleVersion: model(),
     policySource: model(),
     policyRuleVersionSource: model(),
+    aIScanRun: model(),
+    aIScanRuleCheck: model(),
+    externalSubmission: model(),
+    externalOutcome: model(),
+    policyRuleEvent: model(),
     $transaction: vi.fn(),
   };
   // Interactive transactions run the callback against the same mock.

@@ -1,0 +1,11 @@
+-- Creates a SECOND logical database on the EXISTING Render Postgres instance.
+-- Same instance, same plan, no extra cost; the existing "cyntique_demo"
+-- database is not touched (Render docs: "CREATE DATABASE <name>", then connect
+-- with the same URL and the new name as the last path component).
+--
+-- Needs: the role has CREATEDB (npm run db:preflight prints this) and CEO
+-- approval. Run while connected to the existing database:
+--   npx prisma db execute --file docs/core-workflow-sprint-oct19/sql/create-preview-database.sql
+-- One statement only: CREATE DATABASE cannot run inside a transaction, and
+-- "prisma db execute" sends the file as a single command.
+CREATE DATABASE "clyntique_demo_preview";

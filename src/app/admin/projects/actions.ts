@@ -73,7 +73,7 @@ export async function createProject(_prev: FormState, formData: FormData): Promi
     });
     projectId = project.id;
   } catch (error) {
-    console.error("createProject failed", error);
+    console.error("createProject failed", error instanceof Error ? error.name : "unknown error");
     return { error: "Something went wrong. Please try again.", values };
   }
 

@@ -1,9 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole } from "@/lib/auth/dal";
 import { getSubmission, getTargetingOptions, type SubmissionDetail } from "@/lib/data/submission";
 import { getSubmissionReview, type SubmissionReview } from "@/lib/data/submission-review";
+import { getScanHistory } from "@/lib/data/lifecycle";
 import { FORMATS } from "@/lib/creative-format";
 import { formatRelative, pluralize } from "@/lib/format";
 import { getUploadLimits } from "@/lib/media";
@@ -18,6 +20,9 @@ import { StatusBadge, TonePill } from "@/components/ui/status-badge";
 import { VersionUploader } from "@/components/review/version-uploader";
 import { HistoryLedger, buildHistory } from "@/components/workspace/history";
 import { Stage } from "@/components/workspace/stage";
+import { loadSubmissionChat, SubmissionMessages } from "@/components/messages/submission-messages";
+import { buttonClasses } from "@/components/ui/button";
+import { MessageIcon } from "@/components/ui/icons";
 import { Tabs, type TabSpec } from "@/components/workspace/tabs";
 import { EvidenceForm, ResubmitPanel, type ChecklistItem } from "./client-remediation";
 import { FindingsList, SeverityLegend } from "./findings-list";
@@ -65,6 +70,8 @@ export async function SubmissionView({
   // abandoned load from being reported as unhandled; it is awaited below.)
   const reviewLoad = getSubmissionReview(user, creativeId);
   reviewLoad.catch(() => undefined);
+  // Reviewer chat is separate from the review; if it can't load, the tab is simply left out.
+  const chatLoad = loadSubmissionChat(user, creativeId);
   const submission = await getSubmission(user, creativeId, versionNumber);
   if (!submission) notFound();
 
@@ -74,8 +81,13 @@ export async function SubmissionView({
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
   const canManageEvidence = role === "CLIENT" && authorize(user, "MANAGE_EVIDENCE", facts).ok;
-  const [targeting, review] = await Promise.all([editable ? getTargetingOptions() : Promise.resolve(null), reviewLoad]);
+  const [targeting, review, scanHistory] = await Promise.all([
+    editable ? getTargetingOptions() : Promise.resolve(null),
+    reviewLoad,
+    role === "TEAM" ? getScanHistory(user, creativeId) : Promise.resolve([]),
+  ]);
   if (!review) notFound();
+  const chat = await chatLoad;
 
   const team = role === "TEAM";
   const inReview = team && submission.status === "IN_REVIEW";
@@ -206,10 +218,23 @@ export async function SubmissionView({
             inReview={inReview}
             markets={submission.markets}
             platforms={submission.platforms}
+            history={scanHistory}
+            recordHref={`${basePathFor(role)}/creatives/${submission.id}/record`}
           />
         ),
       }
     : null;
+  // Chat is offered once the submission was submitted; before that (and for
+  // earlier-workflow records) the client uses their General conversation.
+  const messagesTab: TabSpec | null =
+    chat && review.rounds.length > 0
+      ? {
+          id: "messages",
+          label: "Messages",
+          ...(chat.thread?.unread ? { count: chat.thread.unread } : {}),
+          content: <SubmissionMessages role={role} creativeId={submission.id} thread={chat.thread} />,
+        }
+      : null;
   const defaultTab = actionable ? "findings" : canManageEvidence && submission.status === "DRAFT" ? "evidence" : review.findings.length ? "findings" : "history";
 
   // ---- Header context --------------------------------------------------------
@@ -249,6 +274,16 @@ export async function SubmissionView({
           <span className="text-caption rounded-full bg-surface px-2.5 py-0.5 text-muted ring-1 ring-line ring-inset">
             {format.label} · {format.ratio}
           </span>
+          {finalDecision && (
+            <Link href={`${base}/creatives/${submission.id}/record`} className="text-caption rounded-full bg-surface px-2.5 py-0.5 text-brand-700 ring-1 ring-line ring-inset hover:bg-subtle">
+              Review record
+            </Link>
+          )}
+          {role === "CLIENT" && chat && (
+            <Link href={`/dashboard/messages/new?about=${submission.id}`} className={buttonClasses({ variant: "secondary", size: "sm", className: "ml-auto" })}>
+              <MessageIcon /> Chat with reviewer
+            </Link>
+          )}
         </div>
         <p className="text-small flex flex-wrap items-center gap-x-2 text-muted">
           {headerMeta.map((m, i) => (
@@ -305,7 +340,7 @@ export async function SubmissionView({
             <Tabs
               label="Compliance Inspector"
               defaultId={defaultTab}
-              tabs={[findingsTab, ...(aiScanTab ? [aiScanTab] : []), evidenceTab, historyTab]}
+              tabs={[findingsTab, ...(aiScanTab ? [aiScanTab] : []), evidenceTab, historyTab, ...(messagesTab ? [messagesTab] : [])]}
             />
           </div>
         </aside>

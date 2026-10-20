@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
+
 import { useState } from "react";
 import type { PolicyFilterCriteria, PolicyRule, PolicySource } from "@/lib/policy/types";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -157,6 +159,9 @@ export function PolicyLibraryView({
         description="Verified government regulations, ad platform standards, and internal risk policies for US and UAE healthcare and aesthetics advertising. 100% persisted in PostgreSQL."
         action={
           <div className="flex items-center gap-2">
+            <Link href="/admin/policy-library/impact" className={buttonClasses({ variant: "ghost", size: "sm" })}>
+              Rule changes &amp; impact
+            </Link>
             {isPolicyAdmin && (
               <>
                 <Button

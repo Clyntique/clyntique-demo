@@ -15,7 +15,11 @@ import { join, resolve } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 
-// Insertion order respecting foreign key dependencies
+// Insertion order respecting foreign key dependencies (parents before children).
+// Keep this list complete: every table in prisma/schema.prisma plus
+// _prisma_migrations. A backup table that is NOT listed here stops the restore
+// (nothing is silently left out); a listed table that an older backup lacks is
+// skipped with a warning.
 const TOPOLOGICAL_TABLE_ORDER = [
   "User",
   "Market",
@@ -23,6 +27,12 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "Project",
   "Creative",
   "CreativeVersion",
+  // Policy library (20261014220000): PolicyRuleVersion is referenced by
+  // Finding and ReviewCycle, so it must be restored before them.
+  "PolicySource",
+  "PolicyRule",
+  "PolicyRuleVersion",
+  "PolicyRuleVersionSource",
   "ReviewCycle",
   "SubmissionRound",
   "ReviewDecision",
@@ -39,6 +49,15 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "Approval",
   "Activity",
   "LoginAttempt",
+  // Reviewer chat (20261019180000)
+  "Conversation",
+  "Message",
+  // Lifecycle records (20261019190000)
+  "AIScanRun",
+  "AIScanRuleCheck",
+  "ExternalSubmission",
+  "ExternalOutcome",
+  "PolicyRuleEvent",
   "_prisma_migrations"
 ];
 
@@ -91,12 +110,24 @@ async function main() {
   let totalRows = 0;
   const tableData: Record<string, Record<string, unknown>[]> = {};
 
+  const unknown = Object.keys(manifest.tables).filter((t) => !TOPOLOGICAL_TABLE_ORDER.includes(t));
+  if (unknown.length) {
+    console.error(`Backup contains table(s) this script does not know how to restore: ${unknown.join(", ")}. Add them to TOPOLOGICAL_TABLE_ORDER first.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const tablesToRestore: string[] = [];
   for (const table of TOPOLOGICAL_TABLE_ORDER) {
     const filePath = join(resolvedDir, `${table}.json`);
     if (!existsSync(filePath)) {
-      console.error(`Missing backup table file: ${table}.json`);
-      process.exitCode = 1;
-      return;
+      if (table in manifest.tables) {
+        console.error(`Missing backup table file: ${table}.json`);
+        process.exitCode = 1;
+        return;
+      }
+      console.log(`  [SKIP] ${table.padEnd(24)} not in this backup (older schema)`);
+      continue;
     }
 
     try {
@@ -109,6 +140,7 @@ async function main() {
         throw new Error(`Count mismatch: expected ${expected}, got ${rows.length}`);
       }
       tableData[table] = rows;
+      tablesToRestore.push(table);
       totalRows += rows.length;
       console.log(`  [OK] ${table.padEnd(24)} ${String(rows.length).padStart(4)} rows`);
     } catch (err) {
@@ -191,12 +223,13 @@ async function main() {
         // Temporarily disable triggers and FK checks for batch load
         await tx.$executeRawUnsafe(`SET session_replication_role = 'replica';`);
 
-        for (const table of TOPOLOGICAL_TABLE_ORDER) {
-          const rows = tableData[table];
-          if (!rows || rows.length === 0) continue;
+        for (const table of tablesToRestore) {
+          const rows = tableData[table] ?? [];
 
-          // Clear table first if restoring
+          // Clear the table first (also when the backup has no rows for it),
+          // so the recovery database matches the backup exactly.
           await tx.$executeRawUnsafe(`TRUNCATE TABLE "${table.replace(/"/g, '""')}" CASCADE;`);
+          if (rows.length === 0) continue;
 
           const sample = rows[0];
           const columns = Object.keys(sample);

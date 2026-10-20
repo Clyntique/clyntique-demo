@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Textarea } from "@/components/ui/input";
 import { UploadIcon } from "@/components/ui/icons";
 import { FormError } from "@/components/forms/form-error";
+import { UploadStalledError, withStallGuard } from "@/lib/upload-stall";
 
 type Phase =
   | { name: "idle" }
@@ -98,18 +99,25 @@ export function VersionUploader({
     setPhase({ name: "uploading", percent: 0 });
 
     try {
-      const blob = await upload(uploadPathFor(creativeId, uploadKey, kind.extension), file, {
-        access: "private",
-        handleUploadUrl: "/api/creatives/upload",
-        clientPayload: JSON.stringify({ creativeId, uploadKey, fileName: file.name }),
-        contentType: kind.mimeType,
-        multipart: file.size >= MULTIPART_FROM_BYTES,
-        abortSignal: controller.signal,
-        onUploadProgress: ({ percentage }) => setPhase({ name: "uploading", percent: Math.round(percentage) }),
-      });
+      const blob = await withStallGuard(controller, (progress) =>
+        upload(uploadPathFor(creativeId, uploadKey, kind.extension), file, {
+          access: "private",
+          handleUploadUrl: "/api/creatives/upload",
+          clientPayload: JSON.stringify({ creativeId, uploadKey, fileName: file.name }),
+          contentType: kind.mimeType,
+          multipart: file.size >= MULTIPART_FROM_BYTES,
+          abortSignal: controller.signal,
+          onUploadProgress: ({ percentage }) => {
+            progress();
+            setPhase({ name: "uploading", percent: Math.round(percentage) });
+          },
+        }),
+      );
       await save(blob.url, uploadKey, file);
     } catch (error) {
-      if (controller.signal.aborted) {
+      if (error instanceof UploadStalledError) {
+        setPhase({ name: "failed", error: error.message });
+      } else if (controller.signal.aborted) {
         setPhase({ name: "idle" });
       } else {
         setPhase({ name: "failed", error: uploadErrorMessage(error) });

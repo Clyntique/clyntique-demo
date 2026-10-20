@@ -16,14 +16,34 @@ const sql = (folder: string) => readFileSync(join(dir, folder, "migration.sql"),
 const statements = (folder: string) => sql(folder).replace(/--.*$/gm, "");
 
 describe("prisma/migrations", () => {
-  it("starts with the 0_init baseline, followed by the submission-workflow, evidence-files, round-snapshot, and compliance-policy-library migrations", () => {
+  it("starts with the 0_init baseline, followed by the submission-workflow, evidence-files, round-snapshot, compliance-policy-library, and reviewer-chat migrations", () => {
     expect(folders).toEqual([
       "0_init",
       "20261009180000_submission_workflow",
       "20261011090000_evidence_files",
       "20261012190000_round_snapshot",
       "20261014220000_compliance_policy_library",
+      "20261019180000_reviewer_chat",
+      "20261019190000_lifecycle_records",
     ]);
+  });
+
+  it("the lifecycle-records migration (Oct 19 sprint) only creates and adds, and keeps history on RESTRICT", () => {
+    const body = statements("20261019190000_lifecycle_records");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|ALTER TABLE "\w+" ADD COLUMN|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 40));
+    expect(new Set(kinds)).toEqual(new Set(["CREATE TYPE", "CREATE TABLE", "CREATE INDEX", "ALTER TABLE \"ReviewCycle\" ADD COLUMN", "ALTER TABLE \"ReviewCycle\" ADD CONSTRAINT", "ALTER TABLE \"AIScanRun\" ADD CONSTRAINT", "ALTER TABLE \"AIScanRuleCheck\" ADD CONSTRAINT", "ALTER TABLE \"ExternalSubmission\" ADD CONSTRAINT", "ALTER TABLE \"ExternalOutcome\" ADD CONSTRAINT", "ALTER TABLE \"PolicyRuleEvent\" ADD CONSTRAINT"]));
+    for (const table of ["AIScanRun", "AIScanRuleCheck", "ExternalSubmission", "ExternalOutcome", "PolicyRuleEvent"]) expect(body).toContain(`CREATE TABLE "${table}"`);
+    expect(body).toContain('ALTER TABLE "ReviewCycle" ADD COLUMN     "reasonKind" "ReviewCycleReason"');
+    expect(body).toMatch(/ADD COLUMN\s+"triggerRuleVersionId" TEXT/);
+    // Rule versions and users referenced by history can't be deleted from under it.
+    expect(body).toMatch(/"AIScanRuleCheck" ADD CONSTRAINT[^;]*"ruleVersionId"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"ReviewCycle" ADD CONSTRAINT[^;]*"triggerRuleVersionId"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"ExternalSubmission" ADD CONSTRAINT[^;]*"versionId"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"PolicyRuleEvent" ADD CONSTRAINT[^;]*"ruleId"[^;]*ON DELETE RESTRICT/);
   });
 
   it("the round-snapshot migration adds three nullable columns and only fills those new columns", () => {
@@ -93,5 +113,21 @@ describe("prisma/migrations", () => {
     expect(body).toContain('FOREIGN KEY ("versionId") REFERENCES "PolicyRuleVersion"("id") ON DELETE RESTRICT');
     // Unverified default checks (Requirement 1)
     expect(body).toContain('"verificationStatus" "PolicyVerificationStatus" NOT NULL DEFAULT \'UNVERIFIED\'');
+  });
+
+  it("the reviewer-chat migration only creates the Conversation and Message tables (with their keys and indexes)", () => {
+    const body = statements("20261019180000_reviewer_chat");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.replace(/\s+/g, " ").match(/^(CREATE TABLE "\w+"|CREATE (UNIQUE )?INDEX "[\w]+" ON "\w+"|ALTER TABLE "\w+" ADD CONSTRAINT "[\w]+" FOREIGN KEY)/)?.[1]);
+    expect(kinds.every(Boolean)).toBe(true);
+    expect(body).toContain('CREATE TABLE "Conversation"');
+    expect(body).toContain('CREATE TABLE "Message"');
+    expect(body).toContain('CREATE UNIQUE INDEX "Conversation_clientId_subjectKey_key" ON "Conversation"("clientId", "subjectKey")');
+    // Only the two new tables are altered; no row is inserted.
+    expect([...body.matchAll(/ALTER TABLE "(\w+)"/g)].every((m) => ["Conversation", "Message"].includes(m[1]))).toBe(true);
+    expect(body).not.toMatch(/\bINSERT\b/i);
   });
 });

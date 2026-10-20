@@ -53,6 +53,9 @@ export interface AIAnalysisResult {
   rulesChecked?: Array<{ code: string; title: string; versionNumber: number }>;
   /** Model suggestions dropped because they cited no applicable approved rule. */
   discardedSuggestions?: number;
+  /** The persisted scan record (AIScanRun), set once the scan was written to history. */
+  scanId?: string;
+  scannedAt?: string;
 }
 
 export interface GroundedPolicyRuleContext {
@@ -93,5 +96,7 @@ export interface CreativeAnalysisInput {
 
 export interface AIComplianceProvider {
   name: string;
+  /** Identifies the prompt the provider uses, recorded with each scan. */
+  promptVersion?: string;
   analyzeCreative(input: CreativeAnalysisInput): Promise<AIAnalysisResult>;
 }

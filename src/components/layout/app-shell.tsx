@@ -3,6 +3,7 @@ import { cache, Suspense, type ReactNode } from "react";
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole, type CurrentUser } from "@/lib/auth/dal";
 import { getReviewSummary } from "@/lib/data/review-queue";
+import { getUnreadSummary } from "@/lib/messages/data";
 import { basePathFor, ROLE_LABEL } from "@/lib/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/states";
@@ -56,14 +57,18 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
 
 // Cached per request: the sidebar and the phone menu both show the count.
 const navCounts = cache(async (user: CurrentUser): Promise<NavCounts> => {
-  if (user.role !== "TEAM") return {};
+  const counts: NavCounts = {};
   // A navigation badge must never take the page down: without it the link still works.
-  try {
-    const summary = await getReviewSummary(user);
-    return { "/review": summary.waiting };
-  } catch {
-    return {};
+  if (user.role === "TEAM") {
+    try {
+      counts["/review"] = (await getReviewSummary(user)).waiting;
+    } catch {}
   }
+  // Conversations with unread messages (Team: from clients; client: from the reviewer).
+  try {
+    counts["/messages"] = (await getUnreadSummary(user)).conversations;
+  } catch {}
+  return counts;
 });
 
 async function SidebarContent({ role }: { role: Role }) {
