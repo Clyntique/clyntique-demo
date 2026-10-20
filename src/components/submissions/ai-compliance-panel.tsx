@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   SparklesIcon,
   AlertIcon,
@@ -58,6 +59,7 @@ export function AICompliancePanel({
   history = [],
   recordHref,
 }: AICompliancePanelProps) {
+  const router = useRouter();
   const [isScanning, startScanTransition] = useTransition();
   const [isAccepting, startAcceptTransition] = useTransition();
   const [scanResult, setScanResult] = useState<AIAnalysisResult | null>(null);
@@ -76,6 +78,8 @@ export function AICompliancePanel({
       } else {
         setScanResult(res.result);
       }
+      // Every run is persisted (even failures), so reload the scan history below.
+      router.refresh();
     });
   };
 
