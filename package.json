@@ -10,6 +10,7 @@
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:create-client": "tsx prisma/create-client-account.ts",
     "db:check": "tsx prisma/db-check.ts",
     "db:target": "tsx prisma/db-target.ts",
     "db:inventory": "tsx prisma/db-inventory.ts",
