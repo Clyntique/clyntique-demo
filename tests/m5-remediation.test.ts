@@ -465,6 +465,7 @@ describe("what a client sees of reviewer moves", () => {
         version: null,
         addedBy: { name: "Client A" },
         findings: [],
+        assessments: [],
       },
     ]);
     const client = await reviewData.getSubmissionReview(CLIENT_A, "sub-a-review");

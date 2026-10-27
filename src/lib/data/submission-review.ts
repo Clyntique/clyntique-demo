@@ -1,6 +1,7 @@
 import "server-only";
 import type {
   CreativeStatus,
+  EvidenceAssessmentResult,
   EvidenceOrigin,
   EvidenceType,
   EvidenceVisibility,
@@ -15,7 +16,17 @@ import { ReviewOutcome as Outcomes } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { evidenceKindFor } from "@/lib/evidence-files";
 import { prisma } from "@/lib/prisma";
-import { checkOutcome, clientFindingView, evidenceIsFinal, submittedToTeam, submittedWithRound, teamFindingView, type Unmet } from "@/lib/workflow/findings";
+import {
+  assessmentVisibleToClient,
+  checkOutcome,
+  clientFindingView,
+  evidenceIsFinal,
+  submittedIn,
+  submittedToTeam,
+  submittedWithRound,
+  teamFindingView,
+  type Unmet,
+} from "@/lib/workflow/findings";
 import { authorize } from "@/lib/workflow/policy";
 import { loadReadiness } from "@/lib/workflow/readiness";
 import { creativeScope } from "./workspace";
@@ -103,6 +114,29 @@ export type EvidenceView = {
   findingIds: string[];
   /** CLIENT only: may withdraw it now (their own, not yet part of a submitted round). */
   withdrawable: boolean;
+  /** The claim it supports and where it appears (decision D3). */
+  claimText: string | null;
+  claimLocation: string | null;
+  /** The creative version that was newest when it was added. */
+  versionNumber: number | null;
+  /** The cycle and round it was first submitted with, across cycles; null while being prepared. */
+  submittedIn: { cycleNumber: number; roundNumber: number } | null;
+  /**
+   * Team assessments, oldest first. TEAM sees all with the reviewer's name;
+   * the client only those published with a later decision, as "Clyntique reviewer".
+   */
+  assessments: EvidenceAssessmentView[];
+  /** TEAM only: may record an assessment now. */
+  assessable: boolean;
+};
+
+export type EvidenceAssessmentView = {
+  id: string;
+  result: EvidenceAssessmentResult;
+  note: string | null;
+  reviewerName: string;
+  cycleNumber: number;
+  createdAt: Date;
 };
 
 export type RoundView = {
@@ -253,9 +287,23 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         fileUrl: true,
         addedBy: { select: { name: true } },
         findings: { select: { findingId: true, linkedAt: true } },
+        claimText: true,
+        claimLocation: true,
+        version: { select: { versionNumber: true } },
+        assessments: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, result: true, note: true, createdAt: true, reviewer: { select: { name: true } }, cycle: { select: { number: true } } },
+        },
       },
     }),
   ]);
+  // Every round of every cycle, to tag evidence with where it was submitted.
+  const allRounds = await prisma.submissionRound.findMany({
+    where: { creativeId: creative.id },
+    select: { number: true, submittedAt: true, cycle: { select: { number: true } } },
+  });
+  const allRoundTimes = allRounds.map((r) => ({ number: r.number, cycleNumber: r.cycle.number, submittedAt: r.submittedAt }));
+  const decisionTimes = decisions.map((d) => d.createdAt);
 
   const lastDecisionAt = decisions[0]?.createdAt ?? null;
   const roundTimes = (cycle?.rounds ?? []).map((r) => ({ number: r.number, submittedAt: r.submittedAt }));
@@ -312,7 +360,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       status,
       versionNumber: f.version?.versionNumber ?? null,
       cycleNumber: f.cycle.number,
-      reviewerName: f.createdBy.name,
+      reviewerName: team ? f.createdBy.name : "Clyntique reviewer", // decision D4
       createdAt: f.createdAt,
       publishedAt: f.publishedAt,
       resolutionNote: status === "RESOLVED" ? f.resolutionNote : null,
@@ -329,6 +377,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
   const latestRound = cycle?.rounds[0] ?? null;
   const facts = { id: creative.id, workflow: "SUBMISSION_REVIEW" as const, status: creative.status, projectClientId: creative.project.clientId };
   const mayManageEvidence = !team && authorize(user, "MANAGE_EVIDENCE", facts).ok;
+  const mayAssessEvidence = team && authorize(user, "RECORD_FINDING", facts).ok && Boolean(cycle && !cycle.closedAt);
 
   let outcomes: SubmissionReview["outcomes"] = null;
   if (team && cycle && !cycle.closedAt) {
@@ -383,7 +432,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       versionNumber: d.version.versionNumber,
       roundNumber: d.round.number,
       cycleNumber: d.cycle.number,
-      reviewerName: d.reviewer.name,
+      reviewerName: team ? d.reviewer.name : "Clyntique reviewer", // decision D4
       createdAt: d.createdAt,
     })),
     evidence: visibleEvidence.map((e) => {
@@ -397,7 +446,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         url: e.url,
         origin: e.origin,
         visibility: e.visibility,
-        addedByName: e.addedBy?.name ?? null,
+        addedByName: !team && e.origin === "REVIEWER_ADDED" ? "Clyntique reviewer" : (e.addedBy?.name ?? null),
         withdrawn: e.withdrawnAt !== null,
         withdrawal: e.withdrawnAt ? { byName: e.withdrawnBy?.name ?? null, at: e.withdrawnAt } : null,
         createdAt: e.createdAt,
@@ -410,6 +459,21 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
           e.addedById === user.id &&
           e.withdrawnAt === null &&
           !evidenceIsFinal(e, lastSubmittedAt),
+        claimText: e.claimText,
+        claimLocation: e.claimLocation,
+        versionNumber: e.version?.versionNumber ?? null,
+        submittedIn: submittedIn(e.createdAt, allRoundTimes),
+        assessments: e.assessments
+          .filter((a) => team || assessmentVisibleToClient(a.createdAt, decisionTimes))
+          .map((a) => ({
+            id: a.id,
+            result: a.result,
+            note: a.note,
+            reviewerName: team ? a.reviewer.name : "Clyntique reviewer",
+            cycleNumber: a.cycle.number,
+            createdAt: a.createdAt,
+          })),
+        assessable: mayAssessEvidence && e.origin === "CLIENT_SUBMITTED" && e.withdrawnAt === null,
       };
     }),
     outcomes,

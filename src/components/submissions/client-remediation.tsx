@@ -102,7 +102,8 @@ export function RespondForm({ findingId, evidence, hint }: { findingId: string; 
 
 // ---------------------------------------------------------------------------
 
-const TYPES = Object.keys(EVIDENCE_TYPES) as EvidenceType[];
+// Policy references are Clyntique's own evidence type, never a client's.
+const TYPES = (Object.keys(EVIDENCE_TYPES) as EvidenceType[]).filter((t) => t !== "POLICY_REFERENCE");
 
 type Phase = { name: "idle" } | { name: "uploading"; percent: number } | { name: "saving" } | { name: "done" };
 
@@ -181,6 +182,8 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
         description: String(formData.get("description") ?? ""),
         source: String(formData.get("source") ?? ""),
         url: String(formData.get("url") ?? ""),
+        claimText: String(formData.get("claimText") ?? ""),
+        claimLocation: String(formData.get("claimLocation") ?? ""),
         file: uploaded,
         findingIds: formData.getAll("findings").map(String),
       });
@@ -237,6 +240,14 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
               </option>
             ))}
           </Select>
+        </Field>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Claim it supports (optional)" hint="The words in the ad, e.g. “Visible results in 2 weeks”.">
+          <Input name="claimText" maxLength={300} />
+        </Field>
+        <Field label="Where the claim appears (optional)" hint="e.g. Headline, caption, 0:05 voice-over.">
+          <Input name="claimLocation" maxLength={120} />
         </Field>
       </div>
       <Field label="What does it show?" hint="Briefly, how it supports the claim or answers the finding.">

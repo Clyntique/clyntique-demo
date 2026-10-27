@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
-import { completeReview, openReviewCycle, recordExternalOutcome, recordExternalSubmission, startReview, submitForReview } from "@/lib/workflow/commands";
+import { assessEvidence, completeReview, openReviewCycle, recordExternalOutcome, recordExternalSubmission, startReview, submitForReview } from "@/lib/workflow/commands";
+import { getSubmissionReview } from "@/lib/data/submission-review";
 import { getLifecycle } from "@/lib/data/lifecycle";
 import { getPolicyImpact } from "@/lib/data/policy-impact";
 import { analyzeCreativeCompliance, clearAnalysisCache } from "@/lib/ai/service";
@@ -61,10 +62,23 @@ describe.skipIf(!local)("lifecycle on a real database", () => {
   });
 
   it("client submits, team reviews and completes; external records and the review record follow", async () => {
+    // P0: client evidence for a claim, prepared before submitting.
+    const evidence = await prisma.evidence.create({
+      data: { creativeId, title: "Synthetic study", type: "CLINICAL_STUDY", description: "d", origin: "CLIENT_SUBMITTED", visibility: "SHARED", addedById: client.id, versionId, claimText: "Synthetic claim", claimLocation: "Headline" },
+    });
     expect((await submitForReview(client, creativeId)).ok).toBe(true);
     expect((await startReview(team, creativeId)).ok).toBe(true);
+    const assessed = await assessEvidence(team, { evidenceId: evidence.id, result: "NEEDS_CLARIFICATION", note: "Synthetic note" });
+    expect(assessed.ok).toBe(true);
+    // Before the decision, the client doesn't see the assessment.
+    expect((await getSubmissionReview(client, creativeId))?.evidence[0].assessments).toEqual([]);
     const round = await prisma.submissionRound.findFirstOrThrow({ where: { creativeId } });
+    expect(round.submittedIndustry).toBe("HEALTHCARE");
     expect((await completeReview(team, { creativeId, roundId: round.id, versionId, outcome: "NO_ISSUES_IDENTIFIED", summary: "No issues identified in this synthetic check." })).ok).toBe(true);
+    const clientEvidence = (await getSubmissionReview(client, creativeId))?.evidence[0];
+    expect(clientEvidence).toMatchObject({ claimText: "Synthetic claim", versionNumber: 1, submittedIn: { cycleNumber: 1, roundNumber: 1 } });
+    expect(clientEvidence?.assessments).toMatchObject([{ result: "NEEDS_CLARIFICATION", reviewerName: "Clyntique reviewer" }]);
+    expect((await getSubmissionReview(team, creativeId))?.evidence[0].assessments[0].reviewerName).toBe(team.name);
 
     // External record, by the client: must be a reviewed version; another client is refused.
     const input = { creativeId, versionId, destinationType: "AD_PLATFORM", destinationName: "Meta Ads Manager", submittedOn: "2026-10-15", platformCode: "META", marketCode: "US" };

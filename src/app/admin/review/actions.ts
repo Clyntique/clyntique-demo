@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/dal";
-import { completeReview, recordFinding, requestChanges, reviewFinding, startReview, updateDraftFinding } from "@/lib/workflow/commands";
+import { assessEvidence, completeReview, recordFinding, requestChanges, reviewFinding, startReview, updateDraftFinding } from "@/lib/workflow/commands";
 
 /*
  * Form actions for internal review. Thin wrappers: each re-loads the user from
@@ -146,4 +146,15 @@ export async function completeReviewAction(_prev: ReviewActionState, formData: F
   if (!result.ok) return { error: result.error, values };
   revalidateWorkspaces();
   return { ok: "Review completed and recorded." };
+}
+
+/** TEAM: record an assessment of submitted client evidence (shared with the client at the next decision). */
+export async function assessEvidenceAction(_prev: ReviewActionState, formData: FormData): Promise<ReviewActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: SIGN_IN };
+  const values = { result: text(formData, "result"), note: text(formData, "note") };
+  const result = await assessEvidence(user, { evidenceId: text(formData, "evidenceId"), ...values });
+  if (!result.ok) return { error: result.error, values };
+  revalidateWorkspaces();
+  return { ok: "Assessment recorded. The client sees it with your next decision." };
 }

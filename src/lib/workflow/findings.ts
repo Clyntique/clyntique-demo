@@ -115,6 +115,25 @@ export function submittedWithRound(createdAt: Date, rounds: { number: number; su
   return sorted.find((r) => r.submittedAt >= createdAt)?.number ?? null;
 }
 
+/**
+ * A client sees the team's assessment of their evidence only once a review
+ * decision (request changes or a final outcome) was published after it
+ * (decision D5), like draft findings.
+ */
+export function assessmentVisibleToClient(assessedAt: Date, decisionTimes: Date[]): boolean {
+  return decisionTimes.some((d) => d >= assessedAt);
+}
+
+/** The cycle and round a piece of client evidence was first submitted with (rounds of every cycle). */
+export function submittedIn(
+  createdAt: Date,
+  rounds: { number: number; cycleNumber: number; submittedAt: Date }[],
+): { cycleNumber: number; roundNumber: number } | null {
+  const sorted = [...rounds].sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+  const r = sorted.find((x) => x.submittedAt >= createdAt);
+  return r ? { cycleNumber: r.cycleNumber, roundNumber: r.number } : null;
+}
+
 /** A client sees SHARED evidence only; INTERNAL evidence is team-only. Withdrawn items stay visible as history. */
 export function evidenceVisibleTo(role: Role, evidence: { visibility: "SHARED" | "INTERNAL" }): boolean {
   return role === "TEAM" || evidence.visibility === "SHARED";

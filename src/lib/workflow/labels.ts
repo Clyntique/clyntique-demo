@@ -97,3 +97,19 @@ export const EXTERNAL_DISCLAIMER =
 /** Shown on every review record / passport page. */
 export const RECORD_DISCLAIMER =
   "This is Clyntique's internal review record. It is not legal advice, not government approval, and not acceptance by any advertising platform. External outcomes below are recorded manually and are not independently certified by Clyntique.";
+
+// ---------------------------------------------------------------------------
+// Assessment of client evidence (P0, Oct 27). Internal review wording only:
+// it never says a study or document was validated scientifically or legally.
+
+export type EvidenceAssessmentResultKey = "ACCEPTED_FOR_REVIEW" | "INSUFFICIENT" | "NOT_RELEVANT" | "NEEDS_CLARIFICATION";
+
+export const EVIDENCE_ASSESSMENT_LABEL: Record<EvidenceAssessmentResultKey, string> = {
+  ACCEPTED_FOR_REVIEW: "Accepted for this review",
+  INSUFFICIENT: "Not sufficient for the claim",
+  NOT_RELEVANT: "Not relevant to the claim",
+  NEEDS_CLARIFICATION: "Needs clarification",
+};
+
+export const EVIDENCE_ASSESSMENT_NOTICE =
+  "This is Clyntique's internal review assessment. It is not a scientific, legal, regulatory or platform validation of the evidence.";

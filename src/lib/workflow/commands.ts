@@ -28,7 +28,7 @@ import { EVIDENCE_MAX_BYTES, evidenceKindFor, evidencePathMatches } from "@/lib/
 import { UPLOAD_KEY_PATTERN } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
 import { contentMatches, deleteUnreferencedBlob, headBlob, isPrivateBlobUrl } from "@/lib/review/blob";
-import { canRequestChanges, checkOutcome, evidenceIsFinal, moveFinding, type FindingMove } from "./findings";
+import { canRequestChanges, checkOutcome, evidenceIsFinal, moveFinding, submittedToTeam, type FindingMove } from "./findings";
 import { loadReadiness } from "./readiness";
 import { DENIAL_MESSAGE, authorize, canCreateSubmission, type SubmissionAction, type SubmissionFacts } from "./policy";
 import { SUBMIT_GAP_MESSAGE, submitGaps } from "./submission";
@@ -463,6 +463,9 @@ export type EvidenceInput = {
   file?: { uploadKey: string; url: string; fileName: string } | null;
   /** Published findings in the open cycle this evidence supports. */
   findingIds?: string[];
+  /** The claim in the creative it supports, and where it appears (decision D3). */
+  claimText?: string;
+  claimLocation?: string;
 };
 
 function validLink(value: string) {
@@ -490,8 +493,14 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
   const title = clean(input.title, LIMITS.name);
   const description = clean(input.description, LIMITS.text);
   const source = clean(input.source, LIMITS.name);
+  const claimText = clean(input.claimText, LIMITS.finding);
+  const claimLocation = clean(input.claimLocation, LIMITS.name);
   const type = Object.values(EvidenceTypes).find((t) => t === input.type) as EvidenceType | undefined;
   if (!title || title.length < 2) return fail("Give the evidence a title (2–120 characters).");
+  if (claimText === null) return fail(`Keep the claim under ${LIMITS.finding} characters.`);
+  if (claimLocation === null) return fail(`Keep the claim location under ${LIMITS.name} characters.`);
+  // Reviewer reference types are Clyntique's own; a client can't file evidence as one.
+  if (type === "POLICY_REFERENCE") return fail("Choose the type of evidence.");
   if (!type) return fail("Choose the type of evidence.");
   if (description === null) return fail(`Keep the description under ${LIMITS.text} characters.`);
   if (source === null) return fail(`Keep the source under ${LIMITS.name} characters.`);
@@ -546,6 +555,8 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
           description: description || null,
           source: source || null,
           url: link.url,
+          claimText: claimText || null,
+          claimLocation: claimLocation || null,
           origin: "CLIENT_SUBMITTED",
           visibility: "SHARED",
           addedById: user.id,
@@ -637,6 +648,63 @@ export async function withdrawEvidence(user: CurrentUser, evidenceId: string): P
       if (!count) throw new Conflict("This evidence changed meanwhile. Refresh and try again.");
       // No activity: this evidence was never submitted, so the team never saw it.
       return { ok: true as const };
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TEAM: assessment of client evidence (P0, Oct 27)
+
+export const EVIDENCE_ASSESSMENT_RESULTS = ["ACCEPTED_FOR_REVIEW", "INSUFFICIENT", "NOT_RELEVANT", "NEEDS_CLARIFICATION"] as const;
+
+/**
+ * TEAM records how a piece of client evidence was assessed in the current
+ * review cycle. Append-only: a new assessment supersedes the previous one in
+ * the record, nothing is edited. Only submitted client evidence that wasn't
+ * withdrawn can be assessed. The client sees it only once a decision is
+ * published after it (decision D5), and never with the reviewer's name (D4).
+ */
+export async function assessEvidence(
+  user: CurrentUser,
+  input: { evidenceId: string; result: string; note?: string },
+): Promise<CommandResult<{ assessmentId: string }>> {
+  const evidence = input.evidenceId
+    ? await prisma.evidence.findUnique({
+        where: { id: String(input.evidenceId) },
+        select: { id: true, creativeId: true, origin: true, withdrawnAt: true, createdAt: true },
+      })
+    : null;
+  if (!evidence) return fail("This evidence is no longer available.");
+  const g = await guard(user, "RECORD_FINDING", evidence.creativeId);
+  if (!g.ok) return g;
+  const result = EVIDENCE_ASSESSMENT_RESULTS.find((r) => r === input.result);
+  if (!result) return fail("Choose an assessment.");
+  const note = clean(input.note, LIMITS.note);
+  if (note === null) return fail(`Keep the note under ${LIMITS.note} characters.`);
+  if (result !== "ACCEPTED_FOR_REVIEW" && !note) return fail("Explain what is missing or unclear, so the client knows what to provide.");
+  if (evidence.origin !== "CLIENT_SUBMITTED") return fail("Only client evidence can be assessed.");
+  if (evidence.withdrawnAt) return fail("This evidence was withdrawn.");
+
+  const current = await currentRound(g.s.id);
+  if (!current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
+  const lastRound = await prisma.submissionRound.findFirst({
+    where: { creativeId: g.s.id },
+    orderBy: { submittedAt: "desc" },
+    select: { submittedAt: true },
+  });
+  // Client work the team hasn't received yet doesn't exist for the team.
+  if (!submittedToTeam(evidence.createdAt, lastRound?.submittedAt ?? null)) return fail("This evidence is no longer available.");
+
+  return run("assessEvidence", async () =>
+    prisma.$transaction(async (tx) => {
+      // A decision committed meanwhile closes the review: no assessments after it.
+      await lockSubmission(tx, g.s, "IN_REVIEW");
+      const assessment = await tx.evidenceAssessment.create({
+        data: { evidenceId: evidence.id, cycleId: current.cycle.id, reviewerId: user.id, result, note: note || null },
+        select: { id: true },
+      });
+      // No activity: like draft findings, it reaches the client with the next decision.
+      return { ok: true as const, assessmentId: assessment.id };
     }),
   );
 }
