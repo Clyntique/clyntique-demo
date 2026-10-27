@@ -25,6 +25,7 @@ describe("prisma/migrations", () => {
       "20261014220000_compliance_policy_library",
       "20261019180000_reviewer_chat",
       "20261019190000_lifecycle_records",
+      "20261028000000_policy_structure_and_evidence",
     ]);
   });
 
@@ -75,7 +76,10 @@ describe("prisma/migrations", () => {
 
   it("contains no destructive statements (the round-snapshot backfill is checked separately above)", () => {
     for (const folder of folders) {
-      const body = folder === "20261012190000_round_snapshot" ? statements(folder).replace(/UPDATE "SubmissionRound"[\s\S]*?;/, "") : statements(folder);
+      let body = folder === "20261012190000_round_snapshot" ? statements(folder).replace(/UPDATE "SubmissionRound"[\s\S]*?;/, "") : statements(folder);
+      // P0: PolicyRuleEvent.ruleId becomes optional (source events). Relaxing a
+      // constraint drops no data; it is checked on its own below.
+      if (folder === "20261028000000_policy_structure_and_evidence") body = body.replace(/ALTER COLUMN "ruleId" DROP NOT NULL/, "");
       expect(body).not.toMatch(/\b(DROP|RENAME|TRUNCATE|DELETE\s+FROM|UPDATE\s+"|ALTER\s+COLUMN\s+"\w+"\s+(SET\s+DATA\s+)?TYPE)\b/i);
     }
   });
@@ -129,5 +133,26 @@ describe("prisma/migrations", () => {
     // Only the two new tables are altered; no row is inserted.
     expect([...body.matchAll(/ALTER TABLE "(\w+)"/g)].every((m) => ["Conversation", "Message"].includes(m[1]))).toBe(true);
     expect(body).not.toMatch(/\bINSERT\b/i);
+  });
+
+  it("the P0 policy-structure migration (Oct 27) only creates and adds, plus one relaxed NOT NULL and a CHECK", () => {
+    const body = statements("20261028000000_policy_structure_and_evidence");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|ALTER TYPE "\w+" ADD VALUE IF NOT EXISTS|ALTER TABLE "\w+" ADD COLUMN|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 60));
+    for (const k of kinds) expect(k).toMatch(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|ALTER TYPE "\w+" ADD VALUE IF NOT EXISTS|ALTER TABLE "\w+" ADD (COLUMN|CONSTRAINT))$/);
+    // The only change to an existing column: PolicyRuleEvent.ruleId may be null.
+    expect([...body.matchAll(/ALTER COLUMN "(\w+)" (\w+ \w+ \w+)/g)].map((m) => `${m[1]} ${m[2]}`)).toEqual(["ruleId DROP NOT NULL"]);
+    expect(body).toContain('CHECK ("ruleId" IS NOT NULL OR "sourceId" IS NOT NULL)');
+    expect([...body.matchAll(/CREATE TABLE "(\w+)"/g)].map((m) => m[1])).toEqual(["EvidenceAssessment"]);
+    // New references to history keep it: rule versions and reviewers are RESTRICT.
+    expect(body).toMatch(/"Evidence" ADD CONSTRAINT[^;]*"policyRuleVersionId"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"PolicyRuleVersion" ADD CONSTRAINT[^;]*"verifiedById"[^;]*ON DELETE RESTRICT/);
+    expect(body).toMatch(/"EvidenceAssessment" ADD CONSTRAINT[^;]*"reviewerId"[^;]*ON DELETE RESTRICT/);
+    // Existing findings become REVIEWER findings; no row is written.
+    expect(body).toContain(`"origin" "FindingOrigin" NOT NULL DEFAULT 'REVIEWER'`);
+    expect(body).not.toMatch(/\bINSERT\b|\bUPDATE\s+"/i);
   });
 });

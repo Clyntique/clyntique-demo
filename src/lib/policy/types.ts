@@ -3,7 +3,7 @@
 
 export type PolicyAuthorityType = "REGULATION" | "PLATFORM_POLICY" | "INTERNAL_RISK";
 
-export type PolicyVerificationStatus = "VERIFIED" | "UNVERIFIED" | "REJECTED";
+export type PolicyVerificationStatus = "VERIFIED" | "UNVERIFIED" | "REJECTED" | "REQUIRES_REVIEW";
 
 export type PolicyRuleStatus = "DRAFT" | "PENDING_APPROVAL" | "ACTIVE" | "DEPRECATED";
 
@@ -14,7 +14,12 @@ export type PolicyCategory =
   | "PRICING_PROMO"
   | "SUBSTANTIATION"
   | "RESTRICTED_PROCEDURES"
-  | "MANDATORY_LABELING";
+  | "MANDATORY_LABELING"
+  | "TARGETING_RESTRICTION"
+  | "PRESCRIPTION_MEDICINE"
+  | "CREDENTIALS_LICENSING"
+  | "TESTIMONIAL_ENDORSEMENT"
+  | "PERSONAL_HEALTH_ATTRIBUTES";
 
 export interface PolicySource {
   id: string;

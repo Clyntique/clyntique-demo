@@ -7,15 +7,16 @@ import { describe, expect, it } from "vitest";
 // to the migration Prisma records, or `migrate resolve --applied` would record
 // a checksum for SQL that was never run.
 const CASES = [
-  ["20261019180000_reviewer_chat", "apply-reviewer_chat.sql"],
-  ["20261019190000_lifecycle_records", "apply-lifecycle_records.sql"],
+  ["20261019180000_reviewer_chat", "docs/core-workflow-sprint-oct19/sql/apply-reviewer_chat.sql"],
+  ["20261019190000_lifecycle_records", "docs/core-workflow-sprint-oct19/sql/apply-lifecycle_records.sql"],
+  ["20261028000000_policy_structure_and_evidence", "docs/p0-policy-evidence/sql/apply-policy_structure_and_evidence.sql"],
 ] as const;
 
 describe("shared-database apply scripts", () => {
   for (const [migration, script] of CASES) {
-    it(`${script} is the ${migration} migration plus the timeout header`, () => {
+    it(`${script.split("/").pop()} is the ${migration} migration plus the timeout header`, () => {
       const migrationSql = readFileSync(`prisma/migrations/${migration}/migration.sql`, "utf8");
-      const applySql = readFileSync(`docs/core-workflow-sprint-oct19/sql/${script}`, "utf8");
+      const applySql = readFileSync(script, "utf8");
       const header = applySql.slice(0, applySql.length - migrationSql.length);
       expect(applySql.endsWith(migrationSql)).toBe(true);
       expect(header).toMatch(/SET lock_timeout = '5s';\s*SET statement_timeout = '120s';\s*$/);
@@ -41,5 +42,19 @@ describe("shared-database apply scripts", () => {
     expect([...life.matchAll(/DROP TYPE IF EXISTS "(\w+)"/g)].map((m) => m[1]).sort()).toEqual(
       ["AIScanStatus", "ExternalDestinationType", "ExternalOutcomeKind", "ExternalRecordBasis", "PolicyRuleEventKind", "ReviewCycleReason"],
     );
+  });
+
+  it("the P0 rollback drops only what its migration added and refuses while P0 data exists", () => {
+    const sql = readFileSync("docs/p0-policy-evidence/sql/rollback-policy-structure-and-evidence.sql", "utf8");
+    expect(sql.trim().startsWith("--")).toBe(true);
+    expect(sql).toMatch(/^BEGIN;/m);
+    expect(sql.trim().endsWith("COMMIT;")).toBe(true);
+    expect(sql).not.toMatch(/TRUNCATE|DELETE FROM "(?!_prisma_migrations")/);
+    expect([...sql.matchAll(/DROP TABLE IF EXISTS "(\w+)"/g)].map((m) => m[1])).toEqual(["EvidenceAssessment"]);
+    expect([...sql.matchAll(/DROP TYPE IF EXISTS "(\w+)"/g)].map((m) => m[1]).sort()).toEqual(
+      ["EvidenceAssessmentResult", "FindingOrigin", "PolicyRestrictionLevel", "PolicySourceKind"],
+    );
+    expect(sql).toMatch(/RAISE EXCEPTION 'Refusing/);
+    expect(sql).toMatch(/ALTER COLUMN "ruleId" SET NOT NULL/);
   });
 });
