@@ -129,10 +129,10 @@ describe.skipIf(!local)("lifecycle on a real database", () => {
 
   it("creating a policy rule writes a RULE_CREATED event and nothing active; the impact page reads it", async () => {
     const rule = await createDbPolicyRule(
-      { code: `DBCHECK-${Date.now()}`, title: "Synthetic db-check rule", authorityType: "INTERNAL_RISK", jurisdictionCode: "US", industry: "GENERAL", category: "DISCLOSURE", summary: "s", legalExplanation: "e", remediationAction: "r", applicabilityConditions: [], effectiveFrom: new Date().toISOString(), sources: [], status: "PENDING_APPROVAL" },
+      { code: `DBCHECK-${Date.now()}`, title: "Synthetic db-check rule", authorityType: "INTERNAL_RISK", jurisdictionCode: "US", industry: "GENERAL", category: "DISCLOSURE", summary: "Synthetic db-check summary", legalExplanation: "e", remediationAction: "r", applicabilityConditions: [], effectiveFrom: new Date().toISOString(), sources: [], status: "DRAFT" },
       team,
     );
-    expect(rule.currentVersion.status).toBe("PENDING_APPROVAL");
+    expect(rule.currentVersion.status).toBe("DRAFT");
     const events = await prisma.policyRuleEvent.findMany({ where: { ruleId: rule.id } });
     expect(events.map((e) => e.kind)).toEqual(["RULE_CREATED"]);
     const impact = await getPolicyImpact(team);

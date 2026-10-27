@@ -10,12 +10,21 @@ import {
   retireDbRule,
   verifyDbPolicySource,
   importCandidatePoliciesToDb,
+  createDbPolicySource,
+  updateDbPolicySource,
+  updateDbDraftRuleVersion,
+  submitDbRuleVersion,
+  verifyDbRuleVersion,
+  getDbPolicyHistory,
   type CreatePolicyRuleInput,
+  type EditDraftVersionInput,
   type ProposeNewVersionInput,
+  type SourceReviewResult,
+  type VersionReviewResult,
 } from "./db";
-import { findGroundedRulesForContext, type CreativeContextForGrounding } from "./search";
+import type { SourceInput } from "./validate";
+import { coverageReport, filterApplicableVerifiedRules, INSUFFICIENT_POLICY_COVERAGE, ruleIndustriesFor, type CoveragePair } from "@/lib/ai/applicability";
 import type {
-  AIGroundingResult,
   PolicyFilterCriteria,
   PolicyRule,
   PolicyRuleVersion,
@@ -110,15 +119,80 @@ export async function approveVersionServerAction(
 }
 
 export async function verifyPolicySourceServerAction(
-  sourceId: string
-): Promise<{ ok: boolean; error?: string }> {
+  sourceId: string,
+  review?: { result?: SourceReviewResult; note?: string }
+): Promise<{ ok: boolean; source?: PolicySource; error?: string }> {
   const user = await requireRole("TEAM");
   try {
-    await verifyDbPolicySource(sourceId, user);
-    return { ok: true };
+    const source = await verifyDbPolicySource(String(sourceId ?? ""), user, review ?? {});
+    return { ok: true, source };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Failed to verify policy source." };
   }
+}
+
+export async function createPolicySourceServerAction(
+  input: SourceInput
+): Promise<{ ok: boolean; source?: PolicySource; warnings?: string[]; error?: string }> {
+  const user = await requireRole("TEAM");
+  try {
+    const { source, warnings } = await createDbPolicySource(input, user);
+    return { ok: true, source, warnings };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to add the policy source." };
+  }
+}
+
+export async function updatePolicySourceServerAction(
+  sourceId: string,
+  input: SourceInput
+): Promise<{ ok: boolean; source?: PolicySource; warnings?: string[]; error?: string }> {
+  const user = await requireRole("TEAM");
+  try {
+    const { source, warnings } = await updateDbPolicySource(String(sourceId ?? ""), input, user);
+    return { ok: true, source, warnings };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to update the policy source." };
+  }
+}
+
+export async function updateDraftVersionServerAction(
+  input: EditDraftVersionInput
+): Promise<{ ok: boolean; version?: PolicyRuleVersion; error?: string }> {
+  const user = await requireRole("TEAM");
+  try {
+    return { ok: true, version: await updateDbDraftRuleVersion(input, user) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to save the draft." };
+  }
+}
+
+export async function submitVersionServerAction(
+  versionId: string
+): Promise<{ ok: boolean; version?: PolicyRuleVersion; error?: string }> {
+  const user = await requireRole("TEAM");
+  try {
+    return { ok: true, version: await submitDbRuleVersion(String(versionId ?? ""), user) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to submit the version." };
+  }
+}
+
+export async function verifyVersionServerAction(
+  versionId: string,
+  review: { result: VersionReviewResult; note?: string }
+): Promise<{ ok: boolean; version?: PolicyRuleVersion; error?: string }> {
+  const user = await requireRole("TEAM");
+  try {
+    return { ok: true, version: await verifyDbRuleVersion(String(versionId ?? ""), user, review) };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to record the verification." };
+  }
+}
+
+export async function fetchPolicyHistoryServerAction(ruleId: string) {
+  await requireRole("TEAM");
+  return getDbPolicyHistory(String(ruleId ?? ""));
 }
 
 export async function retireRuleServerAction(
@@ -165,10 +239,32 @@ export async function importCandidatesServerAction(): Promise<{
   }
 }
 
-export async function runGroundingServerAction(
-  context: CreativeContextForGrounding
-): Promise<AIGroundingResult> {
+export interface CoveragePreview {
+  pairs: CoveragePair[];
+  /** Rule codes the AI would be given for this scope. */
+  ruleCodes: string[];
+  industries: string[];
+  insufficientMessage: string;
+}
+
+/**
+ * Read-only coverage check for the Policy Library: which approved, verified
+ * rules the AI would be given for a market / platform / industry scope, using
+ * the same boundary as the real scan. No matching, no scores.
+ */
+export async function coveragePreviewServerAction(scope: {
+  markets: string[];
+  platforms: string[];
+  industry: string | null;
+}): Promise<CoveragePreview> {
   await requireRole("TEAM");
-  const allRules = await getDbPolicyRules();
-  return findGroundedRulesForContext(allRules, context);
+  const clean = (list: unknown) => (Array.isArray(list) ? list : []).map((v) => String(v ?? "").trim().toUpperCase()).filter((v) => /^[A-Z0-9-]{2,12}$/.test(v)).slice(0, 10);
+  const context = { markets: clean(scope?.markets), platforms: clean(scope?.platforms), industry: scope?.industry ? String(scope.industry) : null };
+  const rules = await getDbPolicyRules();
+  return {
+    pairs: coverageReport(rules, context),
+    ruleCodes: filterApplicableVerifiedRules(rules, context).map((r) => r.code),
+    industries: ruleIndustriesFor(context.industry),
+    insufficientMessage: INSUFFICIENT_POLICY_COVERAGE,
+  };
 }

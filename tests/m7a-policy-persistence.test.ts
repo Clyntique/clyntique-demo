@@ -1,12 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CurrentUser } from "@/lib/auth/dal";
-import { createPrismaMock, type PrismaMock } from "./helpers";
+import { createPrismaMock, withReferenceCodes, type PrismaMock } from "./helpers";
 import { CANDIDATE_POLICY_RULES, CANDIDATE_POLICY_SOURCES } from "@/lib/policy/candidates";
 import { canApprovePolicyVersion, isPolicyAdmin } from "@/lib/policy/auth";
-import {
-  findGroundedRulesForContext,
-  getActiveApprovedRules,
-} from "@/lib/policy/search";
+import { filterApplicableVerifiedRules, INSUFFICIENT_POLICY_COVERAGE } from "@/lib/ai/applicability";
 import type { PolicyRule } from "@/lib/policy/types";
 
 // Mock @/lib/prisma to test persistence methods safely without database side effects
@@ -46,7 +43,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
   };
 
   beforeEach(() => {
-    h.prisma = createPrismaMock();
+    h.prisma = withReferenceCodes(createPrismaMock());
   });
 
   describe("1. Starter Candidate Set Curation & Source Validation", () => {
@@ -102,39 +99,37 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
     });
   });
 
-  describe("2. Maker-Checker Authorization & Permissions", () => {
-    it("restricts policy administration to authorized TEAM accounts", () => {
+  describe("2. Two-person control & permissions", () => {
+    it("restricts policy administration to TEAM accounts with the explicit database permission", () => {
       expect(isPolicyAdmin(policyAdmin)).toBe(true);
       expect(isPolicyAdmin(secondaryAdmin)).toBe(true);
       expect(isPolicyAdmin(clientUser)).toBe(false);
+      // Decision D6: a known email address alone grants nothing.
+      expect(isPolicyAdmin({ ...policyAdmin, isPolicyAdmin: false })).toBe(false);
+      expect(isPolicyAdmin({ ...policyAdmin, isPolicyAdmin: undefined })).toBe(false);
+      expect(isPolicyAdmin({ ...policyAdmin, demoSession: true })).toBe(false);
     });
 
-    it("strictly blocks rule authors from self-approving their own versions (Requirement 8)", () => {
-      const versionAuthoredByAdmin = {
-        createdById: policyAdmin.id,
-        status: "PENDING_APPROVAL" as const,
-      };
+    it("blocks authors from approving their own versions, and approvers from approving what they verified", () => {
+      const verifiedByOther = { createdById: policyAdmin.id, status: "PENDING_APPROVAL" as const, verificationStatus: "VERIFIED" as const, verifiedById: "usr-admin-3" };
+      expect(canApprovePolicyVersion(policyAdmin, verifiedByOther)).toMatchObject({ allowed: false, reason: expect.stringContaining("that you created") });
+      expect(canApprovePolicyVersion(secondaryAdmin, verifiedByOther).allowed).toBe(true);
 
-      const checkSelf = canApprovePolicyVersion(policyAdmin, versionAuthoredByAdmin);
-      expect(checkSelf.allowed).toBe(false);
-      expect(checkSelf.reason).toContain("Maker-Checker Governance: You cannot approve a policy version that you created");
-
-      const checkOther = canApprovePolicyVersion(secondaryAdmin, versionAuthoredByAdmin);
-      expect(checkOther.allowed).toBe(true);
+      const verifiedBySecondary = { ...verifiedByOther, verifiedById: secondaryAdmin.id };
+      expect(canApprovePolicyVersion(secondaryAdmin, verifiedBySecondary)).toMatchObject({ allowed: false, reason: expect.stringContaining("you verified this version") });
     });
 
-    it("blocks approving already active or deprecated versions", () => {
-      const activeVersion = {
-        createdById: "other-user",
-        status: "ACTIVE" as const,
-      };
-      expect(canApprovePolicyVersion(policyAdmin, activeVersion).allowed).toBe(false);
+    it("refuses approval before a named verification", () => {
+      const unverified = { createdById: "other", status: "PENDING_APPROVAL" as const, verificationStatus: "UNVERIFIED" as const, verifiedById: null };
+      expect(canApprovePolicyVersion(secondaryAdmin, unverified)).toMatchObject({ allowed: false, reason: expect.stringContaining("must be verified") });
+      const noVerifier = { ...unverified, verificationStatus: "VERIFIED" as const };
+      expect(canApprovePolicyVersion(secondaryAdmin, noVerifier).allowed).toBe(false);
+    });
 
-      const deprecatedVersion = {
-        createdById: "other-user",
-        status: "DEPRECATED" as const,
-      };
-      expect(canApprovePolicyVersion(policyAdmin, deprecatedVersion).allowed).toBe(false);
+    it("blocks approving already active, deprecated or draft versions", () => {
+      for (const status of ["ACTIVE", "DEPRECATED", "DRAFT"] as const) {
+        expect(canApprovePolicyVersion(policyAdmin, { createdById: "other-user", status, verificationStatus: "VERIFIED", verifiedById: "x" }).allowed).toBe(false);
+      }
     });
   });
 
@@ -157,7 +152,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
       expect(rules).toEqual([]);
     });
 
-    it("createDbPolicyRule persists new rule to PostgreSQL with PENDING_APPROVAL and UNVERIFIED", async () => {
+    it("createDbPolicyRule persists a new rule as an UNVERIFIED DRAFT when it cites nothing yet", async () => {
       const { createDbPolicyRule } = await import("@/lib/policy/db");
       h.prisma.policyRule.findUnique.mockResolvedValueOnce(null); // code is unique
       h.prisma.policyRule.create.mockResolvedValueOnce({ id: "rule-db-1" });
@@ -192,7 +187,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
               exceptions: [],
               effectiveFrom: new Date(),
               effectiveTo: null,
-              status: "PENDING_APPROVAL",
+              status: "DRAFT",
               verificationStatus: "UNVERIFIED",
               changeSummary: "Initial version created in Policy Library.",
               createdById: policyAdmin.id,
@@ -221,13 +216,13 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
           applicabilityConditions: ["Condition 1"],
           effectiveFrom: new Date().toISOString(),
           sources: [],
-          status: "PENDING_APPROVAL",
+          status: "DRAFT",
         },
         policyAdmin
       );
 
       expect(result.code).toBe("TEST-FTC-01");
-      expect(result.currentVersion.status).toBe("PENDING_APPROVAL");
+      expect(result.currentVersion.status).toBe("DRAFT");
       expect(result.currentVersion.verificationStatus).toBe("UNVERIFIED");
       expect(result.currentVersion.createdById).toBe(policyAdmin.id);
     });
@@ -241,6 +236,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
         versions: [{ versionNumber: 1 }],
       });
       h.prisma.policyRuleVersion.create.mockResolvedValueOnce({ id: "ver-db-2" });
+      h.prisma.policySource.count.mockResolvedValueOnce(1); // the cited source exists
 
       h.prisma.policyRule.findMany.mockResolvedValueOnce([
         {
@@ -294,7 +290,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
           applicabilityConditions: ["Cond 1"],
           changeSummary: "Proposed version 2",
           effectiveFrom: new Date().toISOString(),
-          sources: [],
+          sources: [{ sourceId: "src-1", sectionReference: "16 CFR 255.5", sectionTitle: "Disclosure", directUrl: "https://www.ecfr.gov/current/title-16/part-255" }],
         },
         policyAdmin
       );
@@ -304,88 +300,58 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
       expect(proposed.verificationStatus).toBe("UNVERIFIED");
     });
 
-    it("approveDbRuleVersion enforces maker-checker, updates status to ACTIVE & VERIFIED, and updates rule pointer", async () => {
+    it("approveDbRuleVersion needs a different verifier and approver, and activates without re-verifying", async () => {
       const { approveDbRuleVersion } = await import("@/lib/policy/db");
-
-      // Target version was created by usr-admin-1
-      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce({
-        id: "ver-db-1",
-        ruleId: "rule-db-1",
-        versionNumber: 1,
-        createdById: policyAdmin.id, // usr-admin-1
-        status: "PENDING_APPROVAL",
-        changeSummary: "Initial version",
-      });
-
-      // Self-approval attempt by creator must be rejected
-      await expect(
-        approveDbRuleVersion("rule-db-1", "ver-db-1", policyAdmin, "Self approval")
-      ).rejects.toThrow(/Maker-Checker/);
-
-      // Secondary approver approves
-      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce({
+      const target = {
         id: "ver-db-1",
         ruleId: "rule-db-1",
         versionNumber: 1,
         createdById: policyAdmin.id,
         status: "PENDING_APPROVAL",
+        verificationStatus: "VERIFIED",
+        verifiedById: secondaryAdmin.id,
+        effectiveFrom: new Date(Date.now() - 1000),
         changeSummary: "Initial version",
-      });
+      };
 
-      h.prisma.policyRuleVersion.updateMany.mockResolvedValue({ count: 1 }); // still pending
+      // The author can't approve; neither can the verifier.
+      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce(target);
+      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", policyAdmin, "Self approval")).rejects.toThrow(/you cannot approve a policy version that you created/);
+      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce(target);
+      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/you verified this version/);
 
+      // A third administrator approves.
+      const third: CurrentUser = { id: "usr-admin-3", name: "Third Admin", email: "third@test.invalid", role: "TEAM", isPolicyAdmin: true };
+      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce(target);
+      h.prisma.policyRuleVersionSource.findMany.mockResolvedValueOnce([{ source: { name: "FTC", verificationStatus: "VERIFIED" } }]);
+      h.prisma.policyRuleVersion.findMany.mockResolvedValueOnce([]);
+      h.prisma.policyRuleVersion.updateMany.mockResolvedValue({ count: 1 });
       h.prisma.policyRule.findMany.mockResolvedValueOnce([
         {
-          id: "rule-db-1",
-          code: "TEST-FTC-01",
-          title: "Test FTC Rule",
-          authorityType: "REGULATION",
-          jurisdictionCode: "US",
-          subJurisdiction: null,
-          platformCode: null,
-          industry: "HEALTHCARE",
-          category: "DISCLOSURE",
-          currentVersionNumber: 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          id: "rule-db-1", code: "TEST-FTC-01", title: "Test FTC Rule", authorityType: "REGULATION", jurisdictionCode: "US", subJurisdiction: null, platformCode: null,
+          industry: "HEALTHCARE", category: "DISCLOSURE", currentVersionNumber: 1, createdAt: new Date(), updatedAt: new Date(),
           versions: [
             {
-              id: "ver-db-1",
-              ruleId: "rule-db-1",
-              versionNumber: 1,
-              title: "Test FTC Rule",
-              summary: "Test summary",
-              legalExplanation: "Legal text",
-              remediationAction: "Remediation text",
-              applicabilityConditions: ["Condition 1"],
-              exceptions: [],
-              effectiveFrom: new Date(),
-              effectiveTo: null,
-              status: "ACTIVE",
-              verificationStatus: "VERIFIED",
-              changeSummary: "Initial version [Approved & Verified]",
-              createdById: policyAdmin.id,
-              createdBy: { id: policyAdmin.id, name: policyAdmin.name },
-              approvedById: secondaryAdmin.id,
-              approvedBy: { id: secondaryAdmin.id, name: secondaryAdmin.name },
-              approvedAt: new Date(),
-              createdAt: new Date(),
-              sources: [],
+              id: "ver-db-1", ruleId: "rule-db-1", versionNumber: 1, title: "Test FTC Rule", summary: "Test summary", legalExplanation: "", remediationAction: "",
+              applicabilityConditions: [], exceptions: [], effectiveFrom: new Date(), effectiveTo: null, status: "ACTIVE", verificationStatus: "VERIFIED",
+              changeSummary: "Initial version", createdById: policyAdmin.id, createdBy: { id: policyAdmin.id, name: policyAdmin.name },
+              approvedById: third.id, approvedBy: { id: third.id, name: third.name }, approvedAt: new Date(),
+              verifiedById: secondaryAdmin.id, verifiedBy: { id: secondaryAdmin.id, name: secondaryAdmin.name }, verifiedAt: new Date(),
+              createdAt: new Date(), sources: [],
             },
           ],
         },
       ]);
 
-      const approvalResult = await approveDbRuleVersion(
-        "rule-db-1",
-        "ver-db-1",
-        secondaryAdmin,
-        "Reviewed 16 CFR § 255.5"
-      );
+      const approvalResult = await approveDbRuleVersion("rule-db-1", "ver-db-1", third, "Reviewed 16 CFR § 255.5");
+      expect(approvalResult.approvedVersion).toMatchObject({ status: "ACTIVE", approvedById: third.id, verifiedById: secondaryAdmin.id, verifiedByName: secondaryAdmin.name });
 
-      expect(approvalResult.approvedVersion.status).toBe("ACTIVE");
-      expect(approvalResult.approvedVersion.verificationStatus).toBe("VERIFIED");
-      expect(approvalResult.approvedVersion.approvedById).toBe(secondaryAdmin.id);
+      const activation = h.prisma.policyRuleVersion.updateMany.mock.calls.map((c) => c[0] as { where: Record<string, unknown>; data: Record<string, unknown> }).find((c) => c.data.status === "ACTIVE");
+      expect(activation?.where).toMatchObject({ id: "ver-db-1", status: "PENDING_APPROVAL", verificationStatus: "VERIFIED", verifiedById: secondaryAdmin.id });
+      // Approval never writes the verification itself, nor rewrites the author's summary.
+      expect(activation?.data).not.toHaveProperty("verificationStatus");
+      expect(activation?.data).not.toHaveProperty("changeSummary");
+      expect(h.prisma.policyRuleEvent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ kind: "VERSION_APPROVED", actorId: third.id, note: expect.stringContaining("Reviewed 16 CFR") }) }));
     });
 
     it("retireDbRule sets status to DEPRECATED without deleting data", async () => {
@@ -397,12 +363,12 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
 
       await retireDbRule("rule-db-1", policyAdmin, "Replaced by 2026 revision");
 
-      expect(h.prisma.policyRuleVersion.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: "ver-db-1" },
-          data: expect.objectContaining({ status: "DEPRECATED" }),
-        })
-      );
+      expect(h.prisma.policyRuleVersion.updateMany).toHaveBeenCalledWith({
+        where: { ruleId: "rule-db-1", status: "ACTIVE" },
+        data: expect.objectContaining({ status: "DEPRECATED" }),
+      });
+      expect(h.prisma.policyRuleVersion.deleteMany).not.toHaveBeenCalled();
+      expect(h.prisma.policyRuleEvent.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ kind: "RULE_RETIRED", note: expect.stringContaining("Replaced by 2026 revision") }) }));
     });
   });
 
@@ -434,7 +400,7 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
   });
 
   describe("4b. Approval guards", () => {
-    const pending = { id: "ver-db-1", ruleId: "rule-db-1", versionNumber: 1, createdById: "usr-author", status: "PENDING_APPROVAL", changeSummary: "x" };
+    const pending = { id: "ver-db-1", ruleId: "rule-db-1", versionNumber: 1, createdById: "usr-author", status: "PENDING_APPROVAL", verificationStatus: "VERIFIED", verifiedById: "usr-verifier", effectiveFrom: new Date(), changeSummary: "x" };
 
     it("an administrator can't approve candidates they imported", async () => {
       const { importCandidatePoliciesToDb } = await import("@/lib/policy/db");
@@ -456,13 +422,13 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
     it("refuses a DRAFT version (it must be submitted for approval first)", async () => {
       const { approveDbRuleVersion } = await import("@/lib/policy/db");
       h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce({ ...pending, status: "DRAFT" });
-      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/pending approval/);
+      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/submitted for verification/);
     });
 
     it("refuses when the version was approved or changed meanwhile", async () => {
       const { approveDbRuleVersion } = await import("@/lib/policy/db");
       h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce(pending);
-      h.prisma.policyRuleVersionSource.findMany.mockResolvedValueOnce([]);
+      h.prisma.policyRuleVersionSource.findMany.mockResolvedValueOnce([{ source: { name: "S", verificationStatus: "VERIFIED" } }]);
       h.prisma.policyRuleVersion.updateMany.mockResolvedValue({ count: 0 });
       await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/changed meanwhile/);
       expect(h.prisma.policyRule.update).not.toHaveBeenCalled();
@@ -475,80 +441,45 @@ describe("M7A: Verified Policy Content & Production-Ready Persistence", () => {
       h.prisma.policyRuleVersion.create.mockResolvedValueOnce({ id: "ver-db-1" });
       await createDbPolicyRule(
         {
-          code: "TEST-X", title: "T", authorityType: "REGULATION", jurisdictionCode: "US", industry: "HEALTHCARE", category: "DISCLOSURE",
-          summary: "s", legalExplanation: "l", remediationAction: "r", applicabilityConditions: [], effectiveFrom: new Date().toISOString(), sources: [],
+          code: "TEST-X", title: "Test rule", authorityType: "REGULATION", jurisdictionCode: "US", industry: "HEALTHCARE", category: "DISCLOSURE",
+          summary: "A synthetic rule summary", legalExplanation: "l", remediationAction: "r", applicabilityConditions: [], effectiveFrom: new Date().toISOString(), sources: [],
           status: "ACTIVE" as unknown as "PENDING_APPROVAL",
         },
         policyAdmin,
       ).catch(() => {}); // the reload isn't mocked; only the write matters here
       const data = (h.prisma.policyRuleVersion.create.mock.calls[0][0] as { data: { status: string; verificationStatus: string } }).data;
-      expect(data.status).toBe("PENDING_APPROVAL");
+      expect(data.status).toBe("DRAFT");
       expect(data.verificationStatus).toBe("UNVERIFIED");
+    });
+
+    it("refuses approval when the version cites no source at all", async () => {
+      const { approveDbRuleVersion } = await import("@/lib/policy/db");
+      h.prisma.policyRuleVersion.findUnique.mockResolvedValueOnce(pending);
+      h.prisma.policyRuleVersionSource.findMany.mockResolvedValueOnce([]);
+      await expect(approveDbRuleVersion("rule-db-1", "ver-db-1", secondaryAdmin)).rejects.toThrow(/without a cited source/);
+      expect(h.prisma.policyRuleVersion.updateMany).not.toHaveBeenCalled();
     });
   });
 
-  describe("5. AI Grounding & Insufficient Coverage Retrieval Boundary", () => {
-    it("strictly excludes unapproved and unverified candidate policies from AI retrieval (Requirement 9)", () => {
-      // Candidate policies start as PENDING_APPROVAL & UNVERIFIED
-      const candidateRules = CANDIDATE_POLICY_RULES;
-
-      const activeRules = getActiveApprovedRules(candidateRules);
-      expect(activeRules.length).toBe(0);
-
-      // AI grounding against candidate rules returns insufficient coverage because none are approved yet
-      const aiResult = findGroundedRulesForContext(candidateRules, {
-        creativeTitle: "Beverly Hills Aesthetic Botox",
-        adCopy: "Get our celebrity Botox treatment in Beverly Hills! Guaranteed wrinkle elimination.",
-        markets: ["US"],
-        platforms: ["TIKTOK"],
-        detectedVisualThemes: ["BEFORE_AFTER", "PRESCRIPTION_INJECTABLE"],
-      });
-
-      expect(aiResult.hasCoverage).toBe(false);
-      expect(aiResult.insufficientCoverageReason).toContain("Insufficient policy coverage — manual review required.");
-      expect(aiResult.matches.length).toBe(0);
+  describe("5. AI eligibility of research candidates", () => {
+    it("no imported research candidate is ever eligible for the AI as imported", () => {
+      expect(filterApplicableVerifiedRules(CANDIDATE_POLICY_RULES, { markets: ["US", "AE"], platforms: ["META", "TIKTOK", "GOOGLE"], industry: "MEDICAL_AESTHETICS" })).toEqual([]);
+      expect(INSUFFICIENT_POLICY_COVERAGE).toBe("Insufficient policy coverage — manual review required.");
     });
 
-    it("retrieves rules when approved & verified by policy administrator", () => {
-      // Create an approved clone of US-FTC-DISC-01
-      const approvedCandidate: PolicyRule = JSON.parse(JSON.stringify(CANDIDATE_POLICY_RULES[0]));
-      approvedCandidate.currentVersion.status = "ACTIVE";
-      approvedCandidate.currentVersion.verificationStatus = "VERIFIED";
-      approvedCandidate.currentVersion.approvedById = secondaryAdmin.id;
-      approvedCandidate.currentVersion.approvedByName = secondaryAdmin.name;
-
-      const activeRules = getActiveApprovedRules([approvedCandidate]);
-      expect(activeRules.length).toBe(1);
-
-      const aiResult = findGroundedRulesForContext([approvedCandidate], {
-        creativeTitle: "Ambassador aesthetic partnership",
-        adCopy: "Special routine recommended by top celebrity brand ambassador.",
-        markets: ["US"],
-        platforms: ["TIKTOK"],
-        detectedVisualThemes: ["INFLUENCER_ENDORSEMENT"],
-      });
-
-      expect(aiResult.hasCoverage).toBe(true);
-      expect(aiResult.matches.length).toBe(1);
-      expect(aiResult.matches[0].ruleCode).toBe("US-FTC-DISC-01");
-      expect(aiResult.matches[0].sourceSection).toContain("16 CFR § 255.5");
-    });
-
-    it("returns explicit insufficient coverage when creative targets unmapped markets (e.g. JP)", () => {
-      const approvedCandidate: PolicyRule = JSON.parse(JSON.stringify(CANDIDATE_POLICY_RULES[0]));
-      approvedCandidate.currentVersion.status = "ACTIVE";
-      approvedCandidate.currentVersion.verificationStatus = "VERIFIED";
-
-      const aiResult = findGroundedRulesForContext([approvedCandidate], {
-        creativeTitle: "Tokyo Ginza Aesthetic Clinic",
-        adCopy: "Beauty therapy in Tokyo clinic.",
-        markets: ["JP"], // Not yet in verified policy library!
-        platforms: ["META"],
-      });
-
-      expect(aiResult.hasCoverage).toBe(false);
-      expect(aiResult.insufficientCoverageReason).toContain("JP");
-      expect(aiResult.insufficientCoverageReason).toContain("Insufficient policy coverage — manual review required.");
+    it("a candidate marked ACTIVE + VERIFIED still needs a named verifier and a different approver", () => {
+      const clone: PolicyRule = JSON.parse(JSON.stringify(CANDIDATE_POLICY_RULES[0]));
+      clone.currentVersion.status = "ACTIVE";
+      clone.currentVersion.verificationStatus = "VERIFIED";
+      clone.currentVersion.effectiveFrom = new Date(Date.now() - 86400000).toISOString();
+      for (const s of clone.currentVersion.sources) s.sourceVerificationStatus = "VERIFIED";
+      const ctx = { markets: [clone.jurisdictionCode], platforms: clone.platformCode ? [clone.platformCode] : [], industry: "MEDICAL_AESTHETICS" };
+      expect(filterApplicableVerifiedRules([clone], ctx)).toHaveLength(0);
+      clone.currentVersion.verifiedById = secondaryAdmin.id;
+      clone.currentVersion.approvedById = secondaryAdmin.id;
+      expect(filterApplicableVerifiedRules([clone], ctx)).toHaveLength(0); // same person twice
+      clone.currentVersion.approvedById = policyAdmin.id;
+      expect(filterApplicableVerifiedRules([clone], ctx)).toHaveLength(1);
     });
   });
 });

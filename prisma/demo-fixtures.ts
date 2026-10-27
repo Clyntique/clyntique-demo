@@ -287,6 +287,9 @@ async function main() {
   }
 
   if (SYNTHETIC_POLICY && !(await prisma.policyRule.findUnique({ where: { code: "SYNTHETIC-TEST-01" } }))) {
+    // No account is created here: the approver must be another existing TEAM user.
+    const secondTeam = await prisma.user.findFirst({ where: { role: "TEAM", id: { not: team.id } }, select: { id: true } });
+    if (!secondTeam) throw new Error("--synthetic-policy needs a second TEAM account (two-person control); none exists, nothing was written for the policy.");
     await prisma.$transaction(async (tx) => {
       const source = await tx.policySource.create({
         data: {
@@ -323,7 +326,11 @@ async function main() {
           verificationStatus: "VERIFIED",
           changeSummary: "Synthetic test fixture created by prisma/demo-fixtures.ts",
           createdById: team.id,
-          approvedById: team.id,
+          // Two-person control (P0): the team account is recorded as verifier
+          // and a second, existing TEAM account as approver.
+          verifiedById: team.id,
+          verifiedAt: new Date(),
+          approvedById: secondTeam.id,
           approvedAt: new Date(),
         },
       });

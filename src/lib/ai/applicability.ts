@@ -5,17 +5,18 @@ import type { PolicyRule } from "@/lib/policy/types";
  * grounding boundary can be unit tested without a database.
  *
  * A rule is usable only when ALL of these hold:
- * - its current version is ACTIVE and VERIFIED (approved by a TEAM policy
- *   administrator) and in effect today (effectiveFrom/effectiveTo);
+ * - its current version is ACTIVE and VERIFIED, with a named verifier and a
+ *   DIFFERENT named approver (two-person control, decision D1), and in effect
+ *   today (effectiveFrom/effectiveTo);
  * - it cites at least one source section, and every cited source has been
  *   independently VERIFIED (a rule with nothing to cite can't ground a finding);
  * - its jurisdiction is GLOBAL or one of the creative's markets (a subdivision
  *   market such as CA-ON also counts for its country, CA); a rule limited to a
  *   sub-jurisdiction also needs that sub-jurisdiction among the markets;
  * - its platform is unset (platform-agnostic) or one of the creative's platforms;
- * - its industry is GENERAL, or equals the industry of the work under review.
- *   The industry is unknown unless configured (see policyIndustry), and an
- *   industry-specific rule never applies to work of unknown industry.
+ * - its industry is GENERAL, or matches the industry the client declared for
+ *   the submission (ruleIndustriesFor: medical aesthetics also gets healthcare
+ *   rules). Unknown or OTHER work only ever gets GENERAL rules.
  *
  * Anything else is left out, and when nothing is left the scan answers
  * INSUFFICIENT_POLICY_COVERAGE instead of asking the model.
@@ -33,9 +34,9 @@ export type ApplicabilityContext = {
 };
 
 /**
- * Industry of the work under review. No submission records its industry yet,
- * so it comes from POLICY_DEFAULT_INDUSTRY (e.g. HEALTHCARE for a deployment
- * that only serves healthcare clients). Unset means unknown.
+ * Fallback industry for submissions that declare none (rows from before the
+ * P0 industry field): POLICY_DEFAULT_INDUSTRY, e.g. HEALTHCARE for a
+ * deployment that only serves healthcare clients. Unset means unknown.
  */
 export function policyIndustry(env: Record<string, string | undefined> = process.env): string | null {
   const value = env.POLICY_DEFAULT_INDUSTRY?.trim().toUpperCase();
@@ -71,6 +72,8 @@ export function filterApplicableVerifiedRules(
     const ver = rule.currentVersion;
     if (!ver) return false;
     if (ver.status !== "ACTIVE" || ver.verificationStatus !== "VERIFIED") return false;
+    // Two-person control (decision D1): a named verifier and a named approver.
+    if (!ver.verifiedById || !ver.approvedById || ver.verifiedById === ver.approvedById) return false;
     if (!inEffect(ver.effectiveFrom, ver.effectiveTo, now)) return false;
 
     // Citations: at least one, all from independently verified sources.
@@ -89,9 +92,68 @@ export function filterApplicableVerifiedRules(
       if (platform !== "GLOBAL" && !platforms.has(platform)) return false;
     }
 
-    const ruleIndustry = (rule.industry ?? "").trim().toUpperCase();
-    if (ruleIndustry && ruleIndustry !== "GENERAL" && ruleIndustry !== industry) return false;
+    // GENERAL rules apply to all work; industry rules only to work of a
+    // matching declared industry (medical aesthetics also gets healthcare).
+    const ruleIndustry = (rule.industry ?? "").trim().toUpperCase() || "GENERAL";
+    if (!ruleIndustriesFor(industry).includes(ruleIndustry)) return false;
 
     return true;
   });
+}
+
+// ---------------------------------------------------------------------------
+// Industry matching and coverage (P0, Oct 27)
+
+/** Industries a client can declare on a submission (decision D2). */
+export const SUBMISSION_INDUSTRIES = ["HEALTHCARE", "MEDICAL_AESTHETICS", "OTHER"] as const;
+export type SubmissionIndustry = (typeof SUBMISSION_INDUSTRIES)[number];
+
+/**
+ * Rule industries that may apply to work of a declared industry. Medical
+ * aesthetics is healthcare, so healthcare rules apply to it too; anything
+ * else (OTHER, or unknown) only gets GENERAL rules.
+ */
+export function ruleIndustriesFor(industry: string | null | undefined): string[] {
+  const value = industry?.trim().toUpperCase() || null;
+  if (value === "MEDICAL_AESTHETICS") return ["GENERAL", "HEALTHCARE", "MEDICAL_AESTHETICS"];
+  if (value === "HEALTHCARE") return ["GENERAL", "HEALTHCARE"];
+  return ["GENERAL"];
+}
+
+export type CoveragePair = {
+  market: string | null;
+  platform: string | null;
+  covered: boolean;
+  /** Applicable rule codes for this market and platform. */
+  ruleCodes: string[];
+  /** Of those, the ones that are the platform's own policies. */
+  platformRuleCodes: string[];
+};
+
+/**
+ * Coverage per market × platform for a submission. A pair is covered when at
+ * least one applicable, verified, approved rule matches both; an uncovered
+ * pair must show INSUFFICIENT_POLICY_COVERAGE even when other pairs ran.
+ */
+export function coverageReport(rules: PolicyRule[], context: ApplicabilityContext, now: Date = new Date()): CoveragePair[] {
+  const applicable = filterApplicableVerifiedRules(rules, context, now);
+  const markets = context.markets.length ? context.markets.map((m) => m.trim().toUpperCase()) : [null];
+  const platforms = context.platforms.length ? context.platforms.map((p) => p.trim().toUpperCase()) : [null];
+  const pairs: CoveragePair[] = [];
+  for (const market of markets) {
+    for (const platform of platforms) {
+      const matching = applicable.filter((rule) => {
+        const ctx = { ...context, markets: market ? [market] : [], platforms: platform ? [platform] : [] };
+        return filterApplicableVerifiedRules([rule], ctx, now).length === 1;
+      });
+      pairs.push({
+        market,
+        platform,
+        covered: matching.length > 0,
+        ruleCodes: matching.map((r) => r.code),
+        platformRuleCodes: matching.filter((r) => r.platformCode && r.platformCode.toUpperCase() === platform).map((r) => r.code),
+      });
+    }
+  }
+  return pairs;
 }

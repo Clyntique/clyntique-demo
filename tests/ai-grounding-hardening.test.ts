@@ -43,6 +43,8 @@ function rule(over: Partial<PolicyRule> & { version?: Partial<PolicyRule["curren
     createdById: "a",
     createdByName: "A",
     createdAt: "2026-01-01T00:00:00Z",
+    verifiedById: "v",
+    approvedById: "b",
     sources: [
       {
         id: "cit-1",
@@ -152,6 +154,8 @@ function dbRule(over: { verificationStatus?: string; sourceStatus?: string } = {
         createdById: "a",
         createdAt: new Date(),
         approvedById: "b",
+        verifiedById: "v",
+        verifiedBy: { id: "v", name: "V" },
         approvedAt: new Date(),
         createdBy: { id: "a", name: "A" },
         approvedBy: { id: "b", name: "B" },

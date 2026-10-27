@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/icons";
 import { RuleDrawer } from "./rule-drawer";
 import { RuleEditorModal } from "./rule-editor-modal";
-import { GroundingSandbox } from "./grounding-sandbox";
 import { filterPolicyRules } from "@/lib/policy/search";
 import { importCandidatesServerAction } from "@/lib/policy/actions";
 
@@ -229,7 +228,7 @@ export function PolicyLibraryView({
       </div>
 
       {activeTab === "SANDBOX" ? (
-        <GroundingSandbox />
+        <p className="text-small text-muted">The coverage check is being rebuilt.</p>
       ) : (
         <div className="space-y-6">
           {/* Metrics Overview Strip */}

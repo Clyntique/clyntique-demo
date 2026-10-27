@@ -7,6 +7,15 @@ export type PolicyVerificationStatus = "VERIFIED" | "UNVERIFIED" | "REJECTED" | 
 
 export type PolicyRuleStatus = "DRAFT" | "PENDING_APPROVAL" | "ACTIVE" | "DEPRECATED";
 
+export type PolicyRestrictionLevel = "PROHIBITED" | "RESTRICTED" | "CONDITIONAL" | "DISCLOSURE_REQUIRED";
+
+export type PolicySourceKind =
+  | "PLATFORM_POLICY_PAGE"
+  | "PLATFORM_HELP_ARTICLE"
+  | "STATUTE_OR_REGULATION"
+  | "REGULATOR_GUIDANCE"
+  | "OTHER_OFFICIAL";
+
 export type PolicyCategory =
   | "EFFICACY_CLAIM"
   | "BEFORE_AFTER"
@@ -31,6 +40,13 @@ export interface PolicySource {
   publishedAt?: string;
   lastAuditedAt: string;
   verificationStatus: PolicyVerificationStatus;
+  // P0 (Oct 27): provenance and human verification.
+  sourceKind?: PolicySourceKind | null;
+  accessNote?: string | null;
+  verifiedById?: string | null;
+  verifiedByName?: string | null;
+  verifiedAt?: string | null;
+  verificationNote?: string | null;
 }
 
 export interface PolicySourceSection {
@@ -44,6 +60,12 @@ export interface PolicySourceSection {
   excerpt: string;
   /** Verification status of the cited PolicySource (independent source check). */
   sourceVerificationStatus?: PolicyVerificationStatus;
+  /** Official page of the cited source (PolicySource.officialUrl). */
+  sourceOfficialUrl?: string;
+  /** "Last updated" date the source page shows, only if it shows one. */
+  sourceUpdatedAt?: string | null;
+  /** When Clyntique read the source for this version. */
+  retrievedAt?: string | null;
 }
 
 export interface PolicyRuleVersion {
@@ -68,6 +90,17 @@ export interface PolicyRuleVersion {
   approvedById?: string | null;
   approvedByName?: string | null;
   approvedAt?: string | null;
+  // P0 (Oct 27): structured content and human verification.
+  restrictionLevel?: PolicyRestrictionLevel | null;
+  restrictedClaims?: string[];
+  substantiationRequirements?: string[];
+  /** Date the source says the policy took effect; null = not stated. */
+  officialEffectiveDate?: string | null;
+  verifiedById?: string | null;
+  verifiedByName?: string | null;
+  verifiedAt?: string | null;
+  verificationNote?: string | null;
+  reviewNote?: string | null;
 }
 
 export interface PolicyRule {
@@ -94,31 +127,4 @@ export interface PolicyFilterCriteria {
   platform?: string | "ALL";
   status?: PolicyRuleStatus | "ALL";
   category?: PolicyCategory | "ALL";
-}
-
-export interface AIGroundingMatch {
-  ruleId: string;
-  ruleCode: string;
-  ruleTitle: string;
-  versionNumber: number;
-  authorityType: PolicyAuthorityType;
-  authorityName: string;
-  sourceSection: string;
-  sourceUrl: string;
-  suggestedSeverity: "HIGH" | "MEDIUM" | "LOW" | "ADVISORY";
-  issue: string;
-  legalExplanation: string;
-  remediationAction: string;
-  confidenceScore: number;
-  matchedConditions: string[];
-}
-
-export interface AIGroundingResult {
-  hasCoverage: boolean;
-  insufficientCoverageReason?: string;
-  matches: AIGroundingMatch[];
-  groundedRulesCount: number;
-  checkedJurisdictions: string[];
-  checkedPlatforms: string[];
-  disclaimer: string;
 }
