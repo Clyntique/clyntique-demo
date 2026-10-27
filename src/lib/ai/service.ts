@@ -389,6 +389,28 @@ export async function applicableRuleForAcceptance(user: CurrentUser, creativeId:
   return scope.rules.find((r) => r.code.toUpperCase() === code) ?? null;
 }
 
+/**
+ * Policy rules a TEAM reviewer may cite on a finding or on Clyntique evidence
+ * for this submission: the same verified, approved and applicable set the AI
+ * uses (markets, platforms and the submitted industry). Empty for anyone else.
+ */
+export async function citableRulesForSubmission(user: CurrentUser, creativeId: string): Promise<PolicyRule[]> {
+  if (user.role !== "TEAM") return [];
+  const accessible = await findAccessibleCreative(user, creativeId);
+  if (!accessible || accessible.workflow !== "SUBMISSION_REVIEW") return [];
+  const snapshot = await submittedSnapshot(accessible.id);
+  if (!snapshot) return [];
+  const scope = await applicableRulesFor(accessible.id, snapshot.submittedIndustry);
+  return scope?.rules ?? [];
+}
+
+/** The citable rule whose CURRENT approved version is this id, or null (never trusts the browser). */
+export async function citableRuleVersion(user: CurrentUser, creativeId: string, ruleVersionId: string): Promise<PolicyRule | null> {
+  if (!ruleVersionId) return null;
+  const rules = await citableRulesForSubmission(user, creativeId);
+  return rules.find((r) => r.currentVersion.id === ruleVersionId) ?? null;
+}
+
 async function streamToBuffer(stream: ReadableStream<Uint8Array>): Promise<Buffer> {
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];

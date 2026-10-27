@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
-import { assessEvidence, completeReview, openReviewCycle, recordExternalOutcome, recordExternalSubmission, startReview, submitForReview } from "@/lib/workflow/commands";
+import { addReviewerEvidence, assessEvidence, completeReview, openReviewCycle, recordExternalOutcome, recordExternalSubmission, startReview, submitForReview } from "@/lib/workflow/commands";
 import { getSubmissionReview } from "@/lib/data/submission-review";
 import { getLifecycle } from "@/lib/data/lifecycle";
 import { getPolicyImpact } from "@/lib/data/policy-impact";
@@ -70,12 +70,21 @@ describe.skipIf(!local)("lifecycle on a real database", () => {
     expect((await startReview(team, creativeId)).ok).toBe(true);
     const assessed = await assessEvidence(team, { evidenceId: evidence.id, result: "NEEDS_CLARIFICATION", note: "Synthetic note" });
     expect(assessed.ok).toBe(true);
-    // Before the decision, the client doesn't see the assessment.
-    expect((await getSubmissionReview(client, creativeId))?.evidence[0].assessments).toEqual([]);
+    const reviewerEvidence = await addReviewerEvidence(team, { creativeId, title: "Synthetic policy note", type: "POLICY_REFERENCE", visibility: "SHARED", description: "Synthetic" });
+    expect(reviewerEvidence.ok).toBe(true);
+    // Before the decision, the client sees neither the assessment nor the Clyntique evidence.
+    const early = await getSubmissionReview(client, creativeId);
+    expect(early?.evidence.map((e) => e.origin)).toEqual(["CLIENT_SUBMITTED"]);
+    expect(early?.evidence[0].assessments).toEqual([]);
     const round = await prisma.submissionRound.findFirstOrThrow({ where: { creativeId } });
     expect(round.submittedIndustry).toBe("HEALTHCARE");
     expect((await completeReview(team, { creativeId, roundId: round.id, versionId, outcome: "NO_ISSUES_IDENTIFIED", summary: "No issues identified in this synthetic check." })).ok).toBe(true);
-    const clientEvidence = (await getSubmissionReview(client, creativeId))?.evidence[0];
+    const late = await getSubmissionReview(client, creativeId);
+    expect(late?.evidence.map((e) => [e.origin, e.addedByName])).toEqual([
+      ["CLIENT_SUBMITTED", client.name],
+      ["REVIEWER_ADDED", "Clyntique reviewer"],
+    ]);
+    const clientEvidence = late?.evidence[0];
     expect(clientEvidence).toMatchObject({ claimText: "Synthetic claim", versionNumber: 1, submittedIn: { cycleNumber: 1, roundNumber: 1 } });
     expect(clientEvidence?.assessments).toMatchObject([{ result: "NEEDS_CLARIFICATION", reviewerName: "Clyntique reviewer" }]);
     expect((await getSubmissionReview(team, creativeId))?.evidence[0].assessments[0].reviewerName).toBe(team.name);

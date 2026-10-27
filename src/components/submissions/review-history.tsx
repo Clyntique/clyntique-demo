@@ -1,6 +1,7 @@
 import type { Role } from "@/generated/prisma/enums";
 import type { DecisionView, EvidenceView } from "@/lib/data/submission-review";
 import {
+  DECISION_SOURCE_LABEL,
   EVIDENCE_ASSESSMENT_LABEL,
   EVIDENCE_ASSESSMENT_NOTICE,
   REVIEW_DISCLAIMER,
@@ -14,6 +15,7 @@ import { ExternalLinkIcon, FileIcon } from "@/components/ui/icons";
 import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
 import { WithdrawEvidenceForm } from "./client-remediation";
 import { AssessEvidenceForm } from "./assess-evidence-form";
+import { PolicyReference } from "./policy-reference";
 
 // Decision history and evidence for a submission (both roles). The controls
 // are withdrawing evidence (client) and assessing it (team), each offered
@@ -37,7 +39,7 @@ export function DecisionHistory({ decisions, role }: { decisions: DecisionView[]
               <Badge className="bg-attention-soft text-attention-ink">Changes requested</Badge>
             )}
             <span className="text-meta">
-              V{d.versionNumber} · round {d.roundNumber}
+              V{d.versionNumber} · round {d.roundNumber} · {DECISION_SOURCE_LABEL.INTERNAL_REVIEW}
             </span>
           </div>
           <p className="text-body mt-1.5 break-words whitespace-pre-line text-ink">{d.summary}</p>
@@ -82,7 +84,7 @@ export function EvidenceList({
           <li key={e.id} id={`evidence-${e.id}`} className={cn("scroll-mt-6 rounded-xl border border-line bg-surface p-4 sm:p-5 shadow-xs transition-shadow", e.withdrawn && "bg-subtle/60")}>
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone="outline">{EVIDENCE_TYPES[e.type]}</Badge>
-              {e.origin === "REVIEWER_ADDED" && <Badge>Added by reviewer</Badge>}
+              {e.origin === "REVIEWER_ADDED" && <Badge>Clyntique evidence</Badge>}
               {e.visibility === "INTERNAL" && role === "TEAM" && <Badge>Team only</Badge>}
               {e.submittedIn ? (
                 <Badge tone="outline">
@@ -103,6 +105,7 @@ export function EvidenceList({
             )}
             {!e.claimText && e.claimLocation && <p className="text-meta mt-1">Location: {e.claimLocation}</p>}
             {e.description && <p className="text-small mt-1 break-words whitespace-pre-line text-ink-soft">{e.description}</p>}
+            {e.policy && <PolicyReference policy={e.policy} />}
             {e.file && (
               <a
                 href={`/api/media/evidence/${e.id}`}

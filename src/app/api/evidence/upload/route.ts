@@ -13,9 +13,11 @@ import { DENIAL_MESSAGE, authorize } from "@/lib/workflow/policy";
  *
  * A token is issued only to the client who owns the submission, while they may
  * manage its evidence (draft or changes requested; src/lib/workflow/policy.ts),
+ * or to a TEAM reviewer while the submission is in review (Clyntique evidence,
+ * P0 Oct 27),
  * for one exact storage path built on the server, with the content type fixed
  * by the extension (PDF, PNG, JPEG, WebP) and the size capped at 10 MB by the
- * Blob store itself. The file is not evidence until addEvidence
+ * Blob store itself. The file is not evidence until addEvidence or addReviewerEvidence
  * (src/lib/workflow/commands.ts) re-verifies it and records it.
  */
 
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
 
         const creative = await findAccessibleCreative(user, creativeId);
         if (!creative) throw new UploadRejected("This submission no longer exists.");
-        const allowed = authorize(user, "MANAGE_EVIDENCE", submissionFacts(creative));
+        const allowed = authorize(user, user.role === "TEAM" ? "ADD_REVIEWER_EVIDENCE" : "MANAGE_EVIDENCE", submissionFacts(creative));
         if (!allowed.ok) throw new UploadRejected(DENIAL_MESSAGE[allowed.reason], allowed.reason === "NOT_FOUND" ? 400 : 403);
 
         const kind = evidenceKindFor(fileName);

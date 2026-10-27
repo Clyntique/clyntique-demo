@@ -408,17 +408,21 @@ describe("acceptAIFindingAction", () => {
   it("records a DRAFT finding linked to the exact rule version, with the database citation", async () => {
     h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setupCreative(h.prisma);
-    // recordFinding: the submission is in review with an open round.
-    h.prisma.creative.findUnique.mockResolvedValueOnce({
-      id: "cr-1",
-      name: "x",
-      description: null,
-      context: null,
-      format: "FEED",
-      markets: [{ market: { code: "US", name: "United States" } }],
-      platforms: [{ platform: { code: "META", name: "Meta" } }],
-    });
-    h.prisma.creative.findUnique.mockResolvedValue({ id: "cr-1", workflow: "SUBMISSION_REVIEW", status: "IN_REVIEW", project: { clientId: "client-a" } });
+    // Rule scope lookups (select markets) get the targeting; recordFinding's
+    // guard gets a submission in review with an open round.
+    h.prisma.creative.findUnique.mockImplementation(async ({ select }: { select?: Record<string, unknown> }) =>
+      select?.markets
+        ? {
+            id: "cr-1",
+            name: "x",
+            description: null,
+            context: null,
+            format: "FEED",
+            markets: [{ market: { code: "US", name: "United States" } }],
+            platforms: [{ platform: { code: "META", name: "Meta" } }],
+          }
+        : { id: "cr-1", workflow: "SUBMISSION_REVIEW", status: "IN_REVIEW", project: { clientId: "client-a" } },
+    );
     h.prisma.reviewCycle.findFirst.mockResolvedValue({ id: "cy-1", number: 1, closedAt: null });
     h.prisma.submissionRound.findFirst.mockResolvedValue({ id: "rd-1", number: 1, versionId: "v-2", cycleId: "cy-1" });
     h.prisma.finding.create.mockResolvedValue({ id: "f-1" });

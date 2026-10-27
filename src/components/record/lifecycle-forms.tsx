@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import type { ExternalDestinationType, ExternalOutcomeKind, ExternalRecordBasis, ReviewCycleReason, Role } from "@/generated/prisma/enums";
 import { recordExternalOutcomeAction, recordExternalSubmissionAction, reopenReviewAction, type LifecycleActionState } from "@/lib/lifecycle/actions";
-import { EXTERNAL_BASIS_LABEL, EXTERNAL_DESTINATION_LABEL, EXTERNAL_DISCLAIMER, EXTERNAL_OUTCOME_LABEL, REVIEW_CYCLE_REASON_LABEL } from "@/lib/workflow/labels";
+import { DECISION_SOURCE_LABEL, EXTERNAL_BASIS_LABEL, EXTERNAL_DESTINATION_LABEL, EXTERNAL_DISCLAIMER, EXTERNAL_OUTCOME_LABEL, REVIEW_CYCLE_REASON_LABEL } from "@/lib/workflow/labels";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { FormError } from "@/components/forms/form-error";
@@ -131,7 +131,9 @@ export function ExternalSubmissionForm({
       <Button type="submit" disabled={pending || versions.length === 0}>
         {pending ? "Recording…" : "Record external submission"}
       </Button>
-      <p className="text-meta">{EXTERNAL_DISCLAIMER}</p>
+      <p className="text-meta">
+        {DECISION_SOURCE_LABEL.EXTERNAL_OUTCOME}. {EXTERNAL_DISCLAIMER}
+      </p>
     </form>
   );
 }

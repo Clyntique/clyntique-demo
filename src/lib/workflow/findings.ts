@@ -116,12 +116,12 @@ export function submittedWithRound(createdAt: Date, rounds: { number: number; su
 }
 
 /**
- * A client sees the team's assessment of their evidence only once a review
- * decision (request changes or a final outcome) was published after it
- * (decision D5), like draft findings.
+ * Team work a client sees only once a review decision (request changes or a
+ * final outcome) was published after it, like draft findings: assessments of
+ * their evidence (decision D5) and evidence the reviewer added.
  */
-export function assessmentVisibleToClient(assessedAt: Date, decisionTimes: Date[]): boolean {
-  return decisionTimes.some((d) => d >= assessedAt);
+export function publishedWithDecision(at: Date, decisionTimes: Date[]): boolean {
+  return decisionTimes.some((d) => d >= at);
 }
 
 /** The cycle and round a piece of client evidence was first submitted with (rounds of every cycle). */

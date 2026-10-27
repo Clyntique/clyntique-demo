@@ -16,6 +16,7 @@ import type { AIAnalysisResult, AISuggestedFinding } from "@/lib/ai/types";
 import type { CoveragePair } from "@/lib/ai/applicability";
 import { INSUFFICIENT_POLICY_COVERAGE } from "@/lib/ai/applicability";
 import { industryLabel } from "@/lib/workflow/submission";
+import { DECISION_SOURCE_LABEL } from "@/lib/workflow/labels";
 import { cn } from "@/lib/cn";
 
 export interface AICompliancePanelProps {
@@ -299,7 +300,7 @@ export function AICompliancePanel({
           {/* Executive Summary */}
           {scanResult.summary && scanResult.status === "SUCCESS" && (
             <div className="rounded-xl border border-line bg-slate-50/50 p-4">
-              <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1.5">AI Summary · not a compliance decision</p>
+              <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1.5">{DECISION_SOURCE_LABEL.AI_SUGGESTION}</p>
               <p className="text-small font-medium text-ink leading-relaxed">{scanResult.summary}</p>
               {scanResult.rulesChecked && scanResult.rulesChecked.length > 0 && (
                 <p className="text-caption mt-2 text-muted">

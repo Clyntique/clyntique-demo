@@ -6,6 +6,7 @@ import type {
   EvidenceType,
   EvidenceVisibility,
   FindingAction,
+  FindingOrigin,
   FindingSeverity,
   FindingStatus,
   MediaType,
@@ -17,7 +18,7 @@ import type { CurrentUser } from "@/lib/auth/dal";
 import { evidenceKindFor } from "@/lib/evidence-files";
 import { prisma } from "@/lib/prisma";
 import {
-  assessmentVisibleToClient,
+  publishedWithDecision,
   checkOutcome,
   clientFindingView,
   evidenceIsFinal,
@@ -78,6 +79,16 @@ export type FindingView = {
   entries: FindingEntry[];
   /** Evidence items linked to this finding (ids into SubmissionReview.evidence). */
   evidenceIds: string[];
+  /** The claim and part of the creative concerned, and suggested compliant wording (P0). */
+  claimText: string | null;
+  claimLocation: string | null;
+  suggestedRevision: string | null;
+  /** REVIEWER, or AI_SUGGESTION_ACCEPTED (a reviewer accepted an AI suggestion; still a reviewer finding). */
+  origin: FindingOrigin;
+  /** The reviewed policy rule version it cites, as recorded (never internal notes). */
+  policy: PolicyReferenceView | null;
+  /** TEAM only: the cited version's id, for pre-filling the edit form. */
+  policyVersionId: string | null;
 };
 
 export type DecisionView = {
@@ -128,6 +139,36 @@ export type EvidenceView = {
   assessments: EvidenceAssessmentView[];
   /** TEAM only: may record an assessment now. */
   assessable: boolean;
+  /** Clyntique evidence only: the reviewed policy rule version it cites. */
+  policy: PolicyReferenceView | null;
+};
+
+/**
+ * A cited Policy Library rule version, as both roles may see it: Clyntique's
+ * own summary and the official sources, never verification or admin notes.
+ * The version is the one cited at the time; `superseded` says a newer one exists.
+ */
+export type PolicyReferenceView = {
+  ruleCode: string;
+  title: string;
+  versionNumber: number;
+  summary: string;
+  restrictionLevel: string | null;
+  restrictedClaims: string[];
+  substantiationRequirements: string[];
+  authorityType: string;
+  jurisdictionCode: string;
+  platformCode: string | null;
+  superseded: boolean;
+  citations: {
+    sourceName: string;
+    publisher: string;
+    sectionReference: string;
+    sectionTitle: string;
+    url: string;
+    quotation: string | null;
+    sourceUpdatedAt: Date | null;
+  }[];
 };
 
 export type EvidenceAssessmentView = {
@@ -166,6 +207,68 @@ export type SubmissionReview = {
   /** CLIENT only, while changes are requested: what's still needed before resubmitting. */
   readiness: { gaps: Unmet[]; latestVersionNumber: number } | null;
 };
+
+const POLICY_REFERENCE_SELECT = {
+  select: {
+    versionNumber: true,
+    title: true,
+    summary: true,
+    restrictionLevel: true,
+    restrictedClaims: true,
+    substantiationRequirements: true,
+    status: true,
+    rule: { select: { code: true, authorityType: true, jurisdictionCode: true, platformCode: true } },
+    sources: {
+      orderBy: { createdAt: "asc" },
+      select: { sectionReference: true, sectionTitle: true, directUrl: true, excerpt: true, sourceUpdatedAt: true, source: { select: { name: true, authorityName: true } } },
+    },
+  },
+} as const;
+
+type PolicyReferenceRow = {
+  versionNumber: number;
+  title: string;
+  summary: string;
+  restrictionLevel: string | null;
+  restrictedClaims: string[];
+  substantiationRequirements: string[];
+  status: string;
+  rule: { code: string; authorityType: string; jurisdictionCode: string; platformCode: string | null };
+  sources: {
+    sectionReference: string;
+    sectionTitle: string;
+    directUrl: string;
+    excerpt: string | null;
+    sourceUpdatedAt: Date | null;
+    source: { name: string; authorityName: string };
+  }[];
+};
+
+function policyReference(v: PolicyReferenceRow | null): PolicyReferenceView | null {
+  if (!v) return null;
+  return {
+    ruleCode: v.rule.code,
+    title: v.title,
+    versionNumber: v.versionNumber,
+    summary: v.summary,
+    restrictionLevel: v.restrictionLevel,
+    restrictedClaims: v.restrictedClaims,
+    substantiationRequirements: v.substantiationRequirements,
+    authorityType: v.rule.authorityType,
+    jurisdictionCode: v.rule.jurisdictionCode,
+    platformCode: v.rule.platformCode,
+    superseded: v.status !== "ACTIVE",
+    citations: v.sources.map((c) => ({
+      sourceName: c.source.name,
+      publisher: c.source.authorityName,
+      sectionReference: c.sectionReference,
+      sectionTitle: c.sectionTitle,
+      url: c.directUrl,
+      quotation: c.excerpt || null,
+      sourceUpdatedAt: c.sourceUpdatedAt,
+    })),
+  };
+}
 
 const CLIENT_SEES_FINDINGS: CreativeStatus[] = ["CHANGES_REQUESTED", "SUBMITTED", "IN_REVIEW", "REVIEW_COMPLETE"];
 
@@ -246,6 +349,12 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
               where: team ? {} : { evidence: { visibility: "SHARED" } },
               select: { evidenceId: true, linkedAt: true },
             },
+            claimText: true,
+            claimLocation: true,
+            suggestedRevision: true,
+            origin: true,
+            ruleVersionId: true,
+            ruleVersion: POLICY_REFERENCE_SELECT,
           },
         })
       : Promise.resolve([]),
@@ -290,6 +399,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         claimText: true,
         claimLocation: true,
         version: { select: { versionNumber: true } },
+        policyRuleVersion: POLICY_REFERENCE_SELECT,
         assessments: {
           orderBy: { createdAt: "asc" },
           select: { id: true, result: true, note: true, createdAt: true, reviewer: { select: { name: true } }, cycle: { select: { number: true } } },
@@ -316,7 +426,8 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
   // never reaches the team (the client and the database keep it).
   const visibleEvidence = team
     ? evidence.filter((e) => e.origin !== "CLIENT_SUBMITTED" || (teamMaySee(e.createdAt) && e.withdrawnAt === null))
-    : evidence;
+    : // Clyntique evidence reaches the client with the next published decision, like draft findings.
+      evidence.filter((e) => e.origin !== "REVIEWER_ADDED" || publishedWithDecision(e.createdAt, decisionTimes));
   const visibleEvidenceIds = new Set(visibleEvidence.map((e) => e.id));
 
   const findingViews: FindingView[] = [];
@@ -371,6 +482,12 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       platformCodes: team ? f.platforms.map((p) => p.platform.code) : [],
       entries: [...responses, ...reviewMoves].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
       evidenceIds: f.evidence.filter((e) => visibleEvidenceIds.has(e.evidenceId) && (!team || teamMaySee(e.linkedAt))).map((e) => e.evidenceId),
+      claimText: f.claimText,
+      claimLocation: f.claimLocation,
+      suggestedRevision: f.suggestedRevision,
+      origin: f.origin,
+      policy: policyReference(f.ruleVersion),
+      policyVersionId: team ? f.ruleVersionId : null,
     });
   }
 
@@ -464,7 +581,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         versionNumber: e.version?.versionNumber ?? null,
         submittedIn: submittedIn(e.createdAt, allRoundTimes),
         assessments: e.assessments
-          .filter((a) => team || assessmentVisibleToClient(a.createdAt, decisionTimes))
+          .filter((a) => team || publishedWithDecision(a.createdAt, decisionTimes))
           .map((a) => ({
             id: a.id,
             result: a.result,
@@ -474,6 +591,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
             createdAt: a.createdAt,
           })),
         assessable: mayAssessEvidence && e.origin === "CLIENT_SUBMITTED" && e.withdrawnAt === null,
+        policy: policyReference(e.policyRuleVersion),
       };
     }),
     outcomes,

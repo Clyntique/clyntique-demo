@@ -147,9 +147,9 @@ describe("evidence tags and assessment visibility", () => {
 
   it("a client sees an assessment only once a decision was published after it", () => {
     const assessed = new Date("2026-10-10T12:00:00Z");
-    expect(findings.assessmentVisibleToClient(assessed, [])).toBe(false);
-    expect(findings.assessmentVisibleToClient(assessed, [new Date("2026-10-09T12:00:00Z")])).toBe(false);
-    expect(findings.assessmentVisibleToClient(assessed, [new Date("2026-10-10T13:00:00Z")])).toBe(true);
+    expect(findings.publishedWithDecision(assessed, [])).toBe(false);
+    expect(findings.publishedWithDecision(assessed, [new Date("2026-10-09T12:00:00Z")])).toBe(false);
+    expect(findings.publishedWithDecision(assessed, [new Date("2026-10-10T13:00:00Z")])).toBe(true);
   });
 
   it("wording never claims scientific, legal or platform validation (C4)", () => {

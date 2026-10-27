@@ -113,3 +113,23 @@ export const EVIDENCE_ASSESSMENT_LABEL: Record<EvidenceAssessmentResultKey, stri
 
 export const EVIDENCE_ASSESSMENT_NOTICE =
   "This is Clyntique's internal review assessment. It is not a scientific, legal, regulatory or platform validation of the evidence.";
+
+// ---------------------------------------------------------------------------
+// The three kinds of result, kept apart everywhere (P0, Oct 27): an AI flag is
+// a suggestion, a Clyntique finding or outcome is an internal review, and only
+// a platform or regulator decides whether an ad runs.
+
+export type DecisionSource = "AI_SUGGESTION" | "INTERNAL_REVIEW" | "EXTERNAL_OUTCOME";
+
+export const DECISION_SOURCE_LABEL: Record<DecisionSource, string> = {
+  AI_SUGGESTION: "AI suggestion · not a decision",
+  INTERNAL_REVIEW: "Clyntique internal review",
+  EXTERNAL_OUTCOME: "Platform or regulator outcome · as reported",
+};
+
+/** A reviewer finding that started as an AI suggestion (TEAM view only). */
+export const AI_ORIGIN_NOTE = "Started as an AI suggestion; a reviewer checked and recorded it.";
+
+/** Shown with every policy reference. */
+export const POLICY_REFERENCE_NOTICE =
+  "Clyntique's own summary of the official policy, with links to the source. Not legal advice; only the platform or regulator decides whether an ad is accepted.";

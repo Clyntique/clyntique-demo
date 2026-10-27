@@ -32,6 +32,7 @@ import { EvidenceList } from "./review-history";
 import { SubmissionForm } from "./submission-form";
 import { SubmitPanel } from "./submit-panel";
 import { AICompliancePanel } from "./ai-compliance-panel";
+import { citableRulesForSubmission } from "@/lib/ai/service";
 
 /*
  * The review workspace for a client submission (workflow SUBMISSION_REVIEW),
@@ -82,11 +83,14 @@ export async function SubmissionView({
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
   const canManageEvidence = role === "CLIENT" && authorize(user, "MANAGE_EVIDENCE", facts).ok;
-  const [targeting, review, scanHistory] = await Promise.all([
+  const [targeting, review, scanHistory, citable] = await Promise.all([
     editable ? getTargetingOptions() : Promise.resolve(null),
     reviewLoad,
     role === "TEAM" ? getScanHistory(user, creativeId) : Promise.resolve([]),
+    // Rules a reviewer may cite while reviewing (the server re-checks each choice).
+    role === "TEAM" && submission.status === "IN_REVIEW" ? citableRulesForSubmission(user, creativeId) : Promise.resolve([]),
   ]);
+  const ruleChoices = citable.map((r) => ({ versionId: r.currentVersion.id, label: `${r.code} v${r.currentVersion.versionNumber} — ${r.title}` }));
   if (!review) notFound();
   const chat = await chatLoad;
 
@@ -168,6 +172,7 @@ export async function SubmissionView({
             evidence={review.evidence}
             markets={submission.markets}
             platforms={submission.platforms}
+            rules={ruleChoices}
           />
         ) : (
           inReview && (
@@ -176,7 +181,7 @@ export async function SubmissionView({
             </p>
           )
         )}
-        {inReview && <AddFindingForm creativeId={submission.id} markets={submission.markets} platforms={submission.platforms} />}
+        {inReview && <AddFindingForm creativeId={submission.id} markets={submission.markets} platforms={submission.platforms} rules={ruleChoices} />}
       </div>
     ),
   };
@@ -195,6 +200,14 @@ export async function SubmissionView({
             creativeId={submission.id}
             configured={uploadsConfigured()}
             findings={remediation ? openInCycle.map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue })) : []}
+          />
+        )}
+        {target && (
+          <EvidenceForm
+            creativeId={submission.id}
+            configured={uploadsConfigured()}
+            findings={cycleFindings.filter((f) => f.status !== "DISMISSED").map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue }))}
+            reviewer={{ rules: ruleChoices }}
           />
         )}
       </div>

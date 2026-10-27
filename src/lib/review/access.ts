@@ -90,6 +90,14 @@ export async function findAccessibleEvidenceFile(user: CurrentUser, evidenceId: 
     // Withdrawn client evidence was never submitted (withdrawal is pre-submission only).
     if (!submittedToTeam(evidence.createdAt, last?.submittedAt ?? null) || evidence.withdrawnAt) return null;
   }
+  if (user.role !== "TEAM" && evidence.origin === "REVIEWER_ADDED") {
+    // Clyntique evidence reaches the client with the next published decision (P0).
+    const decision = await prisma.reviewDecision.findFirst({
+      where: { creativeId: evidence.creativeId, createdAt: { gte: evidence.createdAt } },
+      select: { id: true },
+    });
+    if (!decision) return null;
+  }
   return { id: evidence.id, fileUrl: evidence.fileUrl, fileName: evidence.fileName, mimeType: evidence.mimeType };
 }
 

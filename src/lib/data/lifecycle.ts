@@ -213,7 +213,8 @@ export async function getLifecycle(user: CurrentUser, creativeId: string): Promi
       select: { versionId: true, version: { select: { versionNumber: true } } },
     }),
     prisma.evidence.findMany({
-      where: { creativeId: creative.id, withdrawnAt: null, ...(team ? {} : { visibility: "SHARED" as const }) },
+      // A client picks from their own evidence; Clyntique evidence is the team's (P0).
+      where: { creativeId: creative.id, withdrawnAt: null, ...(team ? {} : { visibility: "SHARED" as const, origin: "CLIENT_SUBMITTED" as const }) },
       orderBy: { createdAt: "asc" },
       select: { id: true, title: true },
     }),
