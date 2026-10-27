@@ -38,11 +38,16 @@ export interface PolicyLibraryPayload {
   isPolicyAdmin: boolean;
   currentUser: { id: string; name: string; email: string };
   metrics: {
-    totalActive: number;
-    regulations: number;
-    platformPolicies: number;
-    internalRisk: number;
-    pendingApproval: number;
+    /** Rules whose in-use version is approved and active. */
+    approvedActive: number;
+    /** Versions submitted and waiting for the first admin's verification. */
+    awaitingVerification: number;
+    /** Verified versions waiting for a second admin's approval. */
+    awaitingApproval: number;
+    /** Drafts, including versions returned for changes. */
+    draftsAndReturned: number;
+    sourcesVerified: number;
+    sourcesTotal: number;
   };
 }
 
@@ -54,21 +59,14 @@ export async function fetchPolicyLibraryData(
   const filtered = criteria ? await getDbPolicyRules(criteria) : allRules;
   const sources = await getDbPolicySources();
 
+  const versions = allRules.flatMap((r) => r.versions);
   const metrics = {
-    totalActive: allRules.filter((r) => r.currentVersion.status === "ACTIVE").length,
-    regulations: allRules.filter(
-      (r) => r.authorityType === "REGULATION" && r.currentVersion.status === "ACTIVE"
-    ).length,
-    platformPolicies: allRules.filter(
-      (r) => r.authorityType === "PLATFORM_POLICY" && r.currentVersion.status === "ACTIVE"
-    ).length,
-    internalRisk: allRules.filter(
-      (r) => r.authorityType === "INTERNAL_RISK" && r.currentVersion.status === "ACTIVE"
-    ).length,
-    pendingApproval: allRules.reduce((acc, r) => {
-      const pendingCount = r.versions.filter((v) => v.status === "PENDING_APPROVAL").length;
-      return acc + pendingCount;
-    }, 0),
+    approvedActive: allRules.filter((r) => r.versions.some((v) => v.status === "ACTIVE")).length,
+    awaitingVerification: versions.filter((v) => v.status === "PENDING_APPROVAL" && v.verificationStatus !== "VERIFIED").length,
+    awaitingApproval: versions.filter((v) => v.status === "PENDING_APPROVAL" && v.verificationStatus === "VERIFIED").length,
+    draftsAndReturned: versions.filter((v) => v.status === "DRAFT").length,
+    sourcesVerified: sources.filter((s) => s.verificationStatus === "VERIFIED").length,
+    sourcesTotal: sources.length,
   };
 
   return {
