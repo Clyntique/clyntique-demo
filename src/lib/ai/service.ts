@@ -6,7 +6,7 @@ import { readBlob, isPrivateBlobUrl } from "@/lib/review/blob";
 import { getDbPolicyRules } from "@/lib/policy/db";
 import type { PolicyRule } from "@/lib/policy/types";
 import { GeminiAIProvider } from "./gemini-provider";
-import { INSUFFICIENT_POLICY_COVERAGE, filterApplicableVerifiedRules, policyIndustry } from "./applicability";
+import { INSUFFICIENT_POLICY_COVERAGE, coverageReport, filterApplicableVerifiedRules, policyIndustry } from "./applicability";
 import type {
   AIComplianceProvider,
   AIAnalysisResult,
@@ -63,6 +63,7 @@ async function submittedSnapshot(creativeId: string, versionId?: string) {
       submittedName: true,
       submittedDescription: true,
       submittedContext: true,
+      submittedIndustry: true,
       version: { select: { id: true, versionNumber: true, fileUrl: true, mimeType: true } },
     },
   });
@@ -71,8 +72,13 @@ async function submittedSnapshot(creativeId: string, versionId?: string) {
   return round ?? null;
 }
 
-/** Rules the AI may use for this submission (see applicability.ts). */
-async function applicableRulesFor(creativeId: string) {
+/**
+ * Rules the AI may use for this submission (see applicability.ts), and the
+ * coverage per market and platform. The industry is the one the client
+ * declared with the submitted round (decision D2); older rounds without one
+ * fall back to the creative's, then to POLICY_DEFAULT_INDUSTRY.
+ */
+async function applicableRulesFor(creativeId: string, submittedIndustry: string | null | undefined) {
   const creative = await prisma.creative.findUnique({
     where: { id: creativeId },
     select: {
@@ -81,6 +87,7 @@ async function applicableRulesFor(creativeId: string) {
       description: true,
       context: true,
       format: true,
+      industry: true,
       markets: { select: { market: { select: { code: true, name: true } } } },
       platforms: { select: { platform: { select: { code: true, name: true } } } },
     },
@@ -88,13 +95,18 @@ async function applicableRulesFor(creativeId: string) {
   if (!creative) return null;
   const markets = creative.markets.map((m) => m.market);
   const platforms = creative.platforms.map((p) => p.platform);
-  const rules = filterApplicableVerifiedRules(await getDbPolicyRules(), {
+  const industry = submittedIndustry ?? creative.industry ?? policyIndustry();
+  const context = {
     markets: markets.map((m) => m.code),
     marketNames: markets.map((m) => m.name),
     platforms: platforms.map((p) => p.code),
-    industry: policyIndustry(),
-  });
-  return { creative, markets, platforms, rules };
+    industry,
+  };
+  const now = new Date();
+  const library = await getDbPolicyRules();
+  const rules = filterApplicableVerifiedRules(library, context, now);
+  const coverage = coverageReport(library, context, now);
+  return { creative, markets, platforms, rules, industry, coverage };
 }
 
 function emptyResult(status: AIAnalysisResult["status"], summary: string, extra: Partial<AIAnalysisResult> = {}): AIAnalysisResult {
@@ -194,9 +206,9 @@ export async function analyzeCreativeCompliance(
   }
 
   // 3. Grounding: only applicable, approved, verified rules.
-  const scope = await applicableRulesFor(accessible.id);
+  const scope = await applicableRulesFor(accessible.id, snapshot.submittedIndustry);
   if (!scope) throw new Error("This submission is not available.");
-  const { creative, markets, platforms, rules: applicableRules } = scope;
+  const { creative, markets, platforms, rules: applicableRules, industry, coverage } = scope;
   const provider = params.provider ?? defaultProvider;
   const scanContext: ScanContext = {
     creativeId: accessible.id,
@@ -211,7 +223,7 @@ export async function analyzeCreativeCompliance(
   if (applicableRules.length === 0) {
     // Never cached: a policy approved a minute later must be used at once.
     // Recorded, so the review record shows that no verified rule covered this.
-    return recordScan(scanContext, emptyResult("INSUFFICIENT_COVERAGE", INSUFFICIENT_POLICY_COVERAGE, { rulesChecked: [] }));
+    return recordScan(scanContext, emptyResult("INSUFFICIENT_COVERAGE", INSUFFICIENT_POLICY_COVERAGE, { rulesChecked: [], industry, coverage }));
   }
 
   const rulesChecked = applicableRules.map((r) => ({
@@ -223,7 +235,7 @@ export async function analyzeCreativeCompliance(
   if (!params.forceRefresh) {
     const cached = analysisCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return cached.result;
+      return { ...cached.result, industry, coverage };
     }
   }
 
@@ -259,6 +271,9 @@ export async function analyzeCreativeCompliance(
       remediationAction: ver.remediationAction,
       applicabilityConditions: ver.applicabilityConditions,
       exceptions: ver.exceptions ?? [],
+      restrictionLevel: ver.restrictionLevel ?? null,
+      restrictedClaims: ver.restrictedClaims ?? [],
+      substantiationRequirements: ver.substantiationRequirements ?? [],
       sources: ver.sources.map((s) => ({
         sourceName: s.sourceName,
         sectionReference: s.sectionReference,
@@ -276,6 +291,7 @@ export async function analyzeCreativeCompliance(
     description: (snapshot.submittedName !== null ? snapshot.submittedDescription : creative.description) ?? undefined,
     context: (snapshot.submittedName !== null ? snapshot.submittedContext : creative.context) ?? undefined,
     format: creative.format,
+    industry,
     markets,
     platforms,
     imageBuffer,
@@ -294,6 +310,8 @@ export async function analyzeCreativeCompliance(
       emptyResult("ERROR", "The AI scan failed. No findings were produced; review this creative manually.", {
         error: err instanceof Error ? err.name : "Provider error", // never the provider's message: it can echo request details
         rulesChecked,
+        industry,
+        coverage,
       }),
     );
   }
@@ -303,7 +321,7 @@ export async function analyzeCreativeCompliance(
     // pass through findings from an incomplete scan.
     const summary =
       rawResult.status === "INSUFFICIENT_COVERAGE" ? INSUFFICIENT_POLICY_COVERAGE : rawResult.summary || "The AI scan did not complete.";
-    return recordScan(scanContext, emptyResult(rawResult.status, summary, { error: rawResult.error, modelUsed: rawResult.modelUsed, rulesChecked }));
+    return recordScan(scanContext, emptyResult(rawResult.status, summary, { error: rawResult.error, modelUsed: rawResult.modelUsed, rulesChecked, industry, coverage }));
   }
 
   // 7. Server-side validation: every finding must cite an applicable rule, and
@@ -326,6 +344,8 @@ export async function analyzeCreativeCompliance(
     summary: validatedFindings.length === 0 ? NO_SUGGESTIONS_SUMMARY : rawResult.summary,
     rulesChecked,
     discardedSuggestions: discarded,
+    industry,
+    coverage,
   };
 
   const recorded = await recordScan(scanContext, finalResult);
@@ -361,7 +381,9 @@ export async function applicableRuleForAcceptance(user: CurrentUser, creativeId:
   if (user.role !== "TEAM") return null;
   const accessible = await findAccessibleCreative(user, creativeId);
   if (!accessible || accessible.workflow !== "SUBMISSION_REVIEW") return null;
-  const scope = await applicableRulesFor(accessible.id);
+  const snapshot = await submittedSnapshot(accessible.id);
+  if (!snapshot) return null;
+  const scope = await applicableRulesFor(accessible.id, snapshot.submittedIndustry);
   if (!scope) return null;
   const code = String(ruleCode ?? "").trim().toUpperCase();
   return scope.rules.find((r) => r.code.toUpperCase() === code) ?? null;

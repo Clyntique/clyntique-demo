@@ -32,6 +32,7 @@ import { canRequestChanges, checkOutcome, evidenceIsFinal, moveFinding, type Fin
 import { loadReadiness } from "./readiness";
 import { DENIAL_MESSAGE, authorize, canCreateSubmission, type SubmissionAction, type SubmissionFacts } from "./policy";
 import { SUBMIT_GAP_MESSAGE, submitGaps } from "./submission";
+import { SUBMISSION_INDUSTRIES } from "@/lib/ai/applicability";
 import { checkDecisionTarget, transition, type WorkflowAction } from "./transitions";
 
 /*
@@ -165,6 +166,8 @@ export type DraftInput = {
   description?: string;
   context?: string;
   format: string;
+  /** HEALTHCARE, MEDICAL_AESTHETICS or OTHER (decision D2); "" clears it on a draft. Left out: unchanged. */
+  industry?: string;
   marketCodes?: string[];
   platformCodes?: string[];
 };
@@ -178,7 +181,16 @@ function validateDraft(input: Omit<DraftInput, "projectId">) {
   if (description === null) return fail(`Keep the description under ${LIMITS.description} characters.`);
   if (context === null) return fail(`Keep the campaign context under ${LIMITS.context} characters.`);
   if (!format) return fail("Choose the creative type.");
-  return { ok: true as const, data: { name, description: description || null, context: context || null, format } };
+  let industry: string | null | undefined;
+  if (input.industry !== undefined) {
+    const value = String(input.industry ?? "").trim().toUpperCase();
+    if (value && !(SUBMISSION_INDUSTRIES as readonly string[]).includes(value)) return fail("Choose the industry from the list.");
+    industry = value || null;
+  }
+  return {
+    ok: true as const,
+    data: { name, description: description || null, context: context || null, format, ...(industry !== undefined ? { industry } : {}) },
+  };
 }
 
 /** CLIENT creates a draft submission in a project assigned to them. */
@@ -231,8 +243,10 @@ export async function updateDraft(user: CurrentUser, creativeId: string, input: 
   if (targeting && !isDraft) return fail("Markets and platforms can't be changed after submission.");
   if (!isDraft) {
     // The creative type is part of what the team reviewed and isn't snapshotted per round.
-    const stored = await prisma.creative.findUnique({ where: { id: g.s.id }, select: { format: true } });
+    const stored = await prisma.creative.findUnique({ where: { id: g.s.id }, select: { format: true, industry: true } });
     if (stored && stored.format !== valid.data.format) return fail("The creative type can't be changed after submission.");
+    // The industry decides which policies apply, so it is fixed once submitted too.
+    if (stored && valid.data.industry !== undefined && stored.industry !== valid.data.industry) return fail("The industry can't be changed after submission.");
   }
   const markets = await validCodes("market", input.marketCodes ?? []);
   const platforms = await validCodes("platform", input.platformCodes ?? []);
@@ -265,8 +279,8 @@ export async function updateDraft(user: CurrentUser, creativeId: string, input: 
  * these from the round, so later edits stay private until the next round.
  */
 async function detailsSnapshot(tx: Prisma.TransactionClient, creativeId: string) {
-  const c = await tx.creative.findUniqueOrThrow({ where: { id: creativeId }, select: { name: true, description: true, context: true } });
-  return { submittedName: c.name, submittedDescription: c.description, submittedContext: c.context };
+  const c = await tx.creative.findUniqueOrThrow({ where: { id: creativeId }, select: { name: true, description: true, context: true, industry: true } });
+  return { submittedName: c.name, submittedDescription: c.description, submittedContext: c.context, submittedIndustry: c.industry };
 }
 
 /** CLIENT submits a draft: opens review cycle 1 and round 1 on the newest version. */
@@ -276,12 +290,13 @@ export async function submitForReview(user: CurrentUser, creativeId: string): Pr
   const bad = checkTransition("SUBMIT", g.s, user);
   if (bad) return fail(bad);
   // Drafts may be incomplete; a submission needs a file, a target market and a platform.
-  const [version, marketCount, platformCount] = await Promise.all([
+  const [version, marketCount, platformCount, details] = await Promise.all([
     latestVersion(g.s.id),
     prisma.submissionMarket.count({ where: { creativeId: g.s.id, market: { active: true } } }),
     prisma.submissionPlatform.count({ where: { creativeId: g.s.id, platform: { active: true } } }),
+    prisma.creative.findUnique({ where: { id: g.s.id }, select: { industry: true } }),
   ]);
-  const gaps = submitGaps({ versionCount: version ? 1 : 0, marketCount, platformCount });
+  const gaps = submitGaps({ versionCount: version ? 1 : 0, marketCount, platformCount, hasIndustry: Boolean(details?.industry) });
   if (gaps.length || !version) return fail(`Before submitting: ${gaps.map((gap) => SUBMIT_GAP_MESSAGE[gap]).join(" ")}`);
 
   return run("submitForReview", async () =>
@@ -293,12 +308,18 @@ export async function submitForReview(user: CurrentUser, creativeId: string): Pr
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
       // Re-read under the row lock: an upload or targeting edit that committed
       // after the checks above is either included here or rejected.
-      const [lockedVersion, lockedMarkets, lockedPlatforms] = await Promise.all([
+      const [lockedVersion, lockedMarkets, lockedPlatforms, lockedDetails] = await Promise.all([
         latestVersion(g.s.id, tx),
         tx.submissionMarket.count({ where: { creativeId: g.s.id, market: { active: true } } }),
         tx.submissionPlatform.count({ where: { creativeId: g.s.id, platform: { active: true } } }),
+        tx.creative.findUnique({ where: { id: g.s.id }, select: { industry: true } }),
       ]);
-      const lockedGaps = submitGaps({ versionCount: lockedVersion ? 1 : 0, marketCount: lockedMarkets, platformCount: lockedPlatforms });
+      const lockedGaps = submitGaps({
+        versionCount: lockedVersion ? 1 : 0,
+        marketCount: lockedMarkets,
+        platformCount: lockedPlatforms,
+        hasIndustry: Boolean(lockedDetails?.industry),
+      });
       if (lockedGaps.length || !lockedVersion) throw new Conflict(`Before submitting: ${lockedGaps.map((gap) => SUBMIT_GAP_MESSAGE[gap]).join(" ")}`);
       const cycle = await tx.reviewCycle.create({ data: { creativeId: g.s.id, number: 1, openedById: user.id }, select: { id: true } });
       const round = await tx.submissionRound.create({
@@ -658,6 +679,11 @@ export type FindingInput = {
    * suggestion flow); never taken from a form.
    */
   ruleVersionId?: string;
+  /**
+   * Set only by the AI acceptance flow (server code): the finding records that
+   * a reviewer accepted an AI suggestion, and from which scan.
+   */
+  aiSuggestion?: { scanRunId?: string | null };
 };
 
 async function validateFinding(input: Omit<FindingInput, "creativeId">) {
@@ -691,6 +717,10 @@ export async function recordFinding(user: CurrentUser, input: FindingInput): Pro
 
   const current = await currentRound(g.s.id);
   if (!current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
+  // Only a scan of this submission is linked; anything else is left out.
+  const scanRunId = input.aiSuggestion?.scanRunId
+    ? ((await prisma.aIScanRun.findFirst({ where: { id: String(input.aiSuggestion.scanRunId), creativeId: g.s.id }, select: { id: true } }))?.id ?? null)
+    : null;
 
   return run("recordFinding", async () =>
     prisma.$transaction(async (tx) => {
@@ -709,6 +739,8 @@ export async function recordFinding(user: CurrentUser, input: FindingInput): Pro
           actionDetails,
           status: "DRAFT",
           ruleVersionId: input.ruleVersionId ?? null,
+          origin: input.aiSuggestion ? "AI_SUGGESTION_ACCEPTED" : "REVIEWER",
+          aiScanRunId: scanRunId,
           markets: { create: markets.codes.map((marketCode) => ({ marketCode })) },
           platforms: { create: platforms.codes.map((platformCode) => ({ platformCode })) },
         },

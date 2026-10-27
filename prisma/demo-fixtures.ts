@@ -199,6 +199,7 @@ async function main() {
       description: "Announces extended weekday clinic hours.",
       context: "Objective: awareness. Audience: existing patients. Key message: longer opening hours.",
       format: "FEED",
+      industry: "HEALTHCARE",
       marketCodes: ["US"],
       platformCodes: ["META"],
     }));
@@ -223,6 +224,7 @@ async function main() {
         name: "[SAMPLE] New patient welcome — Story",
         description: "Welcomes new patients and explains how to book.",
         format: "STORY",
+      industry: "HEALTHCARE",
         marketCodes: ["US"],
         platformCodes: ["META", "GOOGLE"],
       }));
@@ -234,6 +236,7 @@ async function main() {
       name: "[SAMPLE] Telehealth reminder (draft)",
       description: "Not submitted yet: visible to Client 1 only.",
       format: "STATIC",
+      industry: "HEALTHCARE",
       marketCodes: ["US"],
       platformCodes: ["META"],
     }));
@@ -251,6 +254,7 @@ async function main() {
         name: "[SAMPLE] Checkup booking reminder — Feed post",
         description: "Reminds parents to book school checkups.",
         format: "FEED",
+      industry: "HEALTHCARE",
         marketCodes: ["US"],
         platformCodes: ["META"],
       }));
@@ -272,6 +276,7 @@ async function main() {
       name: "[SAMPLE] Vaccination clinic poster (draft)",
       description: "Not submitted yet: visible to Client 2 only.",
       format: "STATIC",
+      industry: "HEALTHCARE",
       marketCodes: ["US"],
       platformCodes: ["META"],
     }));

@@ -5,13 +5,14 @@ import { useActionState } from "react";
 import type { CreativeFormat } from "@/generated/prisma/enums";
 import { createSubmission, updateSubmission, type SubmissionFormState } from "@/app/dashboard/submissions/actions";
 import { FORMATS, FORMAT_ORDER } from "@/lib/creative-format";
+import { INDUSTRY_LABEL } from "@/lib/workflow/submission";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { FormError } from "@/components/forms/form-error";
 
 // Create or edit a client submission. Drafts may be incomplete; the submit
-// step (SubmitPanel) checks for a file, a market and a platform, and the
-// server re-checks everything.
+// step (SubmitPanel) checks for a file, a market, a platform and the
+// industry, and the server re-checks everything.
 
 type Option = { code: string; name: string };
 
@@ -20,6 +21,8 @@ export type SubmissionFormValues = {
   description: string;
   context: string;
   format: CreativeFormat;
+  /** "" while not chosen. */
+  industry: string;
   markets: string[];
   platforms: string[];
 };
@@ -64,7 +67,7 @@ export function SubmissionForm(
   const [state, action, pending] = useActionState<SubmissionFormState, FormData>(create ? createSubmission : updateSubmission, undefined);
   const v = state?.values;
   const initial: SubmissionFormValues = create
-    ? { name: "", description: "", context: "", format: "FEED", markets: [], platforms: [] }
+    ? { name: "", description: "", context: "", format: "FEED", industry: "", markets: [], platforms: [] }
     : props.initial;
   const str = (key: keyof SubmissionFormValues) => (typeof v?.[key] === "string" ? (v[key] as string) : (initial[key] as string));
   const arr = (key: "markets" | "platforms") => (Array.isArray(v?.[key]) ? (v[key] as string[]) : initial[key]);
@@ -107,6 +110,23 @@ export function SubmissionForm(
               <input type="radio" name="format" value={f} defaultChecked={str("format") === f} disabled={!showTargeting} className="sr-only" />
               <span className="text-small font-medium text-ink">{FORMATS[f].label}</span>
               <span className="text-meta">{FORMATS[f].ratio}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="mb-0.5 text-small font-medium text-ink-soft">Industry</legend>
+        <p className="text-meta mb-1.5">
+          Decides which healthcare and medical aesthetics policies the review checks against. Choose one before submitting.
+        </p>
+        {/* Like the type, markets and platforms, it is fixed once submitted. */}
+        {!showTargeting && <input type="hidden" name="industry" value={str("industry")} />}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {(Object.keys(INDUSTRY_LABEL) as (keyof typeof INDUSTRY_LABEL)[]).map((value) => (
+            <label key={value} className={optionClasses}>
+              <input type="radio" name="industry" value={value} defaultChecked={str("industry") === value} disabled={!showTargeting} className="sr-only" />
+              <span className="text-small font-medium text-ink">{INDUSTRY_LABEL[value]}</span>
             </label>
           ))}
         </div>

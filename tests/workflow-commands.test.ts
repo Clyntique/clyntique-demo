@@ -22,12 +22,14 @@ vi.mock("@/generated/prisma/client", () => ({
 const cmd = await import("@/lib/workflow/commands");
 const SUMMARY = "The claim needs substantiation before it can run.";
 
-function setSubmission(status: CreativeStatus, workflow: CreativeWorkflow = "SUBMISSION_REVIEW", clientId = CLIENT_A.id) {
+function setSubmission(status: CreativeStatus, workflow: CreativeWorkflow = "SUBMISSION_REVIEW", clientId = CLIENT_A.id, industry: string | null = "HEALTHCARE") {
   h.prisma.creative.findUnique.mockResolvedValue({
     id: "s1",
     name: "Spring promo",
     workflow,
     status,
+    format: "FEED",
+    industry,
     projectId: "p-a",
     project: { clientId },
   });
@@ -90,6 +92,49 @@ describe("createDraft", () => {
     const result = await cmd.createDraft(CLIENT_A, { projectId: "p-a", name: "Promo", format: "FEED", marketCodes: ["US", "ZZ"] });
     expect(result.ok).toBe(false);
     expect(h.prisma.creative.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("industry on submissions (decision D2)", () => {
+  it("a draft stores the chosen industry; unknown values are refused", async () => {
+    h.prisma.project.findUnique.mockResolvedValue({ id: "p-a", clientId: CLIENT_A.id });
+    h.prisma.creative.create.mockResolvedValue({ id: "s-new" });
+    expect((await cmd.createDraft(CLIENT_A, { projectId: "p-a", name: "Promo", format: "FEED", industry: "medical_aesthetics" })).ok).toBe(true);
+    expect(h.prisma.creative.create.mock.calls[0][0].data).toMatchObject({ industry: "MEDICAL_AESTHETICS" });
+    expect((await cmd.createDraft(CLIENT_A, { projectId: "p-a", name: "Promo", format: "FEED", industry: "AESTHETICS" })).ok).toBe(false);
+    expect(h.prisma.creative.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("can't be submitted without an industry", async () => {
+    setSubmission("DRAFT", "SUBMISSION_REVIEW", CLIENT_A.id, null);
+    h.prisma.creativeVersion.findFirst.mockResolvedValue({ id: "v1", versionNumber: 1 });
+    h.prisma.submissionMarket.count.mockResolvedValue(1);
+    h.prisma.submissionPlatform.count.mockResolvedValue(1);
+    expect(await cmd.submitForReview(CLIENT_A, "s1")).toMatchObject({ ok: false, error: expect.stringMatching(/Choose the industry/) });
+    expect(writeCount(h.prisma)).toBe(0);
+  });
+
+  it("each round snapshots the industry the team reviews", async () => {
+    setSubmission("DRAFT");
+    h.prisma.creativeVersion.findFirst.mockResolvedValue({ id: "v1", versionNumber: 1 });
+    h.prisma.submissionMarket.count.mockResolvedValue(1);
+    h.prisma.submissionPlatform.count.mockResolvedValue(1);
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 });
+    h.prisma.creative.findUniqueOrThrow.mockResolvedValue({ name: "Spring promo", description: null, context: null, industry: "HEALTHCARE" });
+    h.prisma.reviewCycle.create.mockResolvedValue({ id: "c1" });
+    h.prisma.submissionRound.create.mockResolvedValue({ id: "r1" });
+    expect((await cmd.submitForReview(CLIENT_A, "s1")).ok).toBe(true);
+    expect(h.prisma.submissionRound.create.mock.calls[0][0].data).toMatchObject({ submittedIndustry: "HEALTHCARE" });
+  });
+
+  it("is fixed once submitted, like the creative type", async () => {
+    setSubmission("CHANGES_REQUESTED");
+    h.prisma.creative.updateMany.mockResolvedValue({ count: 1 });
+    const res = await cmd.updateDraft(CLIENT_A, "s1", { name: "Promo", format: "FEED", industry: "OTHER" });
+    expect(res).toMatchObject({ ok: false, error: expect.stringMatching(/industry can't be changed/) });
+    expect(h.prisma.creative.updateMany).not.toHaveBeenCalled();
+    // The unchanged value (sent back by the form) is fine.
+    expect((await cmd.updateDraft(CLIENT_A, "s1", { name: "Promo", format: "FEED", industry: "HEALTHCARE" })).ok).toBe(true);
   });
 });
 

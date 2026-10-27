@@ -37,6 +37,7 @@ describe.skipIf(!local)("lifecycle on a real database", () => {
       data: {
         projectId: project.id,
         name: `${tag} creative`,
+        industry: "HEALTHCARE",
         createdById: client.id,
         markets: { create: [{ marketCode: "US" }] },
         platforms: { create: [{ platformCode: "META" }] },

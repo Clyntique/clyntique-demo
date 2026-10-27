@@ -41,6 +41,8 @@ export type SubmissionDetail = {
   description: string | null;
   context: string | null;
   format: CreativeFormat;
+  /** Declared industry (decision D2); for TEAM, as last submitted. Null on older rows. */
+  industry: string | null;
   status: CreativeStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +67,7 @@ export async function getSubmission(user: CurrentUser, creativeId: string, versi
       description: true,
       context: true,
       format: true,
+      industry: true,
       status: true,
       createdAt: true,
       updatedAt: true,
@@ -96,6 +99,7 @@ export async function getSubmission(user: CurrentUser, creativeId: string, versi
           submittedName: true,
           submittedDescription: true,
           submittedContext: true,
+          submittedIndustry: true,
           submittedBy: { select: { name: true } },
           version: { select: { versionNumber: true } },
         },
@@ -133,6 +137,7 @@ export async function getSubmission(user: CurrentUser, creativeId: string, versi
     description: details.description,
     context: details.context,
     format: row.format,
+    industry: user.role === "TEAM" ? (row.rounds[0]?.submittedIndustry ?? row.industry) : row.industry,
     status: row.status,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,

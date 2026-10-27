@@ -13,6 +13,7 @@ import { basePathFor } from "@/lib/navigation";
 import { uploadsConfigured } from "@/lib/review/blob";
 import { REVIEW_DISCLAIMER, REVIEW_OUTCOME_DESCRIPTION, REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
 import { authorize } from "@/lib/workflow/policy";
+import { industryLabel } from "@/lib/workflow/submission";
 import { cn } from "@/lib/cn";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { Card } from "@/components/ui/card";
@@ -377,7 +378,7 @@ export async function SubmissionView({
                 <summary className="text-small flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-brand-700 hover:text-brand-800">
                   <span>Edit details</span>
                   <span className="text-caption font-normal text-muted group-open:hidden">
-                    Title, description, context{submission.status === "DRAFT" ? ", markets and platforms" : ""}
+                    Title, description, context{submission.status === "DRAFT" ? ", industry, markets and platforms" : ""}
                   </span>
                 </summary>
                 <div className="mt-4">
@@ -392,6 +393,7 @@ export async function SubmissionView({
                       description: submission.description ?? "",
                       context: submission.context ?? "",
                       format: submission.format,
+                      industry: submission.industry ?? "",
                       markets: submission.markets.map((m) => m.code),
                       platforms: submission.platforms.map((p) => p.code),
                     }}
@@ -546,7 +548,12 @@ function NextActionContent({
         {canSubmit && (
           <SubmitPanel
             creativeId={submission.id}
-            readiness={{ file: Boolean(submission.current), market: submission.markets.length > 0, platform: submission.platforms.length > 0 }}
+            readiness={{
+              file: Boolean(submission.current),
+              market: submission.markets.length > 0,
+              platform: submission.platforms.length > 0,
+              industry: Boolean(submission.industry),
+            }}
           />
         )}
       </>
@@ -585,6 +592,10 @@ function Details({ submission }: { submission: SubmissionDetail }) {
   const empty = <span className="text-muted">Not chosen yet</span>;
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+      <div>
+        <dt className="text-label mb-1">Industry</dt>
+        <dd className="text-small text-ink">{industryLabel(submission.industry) ?? empty}</dd>
+      </div>
       <div>
         <dt className="text-label mb-1">Target markets</dt>
         <dd className="text-small text-ink">{submission.markets.length ? submission.markets.map((m) => m.name).join(", ") : empty}</dd>

@@ -10,12 +10,13 @@ import { FormError } from "@/components/forms/form-error";
 // Readiness checklist and the Submit button. The checklist only guides the
 // client; submitForReview re-checks every requirement on the server.
 
-export type Readiness = { file: boolean; market: boolean; platform: boolean };
+export type Readiness = { file: boolean; market: boolean; platform: boolean; industry: boolean };
 
 const ITEMS: { key: keyof Readiness; label: string }[] = [
   { key: "file", label: "Creative file uploaded" },
   { key: "market", label: "At least one target market" },
   { key: "platform", label: "At least one advertising platform" },
+  { key: "industry", label: "Industry chosen" },
 ];
 
 export function SubmitPanel({ creativeId, readiness }: { creativeId: string; readiness: Readiness }) {

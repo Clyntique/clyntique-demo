@@ -57,6 +57,8 @@ function mapSeverity(severity: unknown): FindingSeverity {
 export async function acceptAIFindingAction(params: {
   creativeId: string;
   finding: AISuggestedFinding;
+  /** The scan the suggestion came from (checked on the server). */
+  scanId?: string;
   marketCodes?: string[];
   platformCodes?: string[];
 }): Promise<{ ok: boolean; findingId?: string; error?: string }> {
@@ -69,7 +71,7 @@ export async function acceptAIFindingAction(params: {
       return { ok: false, error: "Access denied: Only TEAM reviewers can accept findings." };
     }
 
-    const { finding, creativeId, marketCodes = [], platformCodes = [] } = params;
+    const { finding, creativeId, scanId, marketCodes = [], platformCodes = [] } = params;
     const rule = await applicableRuleForAcceptance(user, String(creativeId ?? ""), String(finding?.policyCitation?.ruleCode ?? ""));
     if (!rule) {
       return {
@@ -91,6 +93,7 @@ export async function acceptAIFindingAction(params: {
       marketCodes,
       platformCodes,
       ruleVersionId: rule.currentVersion.id,
+      aiSuggestion: { scanRunId: scanId ? String(scanId) : null },
     });
 
     if (!res.ok) {
