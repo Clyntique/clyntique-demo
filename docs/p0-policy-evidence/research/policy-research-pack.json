@@ -1,0 +1,658 @@
+{
+  "_about": "Clyntique P0 policy research pack. Every entry is a DRAFT for human verification. Nothing here is verified or approved, and the import script only creates DRAFT / UNVERIFIED records.",
+  "preparedOn": "2026-10-27",
+  "status": "REQUIRES_REVIEW",
+  "method": "Official pages could not be opened from the research environment (network policy). Each summary was written in Clyntique's own words from search results that pointed to the official page, cross-checked against secondary summaries where available. No quotations and no dates are recorded; a policy admin adds them after reading the page.",
+  "sources": [
+    {
+      "key": "meta-health-wellness",
+      "name": "Meta Advertising Standards: Health and wellness",
+      "authorityName": "Meta Platforms",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://transparency.meta.com/policies/ad-standards/restricted-goods-services/health-wellness",
+      "sourceKind": "PLATFORM_POLICY_PAGE"
+    },
+    {
+      "key": "meta-personal-attributes",
+      "name": "Meta Advertising Standards: Privacy violations and personal attributes",
+      "authorityName": "Meta Platforms",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
+      "sourceKind": "PLATFORM_POLICY_PAGE"
+    },
+    {
+      "key": "meta-cosmetic-procedures",
+      "name": "Meta Advertising Standards: Cosmetic procedures and wellness",
+      "authorityName": "Meta Platforms",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://transparency.meta.com/policies/ad-standards/content-specific-restrictions/cosmetic-procedures-and-wellness",
+      "sourceKind": "PLATFORM_POLICY_PAGE",
+      "accessNote": "Seen only as a search result title. Confirm the page exists and what it says about before-and-after images."
+    },
+    {
+      "key": "google-healthcare-medicines",
+      "name": "Google Ads policy: Healthcare and medicines",
+      "authorityName": "Google",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://support.google.com/adspolicy/answer/176031",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "accessNote": "Requirements vary by country; the page links country tables and certification forms."
+    },
+    {
+      "key": "google-health-personalized",
+      "name": "Google Ads policy: Health in personalized advertising",
+      "authorityName": "Google",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://support.google.com/adspolicy/answer/16701855",
+      "sourceKind": "PLATFORM_HELP_ARTICLE"
+    },
+    {
+      "key": "tiktok-healthcare",
+      "name": "TikTok Ads policy: Healthcare and pharmaceuticals",
+      "authorityName": "TikTok",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://ads.tiktok.com/help/article/tiktok-ads-policy-healthcare-pharmaceuticals",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "accessNote": "Market tables differ; check the rows for the United States and the United Arab Emirates."
+    },
+    {
+      "key": "tiktok-weight-management",
+      "name": "TikTok Ads policy: Weight management and body image",
+      "authorityName": "TikTok",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://ads.tiktok.com/resources/help/article/tiktok-ads-policy-weight-management",
+      "sourceKind": "PLATFORM_HELP_ARTICLE"
+    },
+    {
+      "key": "tiktok-cosmetic-surgery-na",
+      "name": "TikTok: Update to cosmetic surgery policy (North America)",
+      "authorityName": "TikTok",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "US",
+      "officialUrl": "https://ads.tiktok.com/help/article/update-to-cosmetic-surgery-na-march-2026",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "accessNote": "A policy update notice; confirm it is still current and which markets it covers."
+    },
+    {
+      "key": "tiktok-handbook-metap",
+      "name": "TikTok Ad Policy Handbook: Middle East, Turkey, Africa and Pakistan",
+      "authorityName": "TikTok",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "AE",
+      "officialUrl": "https://ads.tiktok.com/help/article/ad-policy-handbook-metap",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "accessNote": "Regional handbook; no rule drafted from it yet (see open questions)."
+    },
+    {
+      "key": "ftc-endorsement-guides-2023",
+      "name": "FTC Guides Concerning the Use of Endorsements and Testimonials in Advertising (16 CFR Part 255), 2023 revision, Federal Register notice",
+      "authorityName": "U.S. Federal Trade Commission",
+      "authorityType": "REGULATION",
+      "jurisdictionCode": "US",
+      "officialUrl": "https://www.govinfo.gov/content/pkg/FR-2023-07-26/html/2023-14795.htm",
+      "sourceKind": "STATUTE_OR_REGULATION",
+      "accessNote": "The Guides are advisory; FTC enforcement is under Section 5 of the FTC Act."
+    },
+    {
+      "key": "ftc-health-products-guidance",
+      "name": "FTC Health Products Compliance Guidance",
+      "authorityName": "U.S. Federal Trade Commission",
+      "authorityType": "REGULATION",
+      "jurisdictionCode": "US",
+      "officialUrl": "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
+      "sourceKind": "REGULATOR_GUIDANCE",
+      "accessNote": "URL not confirmed by the search (only law firm summaries were found). Confirm the address on ftc.gov before verifying."
+    },
+    {
+      "key": "mohap-health-ad-guidelines",
+      "name": "MOHAP Guidelines for Health Advertisement Approval Request",
+      "authorityName": "UAE Ministry of Health and Prevention",
+      "authorityType": "REGULATION",
+      "jurisdictionCode": "AE",
+      "officialUrl": "https://mohap.gov.ae/assets/download/4cbc4da5/Guidelines%20for%20Health%20Advertisement%20Approval%20Requestion_637720409404515599.pdf.aspx",
+      "sourceKind": "REGULATOR_GUIDANCE",
+      "accessNote": "PDF on the MOHAP site. Emirate regulators (DHA in Dubai, DOH in Abu Dhabi) may also require approval."
+    },
+    {
+      "key": "uae-media-ad-guide",
+      "name": "UAE National Media Council advertising guide",
+      "authorityName": "UAE Government (National Media Council, now UAE Media Council)",
+      "authorityType": "REGULATION",
+      "jurisdictionCode": "AE",
+      "officialUrl": "https://u.ae/-/media/Media/Media-In-UAE/NMC-AD-Guide-EN-PDF-presntation.ashx",
+      "sourceKind": "REGULATOR_GUIDANCE",
+      "accessNote": "May be superseded by the newer media regulation law and the UAE Media Council's advertiser permit. Confirm the current source."
+    }
+  ],
+  "rules": [
+    {
+      "code": "RX-META-HW-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "META",
+        "industry": "HEALTHCARE",
+        "category": "TARGETING_RESTRICTION"
+      },
+      "version": {
+        "title": "Weight loss and cosmetic ads: adults only",
+        "summary": "Meta only allows ads for weight loss products and services and for cosmetic products and procedures when they target people aged 18 or over.",
+        "legalExplanation": "Meta's health and wellness standard treats these products as restricted goods. Delivery to under-18s is not allowed.",
+        "remediationAction": "Set the audience minimum age to 18 or over in the campaign and confirm it before submitting.",
+        "applicabilityConditions": [
+          "The ad promotes weight loss, dietary or cosmetic products, procedures or services."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "meta-health-wellness",
+          "sectionReference": "Health and wellness: age requirement",
+          "sectionTitle": "Health and wellness: age requirement",
+          "directUrl": "https://transparency.meta.com/policies/ad-standards/restricted-goods-services/health-wellness",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Confirm which general wellness products are exempt (search summaries mention fitness services, general food and non-permanent cosmetics)."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-META-HW-02",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "META",
+        "industry": "HEALTHCARE",
+        "category": "BEFORE_AFTER"
+      },
+      "version": {
+        "title": "Weight loss imagery and body image",
+        "summary": "Meta ads must not make people feel bad about their bodies or suggest an ideal body. Weight loss ads must not show side-by-side before-and-after comparisons or close-ups of pinched fat.",
+        "legalExplanation": "Meta's health and wellness standard restricts imagery and messages that create negative self-image.",
+        "remediationAction": "Remove comparison and close-up body imagery; describe the service and its benefits without judging appearance.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "PROHIBITED",
+        "restrictedClaims": [
+          "Side-by-side before-and-after weight loss images",
+          "Close-up images of pinching fat",
+          "Copy suggesting a perfect body or appearance to aspire to",
+          "Copy aimed at creating negative self-perception"
+        ],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "meta-health-wellness",
+          "sectionReference": "Health and wellness: imagery and body image",
+          "sectionTitle": "Health and wellness: imagery and body image",
+          "directUrl": "https://transparency.meta.com/policies/ad-standards/restricted-goods-services/health-wellness",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Search summaries disagree on whether cosmetic procedure (not weight loss) before-and-after images are allowed for adult audiences. Read the official page and the cosmetic procedures page before adding a rule for that."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-META-PA-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "META",
+        "industry": "GENERAL",
+        "category": "PERSONAL_HEALTH_ATTRIBUTES"
+      },
+      "version": {
+        "title": "Do not assert or imply a person's health condition",
+        "summary": "Meta ads must not say or suggest that the viewer has a physical or mental health condition, or that the advertiser knows medical information about them or their family.",
+        "legalExplanation": "Meta's personal attributes standard covers direct and indirect assertions about health, among other attributes. Second-person phrasing (\"your acne\") is a common trigger in practice; that point comes from secondary guides, not Meta's text.",
+        "remediationAction": "Describe the treatment and who it is for in general terms (\"treatment for acne\") instead of addressing the viewer's condition.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "PROHIBITED",
+        "restrictedClaims": [
+          "Direct or indirect statements that the viewer has a medical condition",
+          "Copy implying the advertiser knows the viewer's health information"
+        ],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "meta-personal-attributes",
+          "sectionReference": "Privacy violations and personal attributes",
+          "sectionTitle": "Privacy violations and personal attributes",
+          "directUrl": "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-GOOG-HM-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "GOOGLE",
+        "industry": "HEALTHCARE",
+        "category": "PRESCRIPTION_MEDICINE"
+      },
+      "version": {
+        "title": "Prescription drugs and online prescribing need Google certification",
+        "summary": "Google restricts ads for online prescribing, dispensing or selling prescription drugs, such as online pharmacies and telemedicine. Advertisers must be certified by Google, and prescription drug terms are not allowed in ad text, landing pages or keywords in most countries.",
+        "legalExplanation": "Google's healthcare and medicines policy sets country-by-country rules and certification. Certified ads may show as 'Eligible (limited)'.",
+        "remediationAction": "Remove prescription drug terms, or confirm the clinic holds Google certification for each targeted country before running the ad.",
+        "applicabilityConditions": [
+          "The ad or landing page mentions prescription medicines or offers prescribing, for example injectables or weight loss medicines."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Prescription drug names or terms in ad text, keywords or landing pages without certification"
+        ],
+        "substantiationRequirements": [
+          "Google certification for the advertiser's domain in each targeted country"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "google-healthcare-medicines",
+          "sectionReference": "Healthcare and medicines: prescription drugs and online pharmacies",
+          "sectionTitle": "Healthcare and medicines: prescription drugs and online pharmacies",
+          "directUrl": "https://support.google.com/adspolicy/answer/176031",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Confirm the current United States and United Arab Emirates country rows and whether prescription-only aesthetic injectables are covered."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-GOOG-PA-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "GOOGLE",
+        "industry": "GENERAL",
+        "category": "TARGETING_RESTRICTION"
+      },
+      "version": {
+        "title": "Health is a sensitive category for personalized ads",
+        "summary": "Google does not allow advertiser-built audiences (for example remarketing or customer lists) to target people based on health conditions, treatments or procedures.",
+        "legalExplanation": "Google's personalized advertising policy treats health as a personal hardship category: ads should not target people in ways that exploit their difficulties.",
+        "remediationAction": "Use contextual or Google's own predefined audiences; remove remarketing or customer-list targeting tied to treatments or conditions.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "google-health-personalized",
+          "sectionReference": "Health in personalized advertising",
+          "sectionTitle": "Health in personalized advertising",
+          "directUrl": "https://support.google.com/adspolicy/answer/16701855",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-TT-HC-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "TIKTOK",
+        "industry": "HEALTHCARE",
+        "category": "CREDENTIALS_LICENSING"
+      },
+      "version": {
+        "title": "TikTok healthcare ads must meet each market's rules",
+        "summary": "TikTok allows ads for medical institutions, pharmacies and over-the-counter medicines only where the market's requirements are met, usually proof of approval or certification from the local regulator and an audience aged 18 or over. Prescription medicines are not allowed in the markets the policy lists.",
+        "legalExplanation": "TikTok's healthcare and pharmaceuticals policy defers to local healthcare advertising law and lists requirements per market.",
+        "remediationAction": "Check the market row for the targeted country, keep the clinic's licence or approval ready for TikTok review and set the audience to 18 or over.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "CONDITIONAL",
+        "restrictedClaims": [
+          "Prescription medicine promotion"
+        ],
+        "substantiationRequirements": [
+          "Proof of local regulator approval or licence, where the market table requires it"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "tiktok-healthcare",
+          "sectionReference": "Healthcare and pharmaceuticals: market requirements",
+          "sectionTitle": "Healthcare and pharmaceuticals: market requirements",
+          "directUrl": "https://ads.tiktok.com/help/article/tiktok-ads-policy-healthcare-pharmaceuticals",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Read the United States and United Arab Emirates rows; the search showed other markets only."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-TT-WM-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "TIKTOK",
+        "industry": "HEALTHCARE",
+        "category": "EFFICACY_CLAIM"
+      },
+      "version": {
+        "title": "TikTok weight loss claims: no exaggeration, adults only",
+        "summary": "TikTok ads and landing pages must not make exaggerated or harmful weight loss or muscle gain claims. Weight loss claims must be shown only to people aged 18 or over and framed around a healthy lifestyle. Some products, such as weight loss surgery or supplements, are allowed only in some countries.",
+        "legalExplanation": "TikTok's weight management and body image policy covers both the ad and its landing page.",
+        "remediationAction": "Remove exaggerated results, target 18 or over, and present the service as part of a healthy lifestyle.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Exaggerated or harmful weight loss or muscle gain claims"
+        ],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "tiktok-weight-management",
+          "sectionReference": "Weight management and body image",
+          "sectionTitle": "Weight management and body image",
+          "directUrl": "https://ads.tiktok.com/resources/help/article/tiktok-ads-policy-weight-management",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-TT-CS-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "US",
+        "platformCode": "TIKTOK",
+        "industry": "MEDICAL_AESTHETICS",
+        "category": "RESTRICTED_PROCEDURES"
+      },
+      "version": {
+        "title": "TikTok cosmetic surgery ads in the United States",
+        "summary": "TikTok's North America update allows ads for cosmetic surgery and related aesthetic procedures under conditions: working with a TikTok sales representative, an adult audience and licensed providers. Ads must disclose medical risks and recovery time and must not use before-and-after images that exaggerate results.",
+        "legalExplanation": "This comes from a TikTok policy update notice, not the main policy page. It may change again.",
+        "remediationAction": "Confirm eligibility with the TikTok representative, add risk and recovery information, and remove exaggerated before-and-after images.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "CONDITIONAL",
+        "restrictedClaims": [
+          "Before-and-after images that exaggerate results",
+          "Body shaming",
+          "Unsafe health claims"
+        ],
+        "substantiationRequirements": [
+          "Provider licence",
+          "Disclosure of risks and recovery time"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "tiktok-cosmetic-surgery-na",
+          "sectionReference": "Update to cosmetic surgery policy (North America)",
+          "sectionTitle": "Update to cosmetic surgery policy (North America)",
+          "directUrl": "https://ads.tiktok.com/help/article/update-to-cosmetic-surgery-na-march-2026",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Confirm the notice is still current and how the main healthcare policy reflects it."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-US-FTC-EN-01",
+      "scope": {
+        "authorityType": "REGULATION",
+        "jurisdictionCode": "US",
+        "platformCode": null,
+        "industry": "GENERAL",
+        "category": "TESTIMONIAL_ENDORSEMENT"
+      },
+      "version": {
+        "title": "Endorsements and testimonials (US)",
+        "summary": "Endorsements and patient testimonials must reflect honest experiences, and any material connection (payment, free treatment, employment) must be clearly disclosed. Advertisers are responsible for their endorsers and should guide and monitor them. A testimonial about results implies they are typical unless the advertiser can show otherwise or clearly states what results people can generally expect.",
+        "legalExplanation": "The FTC revised the Endorsement Guides in 2023. The Guides are advisory, but practices inconsistent with them can lead to FTC action under Section 5.",
+        "remediationAction": "Disclose material connections clearly, keep records of endorser guidance, and add a generally expected results statement or remove atypical results.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "CONDITIONAL",
+        "restrictedClaims": [
+          "Testimonials presenting exceptional results as typical",
+          "Undisclosed paid or incentivised endorsements"
+        ],
+        "substantiationRequirements": [
+          "Evidence that the results shown are representative, or a clear statement of generally expected results"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "ftc-endorsement-guides-2023",
+          "sectionReference": "16 CFR Part 255 (2023 revision)",
+          "sectionTitle": "Guides Concerning the Use of Endorsements and Testimonials in Advertising",
+          "directUrl": "https://www.govinfo.gov/content/pkg/FR-2023-07-26/html/2023-14795.htm",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Check whether the FTC rule on fake reviews and testimonials (16 CFR Part 465) should be a separate source and rule."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-US-FTC-HP-01",
+      "scope": {
+        "authorityType": "REGULATION",
+        "jurisdictionCode": "US",
+        "platformCode": null,
+        "industry": "HEALTHCARE",
+        "category": "SUBSTANTIATION"
+      },
+      "version": {
+        "title": "Health claims need competent and reliable scientific evidence (US)",
+        "summary": "Health benefit and safety claims must be backed by competent and reliable scientific evidence before the ad runs, generally well-designed human clinical trials. Anecdotes, animal or lab studies and weak qualifiers such as \"may help\" do not make an unsupported claim acceptable.",
+        "legalExplanation": "The FTC Health Products Compliance Guidance applies to health claims across product and service types. These points come from law firm summaries; read the guidance itself.",
+        "remediationAction": "Ask the client for the study behind each health claim, or reword the claim to what the evidence supports.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Efficacy or safety claims without supporting human clinical evidence",
+          "Claims of scientific consensus without evidence of consensus"
+        ],
+        "substantiationRequirements": [
+          "Competent and reliable scientific evidence, generally randomized controlled human trials, matching the claim"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "ftc-health-products-guidance",
+          "sectionReference": "Health Products Compliance Guidance: substantiation",
+          "sectionTitle": "Health Products Compliance Guidance: substantiation",
+          "directUrl": "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-AE-MOHAP-01",
+      "scope": {
+        "authorityType": "REGULATION",
+        "jurisdictionCode": "AE",
+        "platformCode": null,
+        "industry": "HEALTHCARE",
+        "category": "CREDENTIALS_LICENSING"
+      },
+      "version": {
+        "title": "UAE health ads need health authority approval before publishing",
+        "summary": "In the UAE, health advertisements, including social media posts by clinics, need approval and a licence from the Ministry of Health and Prevention before they are published. Content must be truthful, balanced and not misleading. Approval does not replace requirements from other authorities, such as emirate health regulators.",
+        "legalExplanation": "MOHAP's guidelines describe the approval request. Legal summaries cite older resolutions; confirm the current legal basis with counsel.",
+        "remediationAction": "Get the advertisement approval reference from the client before submitting, and confirm whether DHA or DOH approval is also needed for the emirate.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Publishing a health advertisement without health authority approval",
+          "Misleading or unbalanced health statements"
+        ],
+        "substantiationRequirements": [
+          "Health advertisement approval or licence reference for the ad"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "mohap-health-ad-guidelines",
+          "sectionReference": "Guidelines for Health Advertisement Approval Request",
+          "sectionTitle": "Guidelines for Health Advertisement Approval Request",
+          "directUrl": "https://mohap.gov.ae/assets/download/4cbc4da5/Guidelines%20for%20Health%20Advertisement%20Approval%20Requestion_637720409404515599.pdf.aspx",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Which authority licenses each pilot clinic (MOHAP, DHA or DOH)?",
+        "Confirm the current fees and review times on the official service page."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-AE-MEDIA-01",
+      "scope": {
+        "authorityType": "REGULATION",
+        "jurisdictionCode": "AE",
+        "platformCode": null,
+        "industry": "GENERAL",
+        "category": "CREDENTIALS_LICENSING"
+      },
+      "version": {
+        "title": "UAE social media advertising permit",
+        "summary": "UAE media rules require advertisers on social media to hold the relevant permit, and health claims need prior health authority approval. Unsupported medical claims have led to enforcement by the UAE Media Council.",
+        "legalExplanation": "The cited guide comes from the former National Media Council and may be superseded. News reports describe a newer advertiser permit and enforcement in 2025.",
+        "remediationAction": "Confirm the client or their influencer holds the required permit and the ad's health authority approval.",
+        "applicabilityConditions": [],
+        "exceptions": [],
+        "restrictionLevel": "CONDITIONAL",
+        "restrictedClaims": [
+          "Unsubstantiated medical claims in social media ads"
+        ],
+        "substantiationRequirements": [
+          "Advertiser permit where required",
+          "Health authority approval for health claims"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+      },
+      "citations": [
+        {
+          "sourceKey": "uae-media-ad-guide",
+          "sectionReference": "Advertising guide",
+          "sectionTitle": "Advertising guide",
+          "directUrl": "https://u.ae/-/media/Media/Media-In-UAE/NMC-AD-Guide-EN-PDF-presntation.ashx",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Find the current UAE Media Council source for the advertiser permit and replace this citation."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    }
+  ]
+}

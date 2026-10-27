@@ -199,8 +199,8 @@ export function PolicyLibraryView({
               </div>
               <h3 className="text-body font-bold text-ink">No rules yet</h3>
               <p className="mx-auto mt-2 max-w-lg text-small leading-relaxed text-muted">
-                Add the official source first, then write the rule in your own words and submit it. Another admin verifies it
-                against the source, and a third person approves it before the AI can use it.
+                Add the official source first, then write the rule in your own words and submit it. An admin verifies it
+                against the source, and a different admin, who neither wrote nor verified it, approves it before the AI can use it.
               </p>
               {isPolicyAdmin && (
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
