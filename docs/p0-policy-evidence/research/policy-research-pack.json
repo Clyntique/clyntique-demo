@@ -590,7 +590,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "UAE REVIEW FLAG (Oct 28): MOHAP's own notice says approval of advertising and promotion of medical products moved to the Emirates Drug Establishment (EDE), reportedly from 29 December 2025. Check which body now approves which health ads (medical products vs healthcare services vs facilities), and whether emirate regulators (DHA, DOH) apply, before submitting. Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
       },
       "citations": [
         {
@@ -604,10 +604,13 @@
         }
       ],
       "openQuestions": [
+        "Did advertising approval for medical products move from MOHAP to the Emirates Drug Establishment (MOHAP notice: https://mohap.gov.ae/en/mte)? Does MOHAP still approve ads for healthcare services and facilities?",
+        "Replace or add the citation with the EDE source if EDE is now responsible.",
         "Which authority licenses each pilot clinic (MOHAP, DHA or DOH)?",
         "Confirm the current fees and review times on the official service page."
       ],
-      "researchStatus": "REQUIRES_REVIEW"
+      "researchStatus": "REQUIRES_REVIEW",
+      "uaeResponsibilityFlag": true
     },
     {
       "code": "RX-AE-MEDIA-01",
@@ -636,7 +639,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "UAE REVIEW FLAG (Oct 28): the cited National Media Council guide predates the UAE Media Council's Advertiser Permit (reported launch 30 July 2025) and its Advertiser Permit Guide 2025. Replace the citation with the current UAE Media Council source and confirm how the permit interacts with health authority (MOHAP / EDE / DHA / DOH) approval. Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
       },
       "citations": [
         {
@@ -650,9 +653,12 @@
         }
       ],
       "openQuestions": [
+        "Cite the UAE Media Council Advertiser Permit Guide 2025 instead of the old NMC guide.",
+        "Does the clinic, its agency or each influencer need the permit?",
         "Find the current UAE Media Council source for the advertiser permit and replace this citation."
       ],
-      "researchStatus": "REQUIRES_REVIEW"
+      "researchStatus": "REQUIRES_REVIEW",
+      "uaeResponsibilityFlag": true
     }
   ]
 }

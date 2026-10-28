@@ -30,6 +30,15 @@ Prepared on October 27, 2026 for the P0 policy database. Scope (D9): healthcare 
 | RX-AE-MOHAP-01 | MOHAP | UAE | Healthcare | Credentials and licensing | Health ads need MOHAP approval before publishing, including social media |
 | RX-AE-MEDIA-01 | UAE Media Council | UAE | General | Credentials and licensing | Social media advertiser permit; health claims need health authority approval |
 
+## UAE drafts flagged for review (October 28)
+
+Both UAE regulation drafts carry a flag in their review note, so it shows in the Policy Library after import.
+
+- **RX-AE-MOHAP-01 (health ad approval).** MOHAP's own service notice says approval of advertising, promotion and marketing of *medical products* moved to the **Emirates Drug Establishment (EDE)**, reportedly effective 29 December 2025. Before this draft is submitted, the Team should confirm three things: which body now approves which ads (medical products, healthcare services, facilities); whether MOHAP still approves service and facility ads; and whether emirate regulators (DHA in Dubai, DOH in Abu Dhabi) also apply. The citation may need to change to an EDE source.
+- **RX-AE-MEDIA-01 (social media permit).** The cited National Media Council guide predates the **UAE Media Council**'s Advertiser Permit, reported as launched on 30 July 2025, and its Advertiser Permit Guide 2025. Replace the citation with the current Media Council source, and confirm who needs the permit (the clinic, its agency or each influencer) and how it relates to health authority approval.
+
+These points come from search results (MOHAP's notice page and news reports), not from reading the regulations, and need legal confirmation.
+
 ## Open questions for the Team
 
 1. Meta allows before-and-after images for cosmetic procedures (not weight loss) to adult audiences, according to some guides, while others disagree. Read Meta's health and wellness page and its cosmetic procedures page before drafting a rule.
