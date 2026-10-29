@@ -67,7 +67,7 @@ export function MarketingFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/auth/login" className="hover:text-brand-600 transition-colors">
+                <Link href="/demo" className="hover:text-brand-600 transition-colors">
                   Evaluator Demo Access
                 </Link>
               </li>

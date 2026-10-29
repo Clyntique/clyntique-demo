@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Brand, BrandMark } from "@/components/layout/brand";
 import { REVIEW_DISCLAIMER } from "@/lib/workflow/labels";
-import { FileTextIcon, ShieldIcon, CheckCircleIcon } from "@/components/ui/icons";
+import { FileTextIcon, ShieldIcon, CheckCircleIcon, ArrowRightIcon, SparklesIcon } from "@/components/ui/icons";
 import { LoginForm } from "./login-form";
 import { AuthExtras } from "@/components/auth/auth-extras";
 
@@ -46,7 +46,13 @@ export default function LoginPage() {
 
         {/* Top: Brand Logo with Luxury Subtitle */}
         <div className="relative z-10 flex flex-col gap-1.5">
-          <Brand size="lg" className="select-none" />
+          <Link
+            href="/"
+            aria-label="Clyntique homepage"
+            className="inline-flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 transition-opacity hover:opacity-90 w-fit"
+          >
+            <Brand size="lg" className="select-none" />
+          </Link>
           <div className="pl-0.5 pt-1 text-[10px] font-semibold tracking-[0.22em] uppercase text-muted/90">
             <p>Premium Business Infrastructure</p>
             <p className="text-muted/70 text-[9px] tracking-[0.2em] mt-0.5">Operations · Concierge</p>
@@ -97,7 +103,13 @@ export default function LoginPage() {
 
         {/* Mobile / Tablet Header Banner */}
         <div className="relative z-10 flex items-center justify-between border-b border-line bg-surface/90 backdrop-blur px-6 py-5 lg:hidden">
-          <Brand size="md" className="select-none" />
+          <Link
+            href="/"
+            aria-label="Clyntique homepage"
+            className="inline-flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 transition-opacity hover:opacity-90"
+          >
+            <Brand size="md" className="select-none" />
+          </Link>
           <span className="text-micro font-semibold uppercase tracking-wider text-muted">Workspace Auth</span>
         </div>
 
@@ -153,6 +165,27 @@ export default function LoginPage() {
               </p>
             </div>
 
+            {/* YC Reviewer / Evaluator Demo Access */}
+            <div className="mt-5 rounded-2xl border border-gold-300/70 bg-gradient-to-br from-gold-50/70 via-surface to-amber-50/40 p-5 shadow-xs text-center">
+              <div className="inline-flex items-center gap-1.5 rounded-full bg-gold-500/15 border border-gold-400/40 px-2.5 py-0.5 text-[10px] font-semibold text-gold-800 uppercase tracking-wider mb-2">
+                <SparklesIcon className="size-3 text-gold-600" />
+                <span>YC Reviewer &amp; Partner Demo</span>
+              </div>
+              <h3 className="text-small font-semibold text-ink">
+                Exploring Clyntique without an account?
+              </h3>
+              <p className="text-caption text-muted mt-1 leading-relaxed">
+                Launch our full interactive sandbox to explore both Client and Agency Team workflows with realistic sample campaigns.
+              </p>
+              <Link
+                href="/demo"
+                className="mt-3.5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-small font-semibold text-white shadow-2xs hover:bg-brand-700 active:bg-brand-800 transition-all cursor-pointer"
+              >
+                <span>Try Interactive Demo</span>
+                <ArrowRightIcon className="size-4" />
+              </Link>
+            </div>
+
             {/* Auth extras: demo logins (render only when enabled on the server) */}
             <AuthExtras />
 
@@ -165,8 +198,14 @@ export default function LoginPage() {
         {/* Bottom Security & Trust Footer */}
         <footer className="relative z-10 border-t border-line/60 py-4 text-center">
           <div className="inline-flex items-center gap-2 text-caption text-muted/80">
-            <BrandMark width={18} />
-            <span className="font-semibold tracking-wider text-ink-soft text-micro uppercase">Clyntique</span>
+            <Link
+              href="/"
+              aria-label="Clyntique homepage"
+              className="inline-flex items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 transition-opacity hover:opacity-80"
+            >
+              <BrandMark width={18} />
+              <span className="font-semibold tracking-wider text-ink-soft text-micro uppercase">Clyntique</span>
+            </Link>
             <span className="text-faint">|</span>
             <span>Security</span>
             <span className="text-faint">·</span>
