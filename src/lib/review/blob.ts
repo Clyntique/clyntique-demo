@@ -1,6 +1,7 @@
 import "server-only";
 import { del, get, head, type HeadBlobResult } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
+import { localBlobMockOrigin } from "./local-blob-mock";
 
 /*
  * Vercel Blob access for creative files.
@@ -18,11 +19,13 @@ export function uploadsConfigured() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
-/** True only for URLs in a private Vercel Blob store. */
+/** True only for URLs in a private Vercel Blob store (or the guarded local mock, see local-blob-mock.ts). */
 export function isPrivateBlobUrl(value: string) {
   try {
     const url = new URL(value);
-    return url.protocol === "https:" && url.hostname.endsWith(".private.blob.vercel-storage.com");
+    if (url.protocol === "https:" && url.hostname.endsWith(".private.blob.vercel-storage.com")) return true;
+    const mock = localBlobMockOrigin();
+    return mock !== null && url.origin === mock;
   } catch {
     return false;
   }

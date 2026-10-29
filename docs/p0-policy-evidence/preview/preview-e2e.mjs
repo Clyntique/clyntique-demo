@@ -276,7 +276,7 @@ await test("Real Vercel Blob upload of the creative file (client)", async () => 
   if (/File uploads aren.t set up/.test(body)) throw new Blocked("uploads not configured on this deployment (BLOB_READ_WRITE_TOKEN)");
   await p.locator('input[type="file"]').first().setInputFiles({ name: "p0-preview-test.png", mimeType: "image/png", buffer: png(30, 60, 120, 256) });
   await p.getByRole("button", { name: /^Upload (file|V\d+)$/ }).first().click();
-  await p.getByText(/sample|p0-preview-test\.png/).first().waitFor({ timeout: 60000 });
+  await p.getByRole("status").filter({ hasText: /V\d+ uploaded\./ }).first().waitFor({ timeout: 60000 });
   await p.reload();
   expect((await p.textContent("body")).includes("p0-preview-test.png"), "uploaded file not listed");
   const res = await p.request.get(`${BASE}/api/media/${await firstVersionId(p)}`);
@@ -366,7 +366,18 @@ async function addTeamEvidence(p, { title, visibility, withFile }) {
     await f.locator('input[type="file"]').setInputFiles({ name: `${visibility.toLowerCase()}-evidence.png`, mimeType: "image/png", buffer: png(visibility === "SHARED" ? 200 : 120, 80, 40) });
   }
   await f.locator('button[type="submit"]').click();
-  await p.getByText("Evidence added.").first().waitFor({ timeout: 60000 });
+  await savedOrError(p, title);
+}
+// The success note can vanish when the page refreshes, so wait for the saved item itself (or a form error).
+async function savedOrError(p, title) {
+  for (let i = 0; i < 60; i++) {
+    const text = await p.textContent("body");
+    const formError = await p.locator("form [role=alert]").allTextContents().catch(() => []);
+    if (formError.length) throw new Error("evidence not saved: " + formError.join(" "));
+    if (text.includes(title) && !(await p.locator("form:has(select[name=type])").count())) return;
+    await p.waitForTimeout(1000);
+  }
+  throw new Error(`evidence "${title}" did not appear`);
 }
 await test("Team evidence (shared, with real file upload, citing the rule)", async () => {
   await addTeamEvidence(S.b.page, { title: `${TAG} Meta policy page (shared)`, visibility: "SHARED", withFile: true });
@@ -445,7 +456,7 @@ await test("Client 1 adds evidence tied to a claim, with a real file upload", as
   else if (!(await f.locator('input[type="file"]').count())) throw new Blocked("evidence uploads not configured");
   if (!SMOKE) await f.locator('input[type="file"]').setInputFiles({ name: "client-evidence.png", mimeType: "image/png", buffer: png(40, 160, 90) });
   await f.locator('button[type="submit"]').click();
-  await p.getByText("Evidence added.").first().waitFor({ timeout: 60000 });
+  await savedOrError(p, `${TAG} Clinician licence list`);
   state.clientEvidence = true;
 }, ["decided"]);
 

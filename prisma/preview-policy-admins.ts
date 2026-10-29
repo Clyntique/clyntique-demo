@@ -9,7 +9,8 @@
 //   npx tsx prisma/preview-policy-admins.ts --admin-a <email> --admin-b <email> [--name-b "Preview Policy Admin B"] --apply
 //
 // Safety:
-// - Refuses any database other than clyntique_demo_preview, and NODE_ENV=production.
+// - Refuses any database other than clyntique_demo_preview or a local p0_local*
+//   database, and NODE_ENV=production.
 // - Both admins must be different TEAM accounts. Admin A must already exist.
 //   Admin B is created (TEAM) if missing, with PREVIEW_ADMIN_B_PASSWORD
 //   (at least 12 characters); an existing account's password is never changed.
@@ -42,7 +43,9 @@ async function main() {
   if (!connectionString) throw new Error("DATABASE_URL is not set.");
   const dbName = databaseNameOf(connectionString);
   if (process.env.NODE_ENV === "production") throw new Error("Refusing to run with NODE_ENV=production.");
-  if (dbName !== PREVIEW_DATABASE) throw new Error(`Refusing: this script only runs against "${PREVIEW_DATABASE}" (DATABASE_URL points to "${dbName}").`);
+  // Also allowed: a disposable local database (free-tier local validation, Oct 29).
+  const local = ["localhost", "127.0.0.1"].includes(new URL(connectionString).hostname) && Boolean(dbName?.startsWith("p0_local"));
+  if (dbName !== PREVIEW_DATABASE && !local) throw new Error(`Refusing: this script only runs against "${PREVIEW_DATABASE}" or a local p0_local* database (DATABASE_URL points to "${dbName}").`);
   if (apply && process.env.PREVIEW_ADMIN_CONFIRM_DATABASE !== dbName) throw new Error(`To write, set PREVIEW_ADMIN_CONFIRM_DATABASE=${dbName}.`);
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });

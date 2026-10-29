@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
+import { localBlobMockOrigin, localBlobMockRequested } from "./src/lib/review/local-blob-mock";
 
 const isDev = process.env.NODE_ENV === "development";
+
+// The local Blob mock (src/lib/review/local-blob-mock.ts) must never reach a
+// deployment: fail the build if its settings are present on Vercel.
+if ((process.env.VERCEL || process.env.VERCEL_ENV) && localBlobMockRequested()) {
+  throw new Error("Local Blob mock settings must not be set on Vercel.");
+}
+const localBlobMock = localBlobMockOrigin();
 
 // Content Security Policy for pages. Without nonces, Next.js needs
 // 'unsafe-inline' for its bootstrap scripts; 'unsafe-eval' only in development
@@ -13,7 +21,7 @@ export const contentSecurityPolicy = [
   "img-src 'self' blob: data:",
   "media-src 'self' blob:",
   "font-src 'self'",
-  "connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com",
+  `connect-src 'self' https://vercel.com https://*.blob.vercel-storage.com${localBlobMock ? ` ${localBlobMock}` : ""}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
