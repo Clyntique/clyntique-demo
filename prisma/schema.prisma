@@ -64,6 +64,10 @@ enum EvidenceType {
   CUSTOMER_INSIGHT
   SOURCE
   OTHER
+  // P0 (Oct 27): client substantiation and Clyntique policy references.
+  CLINICAL_STUDY
+  CERTIFICATION
+  POLICY_REFERENCE
 }
 
 // Who supplied a piece of evidence. Null on rows from the legacy workflow
@@ -174,15 +178,19 @@ model User {
   createdPolicyRuleVersions  PolicyRuleVersion[] @relation("RuleVersionCreatedBy")
   approvedPolicyRuleVersions PolicyRuleVersion[] @relation("RuleVersionApprovedBy")
 
-  clientConversations   Conversation[]       @relation("ConversationClient")
-  reviewerConversations Conversation[]       @relation("ConversationReviewer")
-  sentMessages          Message[]            @relation("MessageSender")
-  readMessages          Message[]            @relation("MessageReader")
+  clientConversations        Conversation[]       @relation("ConversationClient")
+  reviewerConversations      Conversation[]       @relation("ConversationReviewer")
+  sentMessages               Message[]            @relation("MessageSender")
+  readMessages               Message[]            @relation("MessageReader")
   // Lifecycle records (Oct 19 sprint)
-  aiScanRuns            AIScanRun[]          @relation("ScanInitiatedBy")
-  externalSubmissions   ExternalSubmission[] @relation("ExternalSubmissionRecordedBy")
-  externalOutcomes      ExternalOutcome[]    @relation("ExternalOutcomeRecordedBy")
-  policyRuleEvents      PolicyRuleEvent[]    @relation("PolicyRuleEventActor")
+  aiScanRuns                 AIScanRun[]          @relation("ScanInitiatedBy")
+  externalSubmissions        ExternalSubmission[] @relation("ExternalSubmissionRecordedBy")
+  externalOutcomes           ExternalOutcome[]    @relation("ExternalOutcomeRecordedBy")
+  policyRuleEvents           PolicyRuleEvent[]    @relation("PolicyRuleEventActor")
+  // P0 policy verification and evidence assessment (Oct 27)
+  verifiedPolicyRuleVersions PolicyRuleVersion[]  @relation("RuleVersionVerifiedBy")
+  verifiedPolicySources      PolicySource[]       @relation("SourceVerifiedBy")
+  evidenceAssessments        EvidenceAssessment[] @relation("EvidenceAssessedBy")
 }
 
 // A campaign/client project, e.g. "Acme Health — Q4 Campaign".
@@ -216,6 +224,9 @@ model Creative {
   createdById String?
   // First submission time. Null until submitted, and on legacy rows.
   submittedAt DateTime?
+  // Chosen by the client (HEALTHCARE, MEDICAL_AESTHETICS or OTHER); decides
+  // which industry-specific policy rules may apply. Null on older rows.
+  industry    String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
@@ -280,38 +291,47 @@ model CreativeVersion {
 // Supporting research/context for a creative. Legacy rows: origin and addedById
 // are null. New rows always record who added them. Never marked "verified".
 model Evidence {
-  id            String             @id @default(cuid())
-  creativeId    String
-  title         String
-  type          EvidenceType
-  description   String?
-  source        String?
+  id                  String             @id @default(cuid())
+  creativeId          String
+  title               String
+  type                EvidenceType
+  description         String?
+  source              String?
   // Optional reference link (http/https only, validated on the server).
-  url           String?
-  date          DateTime?
-  createdAt     DateTime           @default(now())
-  origin        EvidenceOrigin?
-  addedById     String?
-  visibility    EvidenceVisibility @default(SHARED)
+  url                 String?
+  date                DateTime?
+  createdAt           DateTime           @default(now())
+  origin              EvidenceOrigin?
+  addedById           String?
+  visibility          EvidenceVisibility @default(SHARED)
   // Optional: the version this evidence refers to.
-  versionId     String?
+  versionId           String?
   // Evidence in a submitted cycle is withdrawn, never deleted.
-  withdrawnAt   DateTime?
-  withdrawnById String?
+  withdrawnAt         DateTime?
+  withdrawnById       String?
   // Optional uploaded file (private Blob; served only via /api/evidence/[id]).
-  fileUrl       String?
-  fileName      String?
-  mimeType      String?
-  fileSize      Int?
+  fileUrl             String?
+  fileName            String?
+  mimeType            String?
+  fileSize            Int?
+  // P0 (Oct 27): the claim in the creative this evidence supports, and where
+  // it appears. Free text (no separate claims entity, decision D3).
+  claimText           String?
+  claimLocation       String?
+  // Clyntique (REVIEWER_ADDED) evidence only: the reviewed rule version it cites.
+  policyRuleVersionId String?
 
-  creative         Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
-  addedBy          User?             @relation("EvidenceAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
-  withdrawnBy      User?             @relation("EvidenceWithdrawnBy", fields: [withdrawnById], references: [id], onDelete: Restrict)
-  version          CreativeVersion?  @relation(fields: [versionId], references: [id], onDelete: SetNull)
-  findings         FindingEvidence[]
-  externalOutcomes ExternalOutcome[]
+  creative          Creative             @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  addedBy           User?                @relation("EvidenceAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  withdrawnBy       User?                @relation("EvidenceWithdrawnBy", fields: [withdrawnById], references: [id], onDelete: Restrict)
+  version           CreativeVersion?     @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  findings          FindingEvidence[]
+  externalOutcomes  ExternalOutcome[]
+  policyRuleVersion PolicyRuleVersion?   @relation("EvidencePolicyRuleVersion", fields: [policyRuleVersionId], references: [id], onDelete: Restrict)
+  assessments       EvidenceAssessment[]
 
   @@index([creativeId])
+  @@index([policyRuleVersionId])
 }
 
 model Comment {
@@ -376,6 +396,7 @@ model ReviewCycle {
   triggerRuleVersion   PolicyRuleVersion?   @relation("CycleTriggerRuleVersion", fields: [triggerRuleVersionId], references: [id], onDelete: Restrict)
   aiScanRuns           AIScanRun[]
   externalSubmissions  ExternalSubmission[]
+  evidenceAssessments  EvidenceAssessment[]
 
   @@unique([creativeId, number])
 }
@@ -396,6 +417,8 @@ model SubmissionRound {
   submittedName        String?
   submittedDescription String?
   submittedContext     String?
+  // The industry the client declared with this round (P0, Oct 27).
+  submittedIndustry    String?
 
   creative    Creative          @relation(fields: [creativeId], references: [id], onDelete: Cascade)
   cycle       ReviewCycle       @relation(fields: [cycleId], references: [id], onDelete: Cascade)
@@ -478,9 +501,25 @@ model Finding {
   ruleVersionId String?
   ruleVersion   PolicyRuleVersion? @relation(fields: [ruleVersionId], references: [id], onDelete: Restrict)
 
+  // P0 (Oct 27): the claim and part of the creative concerned, an optional
+  // example of compliant wording, and where the finding came from.
+  claimText         String?
+  claimLocation     String?
+  suggestedRevision String?
+  origin            FindingOrigin @default(REVIEWER)
+  aiScanRunId       String?
+  aiScanRun         AIScanRun?    @relation(fields: [aiScanRunId], references: [id], onDelete: SetNull)
+
   @@index([creativeId])
   @@index([cycleId])
   @@index([ruleVersionId])
+}
+
+// Where a finding came from. Either way a human reviewer recorded it; an AI
+// suggestion is never a finding until a reviewer accepts it.
+enum FindingOrigin {
+  REVIEWER
+  AI_SUGGESTION_ACCEPTED
 }
 
 // Append-only status history of a finding.
@@ -651,6 +690,24 @@ enum PolicyVerificationStatus {
   UNVERIFIED
   VERIFIED
   REJECTED
+  REQUIRES_REVIEW // the source is unclear or a field could not be confirmed
+}
+
+// What kind of limit a rule describes (P0, Oct 27).
+enum PolicyRestrictionLevel {
+  PROHIBITED
+  RESTRICTED
+  CONDITIONAL
+  DISCLOSURE_REQUIRED
+}
+
+// What kind of official publication a source is (P0, Oct 27).
+enum PolicySourceKind {
+  PLATFORM_POLICY_PAGE
+  PLATFORM_HELP_ARTICLE
+  STATUTE_OR_REGULATION
+  REGULATOR_GUIDANCE
+  OTHER_OFFICIAL
 }
 
 enum PolicyRuleStatus {
@@ -668,6 +725,12 @@ enum PolicyCategory {
   SUBSTANTIATION
   RESTRICTED_PROCEDURES
   MANDATORY_LABELING
+  // P0 (Oct 27, decision D7)
+  TARGETING_RESTRICTION
+  PRESCRIPTION_MEDICINE
+  CREDENTIALS_LICENSING
+  TESTIMONIAL_ENDORSEMENT
+  PERSONAL_HEALTH_ATTRIBUTES
 }
 
 // Official regulatory or platform publication source
@@ -679,12 +742,23 @@ model PolicySource {
   jurisdictionCode   String // "US", "AE", "GLOBAL", etc.
   officialUrl        String
   publishedAt        DateTime?
+  // Legacy: defaults to the creation time, so it does not mean "audited".
+  // verifiedAt below is the human verification.
   lastAuditedAt      DateTime                 @default(now())
   verificationStatus PolicyVerificationStatus @default(UNVERIFIED)
   createdAt          DateTime                 @default(now())
   updatedAt          DateTime                 @updatedAt
+  // P0 (Oct 27): provenance and human verification.
+  sourceKind         PolicySourceKind?
+  // How the source was accessed, and any terms or attribution note.
+  accessNote         String?
+  verifiedById       String?
+  verifiedAt         DateTime?
+  verificationNote   String?
 
-  citations PolicyRuleVersionSource[]
+  citations  PolicyRuleVersionSource[]
+  verifiedBy User?                     @relation("SourceVerifiedBy", fields: [verifiedById], references: [id], onDelete: Restrict)
+  events     PolicyRuleEvent[]
 
   @@index([authorityType, jurisdictionCode])
 }
@@ -733,14 +807,31 @@ model PolicyRuleVersion {
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
 
+  // P0 (Oct 27): structured compliance content, in Clyntique's own words.
+  restrictionLevel           PolicyRestrictionLevel?
+  restrictedClaims           String[]                @default([])
+  substantiationRequirements String[]                @default([])
+  // The date the source says the policy took effect. Null = not stated.
+  // effectiveFrom/effectiveTo above are Clyntique's own "in use" window.
+  officialEffectiveDate      DateTime?
+  // Human verification against the cited sources (one person), separate from
+  // approval (a different person, decision D1).
+  verifiedById               String?
+  verifiedAt                 DateTime?
+  verificationNote           String?
+  // Why the version was marked REQUIRES_REVIEW.
+  reviewNote                 String?
+
   rule            PolicyRule                @relation(fields: [ruleId], references: [id], onDelete: Restrict)
   createdBy       User                      @relation("RuleVersionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   approvedBy      User?                     @relation("RuleVersionApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  verifiedBy      User?                     @relation("RuleVersionVerifiedBy", fields: [verifiedById], references: [id], onDelete: Restrict)
   sources         PolicyRuleVersionSource[]
   findings        Finding[]
   scanChecks      AIScanRuleCheck[]
   triggeredCycles ReviewCycle[]             @relation("CycleTriggerRuleVersion")
   events          PolicyRuleEvent[]
+  evidence        Evidence[]                @relation("EvidencePolicyRuleVersion")
 
   @@unique([ruleId, versionNumber])
   @@index([status, verificationStatus])
@@ -748,14 +839,19 @@ model PolicyRuleVersion {
 
 // Granular citation connecting rule versions to exact source sections
 model PolicyRuleVersionSource {
-  id               String   @id @default(cuid())
+  id               String    @id @default(cuid())
   versionId        String
   sourceId         String
   sectionReference String // e.g. "16 CFR § 255.5", "Cabinet Resolution 23/2020 Art. 4"
   sectionTitle     String
   directUrl        String
+  // A short quotation only (the server caps it); summaries are our own words.
   excerpt          String?
-  createdAt        DateTime @default(now())
+  createdAt        DateTime  @default(now())
+  // P0 (Oct 27): the "last updated" date the source page shows, only if it
+  // shows one, and when Clyntique read it for this version.
+  sourceUpdatedAt  DateTime?
+  retrievedAt      DateTime?
 
   version PolicyRuleVersion @relation(fields: [versionId], references: [id], onDelete: Restrict)
   source  PolicySource      @relation(fields: [sourceId], references: [id], onDelete: Restrict)
@@ -865,6 +961,7 @@ model AIScanRun {
   round        SubmissionRound?  @relation(fields: [roundId], references: [id], onDelete: SetNull)
   initiatedBy  User              @relation("ScanInitiatedBy", fields: [initiatedById], references: [id], onDelete: Restrict)
   rulesChecked AIScanRuleCheck[]
+  findings     Finding[]
 
   @@index([creativeId, createdAt])
   @@index([versionId])
@@ -961,22 +1058,64 @@ enum PolicyRuleEventKind {
   VERSION_PROPOSED
   VERSION_APPROVED
   RULE_RETIRED
+  // P0 (Oct 27)
+  VERSION_EDITED
+  VERSION_VERIFIED
+  VERSION_RETURNED
+  VERSION_REJECTED
+  SOURCE_CREATED
+  SOURCE_EDITED
+  SOURCE_VERIFIED
 }
 
-// Append-only history of changes to a policy rule, written by the Policy
-// Library commands. Impact analysis starts from VERSION_APPROVED events.
+// Append-only history of changes to a policy rule or source, written by the
+// Policy Library commands. Impact analysis starts from VERSION_APPROVED events.
+// Every row names a rule or a source (CHECK constraint in the migration).
 model PolicyRuleEvent {
   id        String              @id @default(cuid())
-  ruleId    String
+  ruleId    String?
   versionId String?
+  sourceId  String?
   kind      PolicyRuleEventKind
   actorId   String
   note      String?
   createdAt DateTime            @default(now())
 
-  rule    PolicyRule         @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  rule    PolicyRule?        @relation(fields: [ruleId], references: [id], onDelete: Restrict)
   version PolicyRuleVersion? @relation(fields: [versionId], references: [id], onDelete: Restrict)
+  source  PolicySource?      @relation(fields: [sourceId], references: [id], onDelete: Restrict)
   actor   User               @relation("PolicyRuleEventActor", fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([ruleId, createdAt])
+  @@index([sourceId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Evidence assessment (P0, Oct 27). A TEAM reviewer's internal assessment of
+// one client evidence item in one review cycle. Append only: the latest row
+// per evidence and cycle is current. Never a scientific or legal validation.
+// A client sees it only once a later decision has been published (D5).
+
+enum EvidenceAssessmentResult {
+  ACCEPTED_FOR_REVIEW
+  INSUFFICIENT
+  NOT_RELEVANT
+  NEEDS_CLARIFICATION
+}
+
+model EvidenceAssessment {
+  id         String                   @id @default(cuid())
+  evidenceId String
+  cycleId    String
+  reviewerId String
+  result     EvidenceAssessmentResult
+  note       String?
+  createdAt  DateTime                 @default(now())
+
+  evidence Evidence    @relation(fields: [evidenceId], references: [id], onDelete: Cascade)
+  cycle    ReviewCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  reviewer User        @relation("EvidenceAssessedBy", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([evidenceId, createdAt])
+  @@index([cycleId])
 }

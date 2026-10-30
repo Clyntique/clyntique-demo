@@ -20,9 +20,12 @@ import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { FormError } from "@/components/forms/form-error";
 import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
 import { UploadStalledError, withStallGuard } from "@/lib/upload-stall";
+import { addReviewerEvidenceAction } from "@/app/admin/review/actions";
+import type { RuleChoice } from "./review-panel";
 
 // CLIENT remediation controls while changes are requested: respond to a
-// finding, add or withdraw supporting evidence, and resubmit. Every action is
+// finding, add or withdraw supporting evidence, and resubmit. EvidenceForm
+// also serves TEAM reviewers adding Clyntique evidence (P0, `reviewer` prop). Every action is
 // a server action that re-checks the user, ownership, status and finding
 // (src/lib/workflow/commands.ts); these components only manage form state.
 
@@ -102,11 +105,25 @@ export function RespondForm({ findingId, evidence, hint }: { findingId: string; 
 
 // ---------------------------------------------------------------------------
 
-const TYPES = Object.keys(EVIDENCE_TYPES) as EvidenceType[];
+// Policy references are Clyntique's own evidence type, never a client's.
+const ALL_TYPES = Object.keys(EVIDENCE_TYPES) as EvidenceType[];
+const CLIENT_TYPES = ALL_TYPES.filter((t) => t !== "POLICY_REFERENCE");
 
 type Phase = { name: "idle" } | { name: "uploading"; percent: number } | { name: "saving" } | { name: "done" };
 
-export function EvidenceForm({ creativeId, findings, configured }: { creativeId: string; findings: Choice[]; configured: boolean }) {
+export function EvidenceForm({
+  creativeId,
+  findings,
+  configured,
+  reviewer,
+}: {
+  creativeId: string;
+  findings: Choice[];
+  configured: boolean;
+  /** TEAM: add Clyntique evidence (visibility and an optional cited rule). */
+  reviewer?: { rules: RuleChoice[] };
+}) {
+  const TYPES = reviewer ? ALL_TYPES : CLIENT_TYPES;
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [open, setOpen] = useState(false);
@@ -137,7 +154,9 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
     const link = String(formData.get("url") ?? "").trim();
     if (title.length < 2) return setError("Give the evidence a title (2–120 characters).");
     if (!formData.get("type")) return setError("Choose the type of evidence.");
-    if (!file && !link && !description) return setError("Attach a file, add a link, or describe the evidence.");
+    const rule = String(formData.get("ruleVersionId") ?? "");
+    if (reviewer && !formData.get("visibility")) return setError("Choose whether the client will see it.");
+    if (!file && !link && !description && !rule) return setError(reviewer ? "Attach a file, add a link, cite a policy, or describe the evidence." : "Attach a file, add a link, or describe the evidence.");
 
     let uploaded: { uploadKey: string; url: string; fileName: string } | null = null;
     if (file && uploadedRef.current?.file === file) {
@@ -174,16 +193,21 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
     setPhase({ name: "saving" });
     let result: { ok: true } | { ok: false; error: string };
     try {
-      result = await addEvidenceAction({
+      const input = {
         creativeId,
         title: String(formData.get("title") ?? ""),
         type: String(formData.get("type") ?? ""),
         description: String(formData.get("description") ?? ""),
         source: String(formData.get("source") ?? ""),
         url: String(formData.get("url") ?? ""),
+        claimText: String(formData.get("claimText") ?? ""),
+        claimLocation: String(formData.get("claimLocation") ?? ""),
         file: uploaded,
         findingIds: formData.getAll("findings").map(String),
-      });
+      };
+      result = reviewer
+        ? await addReviewerEvidenceAction({ ...input, visibility: String(formData.get("visibility") ?? ""), ruleVersionId: rule })
+        : await addEvidenceAction(input);
     } catch {
       result = { ok: false, error: "Couldn't reach the server. Check your connection." };
     }
@@ -203,7 +227,7 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
     return (
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="secondary" onClick={() => { setPhase({ name: "idle" }); setOpen(true); }}>
-          + Add evidence
+          {reviewer ? "+ Add Clyntique evidence" : "+ Add evidence"}
         </Button>
         {phase.name === "done" && <Ok message="Evidence added." />}
       </div>
@@ -218,8 +242,12 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
       noValidate
     >
       <div>
-        <h3 className="text-card-title">Add supporting evidence</h3>
-        <p className="text-meta">Shared with the Clyntique reviewer. Once you resubmit, it becomes part of the review record.</p>
+        <h3 className="text-card-title">{reviewer ? "Add Clyntique evidence" : "Add supporting evidence"}</h3>
+        <p className="text-meta">
+          {reviewer
+            ? "Part of the review record. If shared, the client sees it with your next decision, as “Clyntique reviewer”. It can't be edited or deleted."
+            : "Shared with the Clyntique reviewer. Once you resubmit, it becomes part of the review record."}
+        </p>
       </div>
       <FormError message={error ?? undefined} />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -237,6 +265,37 @@ export function EvidenceForm({ creativeId, findings, configured }: { creativeId:
               </option>
             ))}
           </Select>
+        </Field>
+      </div>
+      {reviewer && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="Who sees it">
+            <Select name="visibility" required defaultValue="">
+              <option value="" disabled>
+                Choose…
+              </option>
+              <option value="SHARED">Client and team (with the next decision)</option>
+              <option value="INTERNAL">Team only</option>
+            </Select>
+          </Field>
+          <Field label="Policy cited (optional)" hint={reviewer.rules.length ? undefined : "No verified, approved rule applies to this submission yet."}>
+            <Select name="ruleVersionId" defaultValue="" disabled={reviewer.rules.length === 0}>
+              <option value="">No policy cited</option>
+              {reviewer.rules.map((r) => (
+                <option key={r.versionId} value={r.versionId}>
+                  {r.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
+      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label={reviewer ? "Claim concerned (optional)" : "Claim it supports (optional)"} hint="The words in the ad, e.g. “Visible results in 2 weeks”.">
+          <Input name="claimText" maxLength={300} />
+        </Field>
+        <Field label="Where the claim appears (optional)" hint="e.g. Headline, caption, 0:05 voice-over.">
+          <Input name="claimLocation" maxLength={120} />
         </Field>
       </div>
       <Field label="What does it show?" hint="Briefly, how it supports the claim or answers the finding.">

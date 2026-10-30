@@ -54,6 +54,8 @@ function dbRule() {
         createdById: "a",
         createdAt: new Date(),
         approvedById: "b",
+        verifiedById: "v",
+        verifiedBy: { id: "v", name: "V" },
         approvedAt: new Date(),
         createdBy: { id: "a", name: "A" },
         approvedBy: { id: "b", name: "B" },

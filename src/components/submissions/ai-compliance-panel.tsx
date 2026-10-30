@@ -13,6 +13,10 @@ import {
 } from "@/components/ui/icons";
 import { runAICreativeScan, acceptAIFindingAction } from "@/lib/ai/actions";
 import type { AIAnalysisResult, AISuggestedFinding } from "@/lib/ai/types";
+import type { CoveragePair } from "@/lib/ai/applicability";
+import { INSUFFICIENT_POLICY_COVERAGE } from "@/lib/ai/applicability";
+import { industryLabel } from "@/lib/workflow/submission";
+import { DECISION_SOURCE_LABEL } from "@/lib/workflow/labels";
 import { cn } from "@/lib/cn";
 
 export interface AICompliancePanelProps {
@@ -90,6 +94,7 @@ export function AICompliancePanel({
       const res = await acceptAIFindingAction({
         creativeId,
         finding,
+        scanId: scanResult?.scanId,
         marketCodes: markets.map((m) => m.code),
         platformCodes: platforms.map((p) => p.code),
       });
@@ -245,8 +250,8 @@ export function AICompliancePanel({
                     Insufficient policy coverage — manual review required
                   </h4>
                   <p className="text-caption text-slate-700 leading-relaxed">
-                    Zero active, approved policies in the database currently match this creative&apos;s target jurisdiction and platform parameters.
-                    The AI review engine strictly requires approved policies to prevent hallucinated compliance violations.
+                    No verified and approved Policy Library rule matches this creative&apos;s markets, platforms and industry, so the AI was not run.
+                    It only checks against rules that two policy administrators have verified and approved.
                   </p>
                   <div className="pt-2">
                     <Link
@@ -260,6 +265,10 @@ export function AICompliancePanel({
                 </div>
               </div>
             </div>
+          )}
+
+          {scanResult.coverage && scanResult.coverage.length > 0 && (
+            <CoverageList coverage={scanResult.coverage} industry={scanResult.industry ?? null} markets={markets} platforms={platforms} />
           )}
 
           {/* Failed scan: never shown as "no findings" */}
@@ -291,7 +300,7 @@ export function AICompliancePanel({
           {/* Executive Summary */}
           {scanResult.summary && scanResult.status === "SUCCESS" && (
             <div className="rounded-xl border border-line bg-slate-50/50 p-4">
-              <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1.5">AI Summary · not a compliance decision</p>
+              <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1.5">{DECISION_SOURCE_LABEL.AI_SUGGESTION}</p>
               <p className="text-small font-medium text-ink leading-relaxed">{scanResult.summary}</p>
               {scanResult.rulesChecked && scanResult.rulesChecked.length > 0 && (
                 <p className="text-caption mt-2 text-muted">
@@ -552,5 +561,53 @@ function SeverityBadge({ severity }: { severity: AISuggestedFinding["severity"] 
     >
       {severity}
     </span>
+  );
+}
+
+/**
+ * Coverage per market × platform (P0). A pair without a verified, approved
+ * rule says so explicitly, even when other pairs were checked.
+ */
+function CoverageList({
+  coverage,
+  industry,
+  markets,
+  platforms,
+}: {
+  coverage: CoveragePair[];
+  industry: string | null;
+  markets: Array<{ code: string; name: string }>;
+  platforms: Array<{ code: string; name: string }>;
+}) {
+  const marketName = (code: string | null) => (code ? (markets.find((m) => m.code === code)?.name ?? code) : "No market");
+  const platformName = (code: string | null) => (code ? (platforms.find((p) => p.code === code)?.name ?? code) : "No platform");
+  const uncovered = coverage.filter((c) => !c.covered).length;
+  return (
+    <div className="rounded-xl border border-line p-4">
+      <p className="text-micro font-semibold uppercase tracking-wider text-muted mb-1">Policy coverage by market and platform</p>
+      <p className="text-caption text-muted mb-3">
+        Industry: {industryLabel(industry) ?? "not stated (general rules only)"}.{" "}
+        {uncovered > 0
+          ? `${uncovered} of ${coverage.length} combinations have no verified, approved rule.`
+          : "Every combination has at least one verified, approved rule."}
+      </p>
+      <ul className="flex flex-col gap-1.5">
+        {coverage.map((c) => (
+          <li key={`${c.market}:${c.platform}`} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-small">
+            <span className="font-medium text-ink">
+              {marketName(c.market)} · {platformName(c.platform)}
+            </span>
+            {c.covered ? (
+              <span className="text-caption text-ink-soft">
+                {c.ruleCodes.length} rule{c.ruleCodes.length === 1 ? "" : "s"}: {c.ruleCodes.join(", ")}
+                {c.platformRuleCodes.length === 0 ? " (no platform-specific rule)" : ""}
+              </span>
+            ) : (
+              <span className="text-caption font-medium text-attention-ink">{INSUFFICIENT_POLICY_COVERAGE}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

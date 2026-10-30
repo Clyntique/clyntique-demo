@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import type { PolicyFilterCriteria, PolicyRule, PolicySource } from "@/lib/policy/types";
+import type { PolicyFilterCriteria, PolicyRule, PolicyRuleVersion, PolicySource } from "@/lib/policy/types";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,24 +17,58 @@ import {
   SearchIcon,
   ShieldIcon,
 } from "@/components/ui/icons";
+import { CoverageCheck } from "./coverage-check";
 import { RuleDrawer } from "./rule-drawer";
-import { RuleEditorModal } from "./rule-editor-modal";
-import { GroundingSandbox } from "./grounding-sandbox";
+import { RuleEditorModal, type EditorMode } from "./rule-editor-modal";
+import { SourcesPanel } from "./sources-panel";
 import { filterPolicyRules } from "@/lib/policy/search";
-import { importCandidatesServerAction } from "@/lib/policy/actions";
+import { AUTHORITY_LABEL, versionStage } from "@/lib/policy/labels";
+import type { PolicyLibraryPayload } from "@/lib/policy/actions";
+
+// Policy Library (P0, Oct 27): rules with their two-person trail, the
+// official sources behind them, and a read-only coverage check. Only rules
+// that are approved, verified by a different admin and backed by verified
+// sources reach the AI; everything else here is work in progress.
+
+type Stage = "ALL" | "ACTIVE" | "AWAITING_VERIFICATION" | "AWAITING_APPROVAL" | "DRAFT" | "RETIRED";
+
+const STAGES: { key: Stage; label: string }[] = [
+  { key: "ALL", label: "All" },
+  { key: "ACTIVE", label: "Approved and active" },
+  { key: "AWAITING_VERIFICATION", label: "Awaiting verification" },
+  { key: "AWAITING_APPROVAL", label: "Awaiting approval" },
+  { key: "DRAFT", label: "Drafts and returned" },
+  { key: "RETIRED", label: "Retired" },
+];
+
+function inStage(v: PolicyRuleVersion, stage: Stage) {
+  switch (stage) {
+    case "ALL":
+      return true;
+    case "ACTIVE":
+      return v.status === "ACTIVE";
+    case "AWAITING_VERIFICATION":
+      return v.status === "PENDING_APPROVAL" && v.verificationStatus !== "VERIFIED";
+    case "AWAITING_APPROVAL":
+      return v.status === "PENDING_APPROVAL" && v.verificationStatus === "VERIFIED";
+    case "DRAFT":
+      return v.status === "DRAFT";
+    case "RETIRED":
+      return v.status === "DEPRECATED";
+  }
+}
+
+/** The version a row shows: one that is waiting on someone, else the current one. */
+function rowVersion(rule: PolicyRule) {
+  return rule.versions.find((v) => v.status === "PENDING_APPROVAL") ?? rule.versions.find((v) => v.status === "DRAFT") ?? rule.currentVersion;
+}
 
 interface PolicyLibraryViewProps {
   initialRules: PolicyRule[];
   sources: PolicySource[];
   isPolicyAdmin: boolean;
   currentUser: { id: string; name: string; email: string };
-  metrics: {
-    totalActive: number;
-    regulations: number;
-    platformPolicies: number;
-    internalRisk: number;
-    pendingApproval: number;
-  };
+  metrics: PolicyLibraryPayload["metrics"];
 }
 
 export function PolicyLibraryView({
@@ -41,501 +76,308 @@ export function PolicyLibraryView({
   sources,
   isPolicyAdmin,
   currentUser,
-  metrics: initialMetrics,
+  metrics,
 }: PolicyLibraryViewProps) {
-  const [rules, setRules] = useState<PolicyRule[]>(initialRules);
-  const [activeTab, setActiveTab] = useState<"RULES" | "SANDBOX">("RULES");
-  const [isImporting, setIsImporting] = useState(false);
-  const [importStatus, setImportStatus] = useState<{ type: "success" | "error"; text: string } | null>(null);
-
-  const handleImportCandidates = async () => {
-    setIsImporting(true);
-    setImportStatus(null);
-    try {
-      const res = await importCandidatesServerAction();
-      if (!res.ok) {
-        setImportStatus({ type: "error", text: res.error || "Failed to import candidate policies." });
-      } else {
-        setImportStatus({
-          type: "success",
-          text: res.message || "Candidate policies imported successfully as UNVERIFIED and PENDING_APPROVAL.",
-        });
-        window.location.reload();
-      }
-    } catch (err) {
-      setImportStatus({
-        type: "error",
-        text: err instanceof Error ? err.message : "An unexpected error occurred during import.",
-      });
-    } finally {
-      setIsImporting(false);
-    }
-  };
+  const rules = initialRules;
+  const [activeTab, setActiveTab] = useState<"RULES" | "SOURCES" | "COVERAGE">("RULES");
+  const [status, setStatus] = useState<string | null>(null);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [authorityFilter, setAuthorityFilter] = useState<PolicyFilterCriteria["authorityType"]>("ALL");
   const [jurisdictionFilter, setJurisdictionFilter] = useState<string>("ALL");
   const [platformFilter, setPlatformFilter] = useState<string>("ALL");
-  const [statusFilter, setStatusFilter] = useState<PolicyFilterCriteria["status"]>("ALL");
+  const [stageFilter, setStageFilter] = useState<Stage>("ALL");
 
-  // Drawer & Modal State
+  // Drawer & editor
   const [selectedRule, setSelectedRule] = useState<PolicyRule | null>(null);
-  const [isEditorOpen, setIsEditorOpen] = useState(false);
-  const [editorMode, setEditorMode] = useState<"CREATE_RULE" | "PROPOSE_VERSION">("CREATE_RULE");
-  const [ruleToVersion, setRuleToVersion] = useState<PolicyRule | null>(null);
+  const [editor, setEditor] = useState<{ mode: EditorMode; rule: PolicyRule | null; version: PolicyRuleVersion | null } | null>(null);
 
-  // Filtered Rules
   const filteredRules = filterPolicyRules(rules, {
     query: searchQuery,
     authorityType: authorityFilter,
     jurisdiction: jurisdictionFilter,
     platform: platformFilter,
-    status: statusFilter,
-  });
+    status: "ALL",
+  }).filter((rule) => rule.versions.some((v) => inStage(v, stageFilter)));
 
-  const handleRuleUpdated = (updatedRule: PolicyRule) => {
-    setRules((prev) => prev.map((r) => (r.id === updatedRule.id ? updatedRule : r)));
-    setSelectedRule(updatedRule);
+  // Every change is saved on the server; refresh so the page shows what is stored.
+  const router = useRouter();
+  const changed = (message: string) => {
+    setStatus(message);
+    setEditor(null);
+    setSelectedRule(null);
+    router.refresh();
   };
 
-  const handleOpenProposeVersion = (rule: PolicyRule) => {
-    setRuleToVersion(rule);
-    setEditorMode("PROPOSE_VERSION");
-    setIsEditorOpen(true);
-  };
+  const metricCards = [
+    { label: "Approved and active", value: metrics.approvedActive, hint: "Rules the AI may use" },
+    { label: "Awaiting verification", value: metrics.awaitingVerification, hint: "First admin checks the sources" },
+    { label: "Awaiting approval", value: metrics.awaitingApproval, hint: "A second admin approves" },
+    { label: "Drafts and returned", value: metrics.draftsAndReturned, hint: "Not submitted yet" },
+    { label: "Sources verified", value: `${metrics.sourcesVerified} of ${metrics.sourcesTotal}`, hint: "Official pages checked" },
+  ];
 
-  const handleOpenCreateRule = () => {
-    setRuleToVersion(null);
-    setEditorMode("CREATE_RULE");
-    setIsEditorOpen(true);
-  };
+  const tabClass = (on: boolean) =>
+    `flex items-center gap-2 px-4 py-2.5 text-small font-medium border-b-2 transition-all cursor-pointer active:scale-[0.99] ${
+      on ? "border-brand-600 text-ink font-semibold" : "border-transparent text-muted hover:text-ink"
+    }`;
 
-  const getAuthorityBadge = (authority: PolicyRule["authorityType"]) => {
-    switch (authority) {
-      case "REGULATION":
-        return <Badge tone="brand">Government Regulation</Badge>;
-      case "PLATFORM_POLICY":
-        return <Badge tone="neutral">Platform Policy</Badge>;
-      case "INTERNAL_RISK":
-        return <Badge tone="outline">Internal Risk Guidance</Badge>;
-    }
-  };
-
-  const getStatusBadge = (status: PolicyRule["currentVersion"]["status"]) => {
-    switch (status) {
-      case "ACTIVE":
-        return (
-          <span className="inline-flex items-center gap-1 text-micro font-semibold px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-800 border border-emerald-200">
-            <CheckIcon className="size-3" /> ACTIVE
-          </span>
-        );
-      case "PENDING_APPROVAL":
-        return (
-          <span className="inline-flex items-center gap-1 text-micro font-semibold px-2 py-0.5 rounded-sm bg-amber-50 text-amber-800 border border-amber-300">
-            <AlertIcon className="size-3" /> PENDING APPROVAL
-          </span>
-        );
-      case "DRAFT":
-        return (
-          <span className="inline-flex items-center gap-1 text-micro font-semibold px-2 py-0.5 rounded-sm bg-subtle text-ink-soft border border-line">
-            DRAFT
-          </span>
-        );
-      case "DEPRECATED":
-        return (
-          <span className="inline-flex items-center gap-1 text-micro font-semibold px-2 py-0.5 rounded-sm bg-gray-100 text-gray-500">
-            DEPRECATED
-          </span>
-        );
-    }
-  };
+  const filtersActive = searchQuery || authorityFilter !== "ALL" || jurisdictionFilter !== "ALL" || platformFilter !== "ALL" || stageFilter !== "ALL";
 
   return (
     <>
       <PageHeader
-        eyebrow="Compliance Knowledge Governance"
-        title="Compliance Policy Library"
-        description="Verified government regulations, ad platform standards, and internal risk policies for US and UAE healthcare and aesthetics advertising. 100% persisted in PostgreSQL."
+        eyebrow="Compliance knowledge"
+        title="Policy Library"
+        description="Advertising rules for healthcare and medical aesthetics, written in Clyntique's own words and linked to the official source. One admin verifies each version and a different admin approves it before the AI may use it."
         action={
           <div className="flex items-center gap-2">
             <Link href="/admin/policy-library/impact" className={buttonClasses({ variant: "ghost", size: "sm" })}>
               Rule changes &amp; impact
             </Link>
             {isPolicyAdmin && (
-              <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleImportCandidates}
-                  disabled={isImporting}
-                >
-                  {isImporting ? "Importing Candidates..." : "Import Candidate Policies"}
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleOpenCreateRule}>
-                  <PlusIcon className="size-4" /> New Policy Rule
-                </Button>
-              </>
+              <Button variant="primary" size="sm" onClick={() => setEditor({ mode: "CREATE_RULE", rule: null, version: null })}>
+                <PlusIcon className="size-4" /> New rule
+              </Button>
             )}
           </div>
         }
       />
 
-      {importStatus && (
-        <div
-          className={`mb-4 rounded-lg p-3.5 text-small border flex items-center justify-between ${
-            importStatus.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-              : "bg-critical-soft text-critical-ink border-critical-line"
-          }`}
-        >
-          <span>{importStatus.text}</span>
-          <button
-            onClick={() => setImportStatus(null)}
-            className="text-caption font-semibold underline hover:opacity-80"
-          >
+      {status && (
+        <div role="status" className="mb-4 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 p-3.5 text-small text-emerald-800">
+          <span>{status}</span>
+          <button onClick={() => setStatus(null)} className="text-caption font-semibold underline hover:opacity-80">
             Dismiss
           </button>
         </div>
       )}
 
-      {/* Main Tabs */}
-      <div className="flex border-b border-line mb-6">
-        <button
-          type="button"
-          onClick={() => setActiveTab("RULES")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-small font-medium border-b-2 transition-all cursor-pointer active:scale-[0.99] ${
-            activeTab === "RULES"
-              ? "border-brand-600 text-ink font-semibold"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
+      <div className="mb-6 flex overflow-x-auto border-b border-line">
+        <button type="button" onClick={() => setActiveTab("RULES")} className={tabClass(activeTab === "RULES")}>
           <ShieldIcon className="size-4" />
-          <span>Policy Rules Directory ({rules.length})</span>
+          <span>Rules ({rules.length})</span>
         </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("SANDBOX")}
-          className={`flex items-center gap-2 px-4 py-2.5 text-small font-medium border-b-2 transition-all cursor-pointer active:scale-[0.99] ${
-            activeTab === "SANDBOX"
-              ? "border-brand-600 text-ink font-semibold"
-              : "border-transparent text-muted hover:text-ink"
-          }`}
-        >
+        <button type="button" onClick={() => setActiveTab("SOURCES")} className={tabClass(activeTab === "SOURCES")}>
+          <CheckIcon className="size-4" />
+          <span>Sources ({sources.length})</span>
+        </button>
+        <button type="button" onClick={() => setActiveTab("COVERAGE")} className={tabClass(activeTab === "COVERAGE")}>
           <LayersIcon className="size-4" />
-          <span>AI Grounding & Coverage Sandbox</span>
+          <span>Coverage check</span>
         </button>
       </div>
 
-      {activeTab === "SANDBOX" ? (
-        <GroundingSandbox />
+      {activeTab === "SOURCES" ? (
+        <SourcesPanel sources={sources} isPolicyAdmin={isPolicyAdmin} onChanged={changed} />
+      ) : activeTab === "COVERAGE" ? (
+        <CoverageCheck />
       ) : (
         <div className="space-y-6">
-          {/* Metrics Overview Strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3.5">
-            <Card className="p-3.5 bg-surface">
-              <span className="text-caption text-muted block">Active Verified Rules</span>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-title font-bold text-ink">{initialMetrics.totalActive}</span>
-                <span className="text-[11px] text-emerald-700 font-medium">Verified</span>
-              </div>
-            </Card>
-
-            <Card className="p-3.5 bg-surface">
-              <span className="text-caption text-muted block">Government Regulations</span>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-title font-bold text-brand-700">{initialMetrics.regulations}</span>
-                <span className="text-[11px] text-muted">FTC, FDA, MOHAP, NMC</span>
-              </div>
-            </Card>
-
-            <Card className="p-3.5 bg-surface">
-              <span className="text-caption text-muted block">Platform Policies</span>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-title font-bold text-ink">{initialMetrics.platformPolicies}</span>
-                <span className="text-[11px] text-muted">TikTok, Meta, Google</span>
-              </div>
-            </Card>
-
-            <Card className="p-3.5 bg-surface">
-              <span className="text-caption text-muted block">Internal Risk Guidance</span>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-title font-bold text-ink">{initialMetrics.internalRisk}</span>
-                <span className="text-[11px] text-muted">Clyntique Protocols</span>
-              </div>
-            </Card>
-
-            <Card className={`p-3.5 ${initialMetrics.pendingApproval > 0 ? "border-amber-300 bg-amber-50/40" : "bg-surface"}`}>
-              <span className="text-caption text-amber-900 block font-medium">Pending Maker-Checker</span>
-              <div className="flex items-baseline gap-1.5 mt-1">
-                <span className="text-title font-bold text-amber-800">{initialMetrics.pendingApproval}</span>
-                <span className="text-[11px] text-amber-700">Awaiting Approval</span>
-              </div>
-            </Card>
+          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-5">
+            {metricCards.map((m) => (
+              <Card key={m.label} className="bg-surface p-3.5">
+                <span className="block text-caption text-muted">{m.label}</span>
+                <span className="mt-1 block text-title font-bold text-ink">{m.value}</span>
+                <span className="text-[11px] text-muted">{m.hint}</span>
+              </Card>
+            ))}
           </div>
 
-          {/* Empty State when no rules exist in PostgreSQL */}
+          {metrics.approvedActive === 0 && (
+            <p className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3.5 text-small text-amber-900">
+              <AlertIcon className="mt-0.5 size-4 shrink-0" />
+              No rule is approved yet, so AI checks report insufficient policy coverage for every submission.
+            </p>
+          )}
+
           {rules.length === 0 ? (
-            <div className="rounded-xl border border-line bg-surface p-12 text-center max-w-2xl mx-auto shadow-xs my-8">
-              <div className="size-12 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center mx-auto mb-4 border border-brand-200">
+            <div className="mx-auto my-8 max-w-2xl rounded-xl border border-line bg-surface p-12 text-center shadow-xs">
+              <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full border border-brand-200 bg-brand-50 text-brand-700">
                 <ShieldIcon className="size-6" />
               </div>
-              <h3 className="text-body font-bold text-ink">Compliance Policy Library is Empty</h3>
-              <p className="text-small text-muted mt-2 leading-relaxed max-w-lg mx-auto">
-                Zero policy rules currently exist in PostgreSQL. Import our curated set of 18 candidate rules from official US and UAE regulatory documentation (FTC, FDA, MOHAP, TikTok, Meta, Google) as <span className="font-semibold text-ink">UNVERIFIED</span> and <span className="font-semibold text-ink">PENDING_APPROVAL</span> to begin maker-checker review.
+              <h3 className="text-body font-bold text-ink">No rules yet</h3>
+              <p className="mx-auto mt-2 max-w-lg text-small leading-relaxed text-muted">
+                Add the official source first, then write the rule in your own words and submit it. An admin verifies it
+                against the source, and a different admin, who neither wrote nor verified it, approves it before the AI can use it.
               </p>
               {isPolicyAdmin && (
                 <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                  <Button variant="primary" onClick={handleImportCandidates} disabled={isImporting}>
-                    <PlusIcon className="size-4" />
-                    {isImporting ? "Importing Candidates..." : "Import 18 Official Candidate Policies"}
+                  <Button variant="secondary" onClick={() => setActiveTab("SOURCES")}>
+                    Add a source
                   </Button>
-                  <Button variant="secondary" onClick={handleOpenCreateRule}>
-                    Create Custom Rule
+                  <Button variant="primary" onClick={() => setEditor({ mode: "CREATE_RULE", rule: null, version: null })}>
+                    <PlusIcon className="size-4" /> New rule
                   </Button>
                 </div>
               )}
             </div>
           ) : (
             <>
-              {/* Faceted Filter Toolbar */}
-              <div className="rounded-xl border border-line bg-surface p-4 space-y-3.5">
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              {/* Search input */}
-              <div className="relative flex-1 w-full">
-                <SearchIcon className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search rules by code, citation (e.g. 16 CFR § 255.5), keyword, or authority..."
-                  className="w-full rounded-md border border-line bg-surface pl-9 pr-3 py-2 text-small text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
-                />
-              </div>
-
-              {/* Status pills */}
-              <div className="flex items-center gap-1 shrink-0 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-                {(["ALL", "ACTIVE", "PENDING_APPROVAL"] as const).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setStatusFilter(status)}
-                    className={`px-3 py-1.5 rounded-md text-caption font-medium transition-colors whitespace-nowrap ${
-                      statusFilter === status
-                        ? "bg-brand-600 text-white shadow-xs"
-                        : "bg-surface text-ink-soft hover:bg-subtle border border-line"
-                    }`}
+              <div className="space-y-3.5 rounded-xl border border-line bg-surface p-4">
+                <div className="relative w-full">
+                  <SearchIcon className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by code, title, citation or keyword"
+                    className="w-full rounded-md border border-line bg-surface py-2 pl-9 pr-3 text-small text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  />
+                </div>
+                <div className="flex items-center gap-1 overflow-x-auto pb-1">
+                  {STAGES.map((st) => (
+                    <button
+                      key={st.key}
+                      onClick={() => setStageFilter(st.key)}
+                      className={`whitespace-nowrap rounded-md px-3 py-1.5 text-caption font-medium transition-colors ${
+                        stageFilter === st.key ? "bg-brand-600 text-white shadow-xs" : "border border-line bg-surface text-ink-soft hover:bg-subtle"
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3 text-caption">
+                  <select
+                    value={authorityFilter}
+                    onChange={(e) => setAuthorityFilter(e.target.value as PolicyFilterCriteria["authorityType"])}
+                    className="rounded-md border border-line bg-surface px-2.5 py-1 text-caption text-ink focus:outline-none focus:ring-1 focus:ring-brand-500"
                   >
-                    {status === "ALL" ? "All Statuses" : status === "ACTIVE" ? "Active Only" : "Pending Approval"}
-                  </button>
-                ))}
+                    <option value="ALL">All authority types</option>
+                    <option value="REGULATION">{AUTHORITY_LABEL.REGULATION}</option>
+                    <option value="PLATFORM_POLICY">{AUTHORITY_LABEL.PLATFORM_POLICY}</option>
+                    <option value="INTERNAL_RISK">{AUTHORITY_LABEL.INTERNAL_RISK}</option>
+                  </select>
+                  <select
+                    value={jurisdictionFilter}
+                    onChange={(e) => setJurisdictionFilter(e.target.value)}
+                    className="rounded-md border border-line bg-surface px-2.5 py-1 text-caption text-ink focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  >
+                    <option value="ALL">All markets</option>
+                    <option value="US">United States</option>
+                    <option value="AE">United Arab Emirates</option>
+                    <option value="CA">Canada</option>
+                    <option value="GLOBAL">All-market rules</option>
+                  </select>
+                  <select
+                    value={platformFilter}
+                    onChange={(e) => setPlatformFilter(e.target.value)}
+                    className="rounded-md border border-line bg-surface px-2.5 py-1 text-caption text-ink focus:outline-none focus:ring-1 focus:ring-brand-500"
+                  >
+                    <option value="ALL">All platforms</option>
+                    <option value="META">Meta</option>
+                    <option value="GOOGLE">Google Ads</option>
+                    <option value="TIKTOK">TikTok</option>
+                  </select>
+                  {filtersActive && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setAuthorityFilter("ALL");
+                        setJurisdictionFilter("ALL");
+                        setPlatformFilter("ALL");
+                        setStageFilter("ALL");
+                      }}
+                      className="ml-auto text-caption font-medium text-brand-600 hover:text-brand-800"
+                    >
+                      Reset filters
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Facet Selectors */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-line text-caption">
-              <span className="text-muted font-medium mr-1">Facets:</span>
-
-              {/* Authority */}
-              <select
-                value={authorityFilter}
-                onChange={(e) => setAuthorityFilter(e.target.value as PolicyFilterCriteria["authorityType"])}
-                className="rounded-md border border-line px-2.5 py-1 text-caption text-ink bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500"
-              >
-                <option value="ALL">All Authorities</option>
-                <option value="REGULATION">Government Regulations</option>
-                <option value="PLATFORM_POLICY">Platform Policies</option>
-                <option value="INTERNAL_RISK">Internal Risk</option>
-              </select>
-
-              {/* Jurisdiction */}
-              <select
-                value={jurisdictionFilter}
-                onChange={(e) => setJurisdictionFilter(e.target.value)}
-                className="rounded-md border border-line px-2.5 py-1 text-caption text-ink bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500"
-              >
-                <option value="ALL">All Jurisdictions</option>
-                <option value="US">US (United States)</option>
-                <option value="AE">AE (United Arab Emirates)</option>
-                <option value="GLOBAL">Global / Platform</option>
-              </select>
-
-              {/* Platform */}
-              <select
-                value={platformFilter}
-                onChange={(e) => setPlatformFilter(e.target.value)}
-                className="rounded-md border border-line px-2.5 py-1 text-caption text-ink bg-surface focus:outline-none focus:ring-1 focus:ring-brand-500"
-              >
-                <option value="ALL">All Platforms</option>
-                <option value="TIKTOK">TikTok</option>
-                <option value="META">Meta</option>
-                <option value="GOOGLE">Google Ads</option>
-              </select>
-
-              {/* Clear filters */}
-              {(searchQuery || authorityFilter !== "ALL" || jurisdictionFilter !== "ALL" || platformFilter !== "ALL" || statusFilter !== "ALL") && (
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setAuthorityFilter("ALL");
-                    setJurisdictionFilter("ALL");
-                    setPlatformFilter("ALL");
-                    setStatusFilter("ALL");
-                  }}
-                  className="text-brand-600 hover:text-brand-800 text-caption font-medium ml-auto"
-                >
-                  Reset filters
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Rules Table */}
-          <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-line bg-subtle/50 text-caption font-semibold text-muted">
-                    <th className="py-3 px-4">Rule Code & Authority</th>
-                    <th className="py-3 px-4">Rule Title & Summary</th>
-                    <th className="py-3 px-4">Scope (Market / Platform)</th>
-                    <th className="py-3 px-4">Primary Official Citation</th>
-                    <th className="py-3 px-4">Version & Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-line text-small">
-                  {filteredRules.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="py-10 text-center text-muted">
-                        No policy rules matched your filter criteria.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredRules.map((rule) => {
-                      const ver = rule.currentVersion;
-                      const primarySource = ver.sources[0];
-                      return (
-                        <tr
-                          key={rule.id}
-                          className="hover:bg-subtle/40 transition-colors cursor-pointer group"
-                          onClick={() => setSelectedRule(rule)}
-                        >
-                          {/* Code & Authority */}
-                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                            <span className="font-mono text-caption font-bold text-brand-700 block">
-                              {rule.code}
-                            </span>
-                            <div className="mt-1">{getAuthorityBadge(rule.authorityType)}</div>
-                          </td>
-
-                          {/* Title & Summary */}
-                          <td className="py-3.5 px-4 align-top max-w-sm">
-                            <p className="font-semibold text-ink group-hover:text-brand-700 transition-colors">
-                              {rule.title}
-                            </p>
-                            <p className="text-caption text-muted mt-1 line-clamp-2 leading-relaxed">
-                              {ver.summary}
-                            </p>
-                          </td>
-
-                          {/* Scope */}
-                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                            <div className="flex flex-col gap-1">
-                              <span className="text-caption font-medium text-ink">
-                                📍 {rule.jurisdictionCode} {rule.subJurisdiction ? `· ${rule.subJurisdiction}` : ""}
-                              </span>
-                              <span className="text-caption text-muted">
-                                📱 {rule.platformCode ?? "Platform-agnostic"}
-                              </span>
-                              <span className="text-[11px] font-mono text-muted uppercase">
-                                {rule.category}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Primary Citation */}
-                          <td className="py-3.5 px-4 align-top max-w-xs">
-                            {primarySource ? (
-                              <div>
-                                <span className="font-mono text-caption font-medium text-ink block truncate">
-                                  {primarySource.sectionReference}
-                                </span>
-                                <span className="text-caption text-muted block truncate mt-0.5">
-                                  {primarySource.authorityName}
-                                </span>
-                              </div>
-                            ) : (
-                              <span className="text-muted text-caption">Internal guidance</span>
-                            )}
-                          </td>
-
-                          {/* Version & Status */}
-                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
-                            <div className="flex flex-col gap-1">
-                              <div>{getStatusBadge(ver.status)}</div>
-                              <span className="text-caption text-muted">
-                                Version <strong className="text-ink">v{ver.versionNumber}.0</strong>
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Actions */}
-                          <td className="py-3.5 px-4 align-top text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1.5">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setSelectedRule(rule)}
-                              >
-                                Inspect & History
-                              </Button>
-                              {ver.status === "PENDING_APPROVAL" && (
-                                <Button
-                                  variant="primary"
-                                  size="sm"
-                                  onClick={() => setSelectedRule(rule)}
-                                >
-                                  Review
-                                </Button>
-                              )}
-                            </div>
+              <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-xs">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left">
+                    <thead>
+                      <tr className="border-b border-line bg-subtle/50 text-caption font-semibold text-muted">
+                        <th className="px-4 py-3">Rule</th>
+                        <th className="px-4 py-3">Summary</th>
+                        <th className="px-4 py-3">Scope</th>
+                        <th className="px-4 py-3">Source</th>
+                        <th className="px-4 py-3">Stage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line text-small">
+                      {filteredRules.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-10 text-center text-muted">
+                            No rules match these filters.
                           </td>
                         </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
+                      ) : (
+                        filteredRules.map((rule) => {
+                          const ver = rowVersion(rule);
+                          const primary = ver.sources[0];
+                          return (
+                            <tr key={rule.id} className="group cursor-pointer transition-colors hover:bg-subtle/40" onClick={() => setSelectedRule(rule)}>
+                              <td className="whitespace-nowrap px-4 py-3.5 align-top">
+                                <span className="block font-mono text-caption font-bold text-brand-700">{rule.code}</span>
+                                <div className="mt-1">
+                                  <Badge tone={rule.authorityType === "REGULATION" ? "brand" : rule.authorityType === "PLATFORM_POLICY" ? "neutral" : "outline"}>
+                                    {AUTHORITY_LABEL[rule.authorityType]}
+                                  </Badge>
+                                </div>
+                              </td>
+                              <td className="max-w-sm px-4 py-3.5 align-top">
+                                <p className="font-semibold text-ink transition-colors group-hover:text-brand-700">{ver.title || rule.title}</p>
+                                <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-muted">{ver.summary}</p>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3.5 align-top text-caption">
+                                <span className="block font-medium text-ink">
+                                  {rule.jurisdictionCode}
+                                  {rule.subJurisdiction ? ` · ${rule.subJurisdiction}` : ""}
+                                </span>
+                                <span className="block text-muted">{rule.platformCode ?? "Any platform"}</span>
+                              </td>
+                              <td className="max-w-xs px-4 py-3.5 align-top text-caption">
+                                {primary ? (
+                                  <>
+                                    <span className="block truncate font-mono font-medium text-ink">{primary.sectionReference}</span>
+                                    <span className="mt-0.5 block truncate text-muted">{primary.authorityName}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-muted">No source cited</span>
+                                )}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3.5 align-top text-caption">
+                                <span className="block font-medium text-ink">{versionStage(ver)}</span>
+                                <span className="text-muted">Version {ver.versionNumber}</span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       )}
-    </div>
-  )}
 
-      {/* Detail Drawer */}
       <RuleDrawer
+        key={selectedRule?.id ?? "none"}
         rule={selectedRule}
         currentUser={currentUser}
         isPolicyAdmin={isPolicyAdmin}
         onClose={() => setSelectedRule(null)}
-        onRuleUpdated={handleRuleUpdated}
-        onProposeVersion={handleOpenProposeVersion}
+        onChanged={changed}
+        onProposeVersion={(rule) => setEditor({ mode: "PROPOSE_VERSION", rule, version: null })}
+        onEditDraft={(rule, version) => setEditor({ mode: "EDIT_DRAFT", rule, version })}
       />
 
-      {/* Rule Creator / Version Proposer Modal */}
-      {isEditorOpen && (
+      {editor && (
         <RuleEditorModal
-          mode={editorMode}
-          ruleToVersion={ruleToVersion}
+          mode={editor.mode}
+          rule={editor.rule}
+          version={editor.version}
           sources={sources}
-          onClose={() => setIsEditorOpen(false)}
-          onSuccess={() => {
-            setIsEditorOpen(false);
-            // Refresh rules from store
-            window.location.reload();
-          }}
+          onClose={() => setEditor(null)}
+          onSuccess={changed}
         />
       )}
     </>

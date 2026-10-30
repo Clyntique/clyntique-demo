@@ -123,7 +123,7 @@ async function main() {
 
   const project = await prisma.project.create({ data: { name: `[TEST] Concurrency check ${new Date().toISOString()}`, clientId: client.id } });
   const draft = async (name: string, versions = 1) => {
-    const d = must("draft", await createDraft(client, { projectId: project.id, name: `[TEST] ${name}`, format: "STATIC", marketCodes: ["US"], platformCodes: ["META"] }));
+    const d = must("draft", await createDraft(client, { projectId: project.id, name: `[TEST] ${name}`, format: "STATIC", industry: "HEALTHCARE", marketCodes: ["US"], platformCodes: ["META"] }));
     for (let n = 1; n <= versions; n++) await prisma.creativeVersion.create({ data: placeholderVersion(d.creativeId, client, n) });
     return d.creativeId;
   };

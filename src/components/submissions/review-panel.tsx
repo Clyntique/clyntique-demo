@@ -32,6 +32,8 @@ import { FormError } from "@/components/forms/form-error";
 // components only manage pending state and show the result.
 
 export type TargetChoice = { code: string; name: string };
+/** A verified, approved policy rule version a reviewer may cite (re-checked on the server). */
+export type RuleChoice = { versionId: string; label: string };
 
 const SEVERITIES: FindingSeverity[] = ["HIGH", "MEDIUM", "LOW", "ADVISORY"];
 const ACTIONS: FindingAction[] = ["REVISE_CONTENT", "PROVIDE_EVIDENCE", "CLARIFY", "ACKNOWLEDGE"];
@@ -77,15 +79,72 @@ type FindingDefaults = {
   actionDetails: string;
   markets: string[];
   platforms: string[];
+  claimText: string;
+  claimLocation: string;
+  suggestedRevision: string;
+  ruleVersionId: string;
 };
 
-const EMPTY: FindingDefaults = { issue: "", explanation: "", severity: "", requiredAction: "", actionDetails: "", markets: [], platforms: [] };
+const EMPTY: FindingDefaults = {
+  issue: "",
+  explanation: "",
+  severity: "",
+  requiredAction: "",
+  actionDetails: "",
+  markets: [],
+  platforms: [],
+  claimText: "",
+  claimLocation: "",
+  suggestedRevision: "",
+  ruleVersionId: "",
+};
 
-function FindingFields({ d, markets, platforms, idPrefix }: { d: FindingDefaults; markets: TargetChoice[]; platforms: TargetChoice[]; idPrefix: string }) {
+function FindingFields({
+  d,
+  markets,
+  platforms,
+  rules,
+  idPrefix,
+  currentRule,
+}: {
+  d: FindingDefaults;
+  markets: TargetChoice[];
+  platforms: TargetChoice[];
+  rules: RuleChoice[];
+  idPrefix: string;
+  /** The rule an existing draft already cites, kept as an option even if it isn't citable any more. */
+  currentRule?: RuleChoice | null;
+}) {
+  const ruleOptions = currentRule && !rules.some((r) => r.versionId === currentRule.versionId) ? [currentRule, ...rules] : rules;
   return (
     <>
       <Field label="Issue" hint="One line, e.g. “Unsupported ‘clinically proven’ claim”.">
         <Input name="issue" defaultValue={d.issue} maxLength={300} required />
+      </Field>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="Claim in the creative (optional)" hint="The exact words, e.g. “Clinically proven”.">
+          <Input name="claimText" defaultValue={d.claimText} maxLength={300} />
+        </Field>
+        <Field label="Where it appears (optional)" hint="e.g. Headline, caption, 0:05 voice-over.">
+          <Input name="claimLocation" defaultValue={d.claimLocation} maxLength={120} />
+        </Field>
+      </div>
+      <Field
+        label="Policy cited (optional)"
+        hint={
+          ruleOptions.length
+            ? "Verified, approved rules that apply to this submission's markets, platforms and industry."
+            : "No verified, approved rule applies to this submission yet, so the finding stands on your explanation."
+        }
+      >
+        <Select name="ruleVersionId" defaultValue={d.ruleVersionId} disabled={ruleOptions.length === 0}>
+          <option value="">No policy cited</option>
+          {ruleOptions.map((r) => (
+            <option key={r.versionId} value={r.versionId}>
+              {r.label}
+            </option>
+          ))}
+        </Select>
       </Field>
       <Field label="Explanation" hint="Why this is an issue for the selected markets and platforms.">
         <Textarea name="explanation" defaultValue={d.explanation} maxLength={4000} className="min-h-20" required />
@@ -117,6 +176,9 @@ function FindingFields({ d, markets, platforms, idPrefix }: { d: FindingDefaults
       </Field>
       <Field label="What exactly should the client do?" hint="Specific and actionable, e.g. “Provide the study behind the 2× claim, or remove the claim.”">
         <Textarea name="actionDetails" defaultValue={d.actionDetails} maxLength={4000} className="min-h-20" required />
+      </Field>
+      <Field label="Suggested compliant wording (optional)" hint="A starting point the client may use; they remain responsible for their ad.">
+        <Textarea name="suggestedRevision" defaultValue={d.suggestedRevision} maxLength={4000} className="min-h-16" />
       </Field>
       {(markets.length > 0 || platforms.length > 0) && (
         <fieldset className="flex flex-col gap-1.5">
@@ -154,10 +216,24 @@ function fromState(state: ReviewActionState, fallback: FindingDefaults): Finding
     actionDetails: s("actionDetails"),
     markets: a("markets"),
     platforms: a("platforms"),
+    claimText: s("claimText"),
+    claimLocation: s("claimLocation"),
+    suggestedRevision: s("suggestedRevision"),
+    ruleVersionId: s("ruleVersionId"),
   };
 }
 
-export function AddFindingForm({ creativeId, markets, platforms }: { creativeId: string; markets: TargetChoice[]; platforms: TargetChoice[] }) {
+export function AddFindingForm({
+  creativeId,
+  markets,
+  platforms,
+  rules = [],
+}: {
+  creativeId: string;
+  markets: TargetChoice[];
+  platforms: TargetChoice[];
+  rules?: RuleChoice[];
+}) {
   const [open, setOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [state, action, pending] = useActionState<ReviewActionState, FormData>(async (prev, fd) => {
@@ -185,7 +261,7 @@ export function AddFindingForm({ creativeId, markets, platforms }: { creativeId:
       </div>
       <FormError message={state?.error} />
       <Ok message={state?.ok} />
-      <FindingFields d={fromState(state?.ok ? undefined : state, EMPTY)} markets={markets} platforms={platforms} idPrefix={`new-${formKey}`} />
+      <FindingFields d={fromState(state?.ok ? undefined : state, EMPTY)} markets={markets} platforms={platforms} rules={rules} idPrefix={`new-${formKey}`} />
       <div className="flex justify-end gap-2 border-t border-line pt-4">
         <Button variant="ghost" onClick={() => setOpen(false)}>
           Close
@@ -198,7 +274,17 @@ export function AddFindingForm({ creativeId, markets, platforms }: { creativeId:
   );
 }
 
-export function DraftFindingControls({ finding, markets, platforms }: { finding: FindingView; markets: TargetChoice[]; platforms: TargetChoice[] }) {
+export function DraftFindingControls({
+  finding,
+  markets,
+  platforms,
+  rules = [],
+}: {
+  finding: FindingView;
+  markets: TargetChoice[];
+  platforms: TargetChoice[];
+  rules?: RuleChoice[];
+}) {
   const [mode, setMode] = useState<"idle" | "edit" | "dismiss">("idle");
   const [editState, editAction, editing] = useActionState<ReviewActionState, FormData>(async (prev, fd) => {
     const r = await updateFindingAction(prev, fd);
@@ -215,7 +301,12 @@ export function DraftFindingControls({ finding, markets, platforms }: { finding:
     actionDetails: finding.actionDetails,
     markets: finding.marketCodes,
     platforms: finding.platformCodes,
+    claimText: finding.claimText ?? "",
+    claimLocation: finding.claimLocation ?? "",
+    suggestedRevision: finding.suggestedRevision ?? "",
+    ruleVersionId: finding.policyVersionId ?? "",
   };
+  const currentRule = finding.policy && finding.policyVersionId ? { versionId: finding.policyVersionId, label: `${finding.policy.ruleCode} v${finding.policy.versionNumber} — ${finding.policy.title}` } : null;
 
   return (
     <div className="mt-3 border-t border-line pt-3">
@@ -234,7 +325,7 @@ export function DraftFindingControls({ finding, markets, platforms }: { finding:
         <form action={editAction} className="flex flex-col gap-4" noValidate>
           <input type="hidden" name="findingId" value={finding.id} />
           <FormError message={editState?.error} />
-          <FindingFields d={fromState(editState, defaults)} markets={markets} platforms={platforms} idPrefix={`edit-${finding.id}`} />
+          <FindingFields d={fromState(editState, defaults)} markets={markets} platforms={platforms} rules={rules} currentRule={currentRule} idPrefix={`edit-${finding.id}`} />
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setMode("idle")}>
               Cancel

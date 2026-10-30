@@ -1,10 +1,12 @@
 import "server-only";
 import type {
   CreativeStatus,
+  EvidenceAssessmentResult,
   EvidenceOrigin,
   EvidenceType,
   EvidenceVisibility,
   FindingAction,
+  FindingOrigin,
   FindingSeverity,
   FindingStatus,
   MediaType,
@@ -15,7 +17,17 @@ import { ReviewOutcome as Outcomes } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { evidenceKindFor } from "@/lib/evidence-files";
 import { prisma } from "@/lib/prisma";
-import { checkOutcome, clientFindingView, evidenceIsFinal, submittedToTeam, submittedWithRound, teamFindingView, type Unmet } from "@/lib/workflow/findings";
+import {
+  publishedWithDecision,
+  checkOutcome,
+  clientFindingView,
+  evidenceIsFinal,
+  submittedIn,
+  submittedToTeam,
+  submittedWithRound,
+  teamFindingView,
+  type Unmet,
+} from "@/lib/workflow/findings";
 import { authorize } from "@/lib/workflow/policy";
 import { loadReadiness } from "@/lib/workflow/readiness";
 import { creativeScope } from "./workspace";
@@ -67,6 +79,16 @@ export type FindingView = {
   entries: FindingEntry[];
   /** Evidence items linked to this finding (ids into SubmissionReview.evidence). */
   evidenceIds: string[];
+  /** The claim and part of the creative concerned, and suggested compliant wording (P0). */
+  claimText: string | null;
+  claimLocation: string | null;
+  suggestedRevision: string | null;
+  /** REVIEWER, or AI_SUGGESTION_ACCEPTED (a reviewer accepted an AI suggestion; still a reviewer finding). */
+  origin: FindingOrigin;
+  /** The reviewed policy rule version it cites, as recorded (never internal notes). */
+  policy: PolicyReferenceView | null;
+  /** TEAM only: the cited version's id, for pre-filling the edit form. */
+  policyVersionId: string | null;
 };
 
 export type DecisionView = {
@@ -103,6 +125,59 @@ export type EvidenceView = {
   findingIds: string[];
   /** CLIENT only: may withdraw it now (their own, not yet part of a submitted round). */
   withdrawable: boolean;
+  /** The claim it supports and where it appears (decision D3). */
+  claimText: string | null;
+  claimLocation: string | null;
+  /** The creative version that was newest when it was added. */
+  versionNumber: number | null;
+  /** The cycle and round it was first submitted with, across cycles; null while being prepared. */
+  submittedIn: { cycleNumber: number; roundNumber: number } | null;
+  /**
+   * Team assessments, oldest first. TEAM sees all with the reviewer's name;
+   * the client only those published with a later decision, as "Clyntique reviewer".
+   */
+  assessments: EvidenceAssessmentView[];
+  /** TEAM only: may record an assessment now. */
+  assessable: boolean;
+  /** Clyntique evidence only: the reviewed policy rule version it cites. */
+  policy: PolicyReferenceView | null;
+};
+
+/**
+ * A cited Policy Library rule version, as both roles may see it: Clyntique's
+ * own summary and the official sources, never verification or admin notes.
+ * The version is the one cited at the time; `superseded` says a newer one exists.
+ */
+export type PolicyReferenceView = {
+  ruleCode: string;
+  title: string;
+  versionNumber: number;
+  summary: string;
+  restrictionLevel: string | null;
+  restrictedClaims: string[];
+  substantiationRequirements: string[];
+  authorityType: string;
+  jurisdictionCode: string;
+  platformCode: string | null;
+  superseded: boolean;
+  citations: {
+    sourceName: string;
+    publisher: string;
+    sectionReference: string;
+    sectionTitle: string;
+    url: string;
+    quotation: string | null;
+    sourceUpdatedAt: Date | null;
+  }[];
+};
+
+export type EvidenceAssessmentView = {
+  id: string;
+  result: EvidenceAssessmentResult;
+  note: string | null;
+  reviewerName: string;
+  cycleNumber: number;
+  createdAt: Date;
 };
 
 export type RoundView = {
@@ -132,6 +207,68 @@ export type SubmissionReview = {
   /** CLIENT only, while changes are requested: what's still needed before resubmitting. */
   readiness: { gaps: Unmet[]; latestVersionNumber: number } | null;
 };
+
+const POLICY_REFERENCE_SELECT = {
+  select: {
+    versionNumber: true,
+    title: true,
+    summary: true,
+    restrictionLevel: true,
+    restrictedClaims: true,
+    substantiationRequirements: true,
+    status: true,
+    rule: { select: { code: true, authorityType: true, jurisdictionCode: true, platformCode: true } },
+    sources: {
+      orderBy: { createdAt: "asc" },
+      select: { sectionReference: true, sectionTitle: true, directUrl: true, excerpt: true, sourceUpdatedAt: true, source: { select: { name: true, authorityName: true } } },
+    },
+  },
+} as const;
+
+type PolicyReferenceRow = {
+  versionNumber: number;
+  title: string;
+  summary: string;
+  restrictionLevel: string | null;
+  restrictedClaims: string[];
+  substantiationRequirements: string[];
+  status: string;
+  rule: { code: string; authorityType: string; jurisdictionCode: string; platformCode: string | null };
+  sources: {
+    sectionReference: string;
+    sectionTitle: string;
+    directUrl: string;
+    excerpt: string | null;
+    sourceUpdatedAt: Date | null;
+    source: { name: string; authorityName: string };
+  }[];
+};
+
+function policyReference(v: PolicyReferenceRow | null): PolicyReferenceView | null {
+  if (!v) return null;
+  return {
+    ruleCode: v.rule.code,
+    title: v.title,
+    versionNumber: v.versionNumber,
+    summary: v.summary,
+    restrictionLevel: v.restrictionLevel,
+    restrictedClaims: v.restrictedClaims,
+    substantiationRequirements: v.substantiationRequirements,
+    authorityType: v.rule.authorityType,
+    jurisdictionCode: v.rule.jurisdictionCode,
+    platformCode: v.rule.platformCode,
+    superseded: v.status !== "ACTIVE",
+    citations: v.sources.map((c) => ({
+      sourceName: c.source.name,
+      publisher: c.source.authorityName,
+      sectionReference: c.sectionReference,
+      sectionTitle: c.sectionTitle,
+      url: c.directUrl,
+      quotation: c.excerpt || null,
+      sourceUpdatedAt: c.sourceUpdatedAt,
+    })),
+  };
+}
 
 const CLIENT_SEES_FINDINGS: CreativeStatus[] = ["CHANGES_REQUESTED", "SUBMITTED", "IN_REVIEW", "REVIEW_COMPLETE"];
 
@@ -212,6 +349,12 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
               where: team ? {} : { evidence: { visibility: "SHARED" } },
               select: { evidenceId: true, linkedAt: true },
             },
+            claimText: true,
+            claimLocation: true,
+            suggestedRevision: true,
+            origin: true,
+            ruleVersionId: true,
+            ruleVersion: POLICY_REFERENCE_SELECT,
           },
         })
       : Promise.resolve([]),
@@ -253,9 +396,24 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         fileUrl: true,
         addedBy: { select: { name: true } },
         findings: { select: { findingId: true, linkedAt: true } },
+        claimText: true,
+        claimLocation: true,
+        version: { select: { versionNumber: true } },
+        policyRuleVersion: POLICY_REFERENCE_SELECT,
+        assessments: {
+          orderBy: { createdAt: "asc" },
+          select: { id: true, result: true, note: true, createdAt: true, reviewer: { select: { name: true } }, cycle: { select: { number: true } } },
+        },
       },
     }),
   ]);
+  // Every round of every cycle, to tag evidence with where it was submitted.
+  const allRounds = await prisma.submissionRound.findMany({
+    where: { creativeId: creative.id },
+    select: { number: true, submittedAt: true, cycle: { select: { number: true } } },
+  });
+  const allRoundTimes = allRounds.map((r) => ({ number: r.number, cycleNumber: r.cycle.number, submittedAt: r.submittedAt }));
+  const decisionTimes = decisions.map((d) => d.createdAt);
 
   const lastDecisionAt = decisions[0]?.createdAt ?? null;
   const roundTimes = (cycle?.rounds ?? []).map((r) => ({ number: r.number, submittedAt: r.submittedAt }));
@@ -268,7 +426,8 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
   // never reaches the team (the client and the database keep it).
   const visibleEvidence = team
     ? evidence.filter((e) => e.origin !== "CLIENT_SUBMITTED" || (teamMaySee(e.createdAt) && e.withdrawnAt === null))
-    : evidence;
+    : // Clyntique evidence reaches the client with the next published decision, like draft findings.
+      evidence.filter((e) => e.origin !== "REVIEWER_ADDED" || publishedWithDecision(e.createdAt, decisionTimes));
   const visibleEvidenceIds = new Set(visibleEvidence.map((e) => e.id));
 
   const findingViews: FindingView[] = [];
@@ -312,7 +471,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       status,
       versionNumber: f.version?.versionNumber ?? null,
       cycleNumber: f.cycle.number,
-      reviewerName: f.createdBy.name,
+      reviewerName: team ? f.createdBy.name : "Clyntique reviewer", // decision D4
       createdAt: f.createdAt,
       publishedAt: f.publishedAt,
       resolutionNote: status === "RESOLVED" ? f.resolutionNote : null,
@@ -323,12 +482,19 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       platformCodes: team ? f.platforms.map((p) => p.platform.code) : [],
       entries: [...responses, ...reviewMoves].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime()),
       evidenceIds: f.evidence.filter((e) => visibleEvidenceIds.has(e.evidenceId) && (!team || teamMaySee(e.linkedAt))).map((e) => e.evidenceId),
+      claimText: f.claimText,
+      claimLocation: f.claimLocation,
+      suggestedRevision: f.suggestedRevision,
+      origin: f.origin,
+      policy: policyReference(f.ruleVersion),
+      policyVersionId: team ? f.ruleVersionId : null,
     });
   }
 
   const latestRound = cycle?.rounds[0] ?? null;
   const facts = { id: creative.id, workflow: "SUBMISSION_REVIEW" as const, status: creative.status, projectClientId: creative.project.clientId };
   const mayManageEvidence = !team && authorize(user, "MANAGE_EVIDENCE", facts).ok;
+  const mayAssessEvidence = team && authorize(user, "RECORD_FINDING", facts).ok && Boolean(cycle && !cycle.closedAt);
 
   let outcomes: SubmissionReview["outcomes"] = null;
   if (team && cycle && !cycle.closedAt) {
@@ -383,7 +549,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
       versionNumber: d.version.versionNumber,
       roundNumber: d.round.number,
       cycleNumber: d.cycle.number,
-      reviewerName: d.reviewer.name,
+      reviewerName: team ? d.reviewer.name : "Clyntique reviewer", // decision D4
       createdAt: d.createdAt,
     })),
     evidence: visibleEvidence.map((e) => {
@@ -397,7 +563,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         url: e.url,
         origin: e.origin,
         visibility: e.visibility,
-        addedByName: e.addedBy?.name ?? null,
+        addedByName: !team && e.origin === "REVIEWER_ADDED" ? "Clyntique reviewer" : (e.addedBy?.name ?? null),
         withdrawn: e.withdrawnAt !== null,
         withdrawal: e.withdrawnAt ? { byName: e.withdrawnBy?.name ?? null, at: e.withdrawnAt } : null,
         createdAt: e.createdAt,
@@ -410,6 +576,22 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
           e.addedById === user.id &&
           e.withdrawnAt === null &&
           !evidenceIsFinal(e, lastSubmittedAt),
+        claimText: e.claimText,
+        claimLocation: e.claimLocation,
+        versionNumber: e.version?.versionNumber ?? null,
+        submittedIn: submittedIn(e.createdAt, allRoundTimes),
+        assessments: e.assessments
+          .filter((a) => team || publishedWithDecision(a.createdAt, decisionTimes))
+          .map((a) => ({
+            id: a.id,
+            result: a.result,
+            note: a.note,
+            reviewerName: team ? a.reviewer.name : "Clyntique reviewer",
+            cycleNumber: a.cycle.number,
+            createdAt: a.createdAt,
+          })),
+        assessable: mayAssessEvidence && e.origin === "CLIENT_SUBMITTED" && e.withdrawnAt === null,
+        policy: policyReference(e.policyRuleVersion),
       };
     }),
     outcomes,

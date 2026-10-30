@@ -56,6 +56,7 @@ export function createPrismaMock() {
     externalSubmission: model(),
     externalOutcome: model(),
     policyRuleEvent: model(),
+    evidenceAssessment: model(),
     $transaction: vi.fn(),
   };
   // Interactive transactions run the callback against the same mock.
@@ -64,6 +65,13 @@ export function createPrismaMock() {
 }
 
 export type PrismaMock = ReturnType<typeof createPrismaMock>;
+
+/** Market and platform reference rows, as seeded by the submission-workflow migration. */
+export function withReferenceCodes(prisma: PrismaMock) {
+  prisma.market.findMany.mockResolvedValue([{ code: "US" }, { code: "CA" }, { code: "AE" }]);
+  prisma.adPlatform.findMany.mockResolvedValue([{ code: "META" }, { code: "TIKTOK" }, { code: "GOOGLE" }]);
+  return prisma;
+}
 
 export function form(values: Record<string, string>) {
   const data = new FormData();

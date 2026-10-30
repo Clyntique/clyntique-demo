@@ -43,6 +43,8 @@ function rule(over: Partial<PolicyRule> & { version?: Partial<PolicyRule["curren
     createdById: "a",
     createdByName: "A",
     createdAt: "2026-01-01T00:00:00Z",
+    verifiedById: "v",
+    approvedById: "b",
     sources: [
       {
         id: "cit-1",
@@ -152,6 +154,8 @@ function dbRule(over: { verificationStatus?: string; sourceStatus?: string } = {
         createdById: "a",
         createdAt: new Date(),
         approvedById: "b",
+        verifiedById: "v",
+        verifiedBy: { id: "v", name: "V" },
         approvedAt: new Date(),
         createdBy: { id: "a", name: "A" },
         approvedBy: { id: "b", name: "B" },
@@ -313,6 +317,80 @@ describe("analyzeCreativeCompliance", () => {
   });
 });
 
+describe("industry and coverage (P0, decision D2)", () => {
+  beforeEach(() => {
+    h.prisma = createPrismaMock();
+    h.user = TEAM;
+    clearAnalysisCache();
+  });
+
+  const okProvider = (): AIComplianceProvider => ({
+    name: "mock",
+    analyzeCreative: vi.fn().mockResolvedValue({ status: "SUCCESS", summary: "x", extractedVisualText: [], detectedClaims: [], findings: [] }),
+  });
+  const round = (submittedIndustry: string | null) => ({
+    versionId: "v-2",
+    submittedName: "Submitted title",
+    submittedDescription: null,
+    submittedContext: null,
+    submittedIndustry,
+    version: { id: "v-2", versionNumber: 2, fileUrl: null, mimeType: null },
+  });
+  const healthcareRule = () => ({ ...dbRule(), industry: "HEALTHCARE" });
+
+  it("uses the industry declared with the submitted round: medical aesthetics also gets healthcare rules", async () => {
+    setupCreative(h.prisma, { rounds: [round("MEDICAL_AESTHETICS")], rules: [healthcareRule()] });
+    const provider = okProvider();
+    const result = await analyzeCreativeCompliance(TEAM, { creativeId: "cr-1", provider });
+    expect(result.status).toBe("SUCCESS");
+    expect(result.industry).toBe("MEDICAL_AESTHETICS");
+    expect(vi.mocked(provider.analyzeCreative).mock.calls[0][0].industry).toBe("MEDICAL_AESTHETICS");
+  });
+
+  it("OTHER (or unknown) work never gets healthcare rules, so coverage is insufficient", async () => {
+    setupCreative(h.prisma, { rounds: [round("OTHER")], rules: [healthcareRule()] });
+    const provider = okProvider();
+    const result = await analyzeCreativeCompliance(TEAM, { creativeId: "cr-1", provider });
+    expect(result.status).toBe("INSUFFICIENT_COVERAGE");
+    expect(result.summary).toBe(INSUFFICIENT_POLICY_COVERAGE);
+    expect(result.coverage).toEqual([{ market: "US", platform: "META", covered: false, ruleCodes: [], platformRuleCodes: [] }]);
+    expect(provider.analyzeCreative).not.toHaveBeenCalled();
+  });
+
+  it("reports each market and platform pair, flagging the uncovered ones even when the scan ran", async () => {
+    setupCreative(h.prisma, { rounds: [round("HEALTHCARE")], rules: [healthcareRule()] });
+    h.prisma.creative.findUnique.mockResolvedValue({
+      id: "cr-1",
+      name: "x",
+      description: null,
+      context: null,
+      format: "FEED",
+      industry: "HEALTHCARE",
+      markets: [{ market: { code: "US", name: "United States" } }, { market: { code: "AE", name: "United Arab Emirates" } }],
+      platforms: [{ platform: { code: "META", name: "Meta" } }],
+    });
+    const result = await analyzeCreativeCompliance(TEAM, { creativeId: "cr-1", provider: okProvider() });
+    expect(result.status).toBe("SUCCESS");
+    expect(result.coverage).toEqual([
+      { market: "US", platform: "META", covered: true, ruleCodes: ["SYN-TEST-01"], platformRuleCodes: [] },
+      { market: "AE", platform: "META", covered: false, ruleCodes: [], platformRuleCodes: [] },
+    ]);
+  });
+
+  it("gives the model the rule's restricted claims and substantiation requirements", async () => {
+    const r = healthcareRule();
+    Object.assign(r.versions[0], { restrictionLevel: "RESTRICTED", restrictedClaims: ["Guaranteed results"], substantiationRequirements: ["Clinical evidence"] });
+    setupCreative(h.prisma, { rounds: [round("HEALTHCARE")], rules: [r] });
+    const provider = okProvider();
+    await analyzeCreativeCompliance(TEAM, { creativeId: "cr-1", provider });
+    expect(vi.mocked(provider.analyzeCreative).mock.calls[0][0].groundedRules[0]).toMatchObject({
+      restrictionLevel: "RESTRICTED",
+      restrictedClaims: ["Guaranteed results"],
+      substantiationRequirements: ["Clinical evidence"],
+    });
+  });
+});
+
 describe("acceptAIFindingAction", () => {
   beforeEach(() => {
     h.prisma = createPrismaMock();
@@ -330,22 +408,27 @@ describe("acceptAIFindingAction", () => {
   it("records a DRAFT finding linked to the exact rule version, with the database citation", async () => {
     h.prisma.creative.updateMany.mockResolvedValue({ count: 1 }); // row lock
     setupCreative(h.prisma);
-    // recordFinding: the submission is in review with an open round.
-    h.prisma.creative.findUnique.mockResolvedValueOnce({
-      id: "cr-1",
-      name: "x",
-      description: null,
-      context: null,
-      format: "FEED",
-      markets: [{ market: { code: "US", name: "United States" } }],
-      platforms: [{ platform: { code: "META", name: "Meta" } }],
-    });
-    h.prisma.creative.findUnique.mockResolvedValue({ id: "cr-1", workflow: "SUBMISSION_REVIEW", status: "IN_REVIEW", project: { clientId: "client-a" } });
+    // Rule scope lookups (select markets) get the targeting; recordFinding's
+    // guard gets a submission in review with an open round.
+    h.prisma.creative.findUnique.mockImplementation(async ({ select }: { select?: Record<string, unknown> }) =>
+      select?.markets
+        ? {
+            id: "cr-1",
+            name: "x",
+            description: null,
+            context: null,
+            format: "FEED",
+            markets: [{ market: { code: "US", name: "United States" } }],
+            platforms: [{ platform: { code: "META", name: "Meta" } }],
+          }
+        : { id: "cr-1", workflow: "SUBMISSION_REVIEW", status: "IN_REVIEW", project: { clientId: "client-a" } },
+    );
     h.prisma.reviewCycle.findFirst.mockResolvedValue({ id: "cy-1", number: 1, closedAt: null });
     h.prisma.submissionRound.findFirst.mockResolvedValue({ id: "rd-1", number: 1, versionId: "v-2", cycleId: "cy-1" });
     h.prisma.finding.create.mockResolvedValue({ id: "f-1" });
 
-    const res = await acceptAIFindingAction({ creativeId: "cr-1", finding: suggestion("SYN-TEST-01") });
+    h.prisma.aIScanRun.findFirst.mockResolvedValue({ id: "scan-1" });
+    const res = await acceptAIFindingAction({ creativeId: "cr-1", finding: suggestion("SYN-TEST-01"), scanId: "scan-1" });
     expect(res.error).toBeUndefined();
     expect(res).toMatchObject({ ok: true, findingId: "f-1" });
     const data = h.prisma.finding.create.mock.calls[0][0].data;
@@ -355,6 +438,10 @@ describe("acceptAIFindingAction", () => {
     expect(data.explanation).toContain("SYN-TEST-01 v2");
     expect(data.explanation).toContain("SYN §1");
     expect(data.explanation).not.toContain("Invented §99");
+    // Recorded as an accepted AI suggestion, linked to a scan of this submission only.
+    expect(data.origin).toBe("AI_SUGGESTION_ACCEPTED");
+    expect(data.aiScanRunId).toBe("scan-1");
+    expect(h.prisma.aIScanRun.findFirst.mock.calls[0][0].where).toEqual({ id: "scan-1", creativeId: "cr-1" });
   });
 });
 

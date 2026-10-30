@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { ImpactReopenForm } from "@/components/record/lifecycle-forms";
 import { Card, SectionHeader } from "@/components/ui/card";
 import { StatusBadge, TonePill } from "@/components/ui/status-badge";
+import { POLICY_EVENT_LABEL } from "@/lib/policy/labels";
 
 /*
  * Rule-change impact (Oct 19 sprint, TEAM). For each approved or retired
@@ -14,12 +15,6 @@ import { StatusBadge, TonePill } from "@/components/ui/status-badge";
  * to open a re-review; nothing is reopened or resubmitted automatically.
  */
 
-const EVENT_LABEL = {
-  RULE_CREATED: "Rule created",
-  VERSION_PROPOSED: "Version proposed",
-  VERSION_APPROVED: "Version approved",
-  RULE_RETIRED: "Rule retired",
-} as const;
 
 function dateTime(date: Date) {
   return date.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
@@ -68,7 +63,7 @@ export function PolicyImpactView({ impact }: { impact: PolicyImpact }) {
                 {impact.events.map((e) => (
                   <tr key={e.id} className="border-t border-line align-top">
                     <td className="py-1.5 pr-3 whitespace-nowrap text-muted">{dateTime(e.createdAt)}</td>
-                    <td className="py-1.5 pr-3 whitespace-nowrap font-medium text-ink">{EVENT_LABEL[e.kind]}</td>
+                    <td className="py-1.5 pr-3 whitespace-nowrap font-medium text-ink">{POLICY_EVENT_LABEL[e.kind]}</td>
                     <td className="py-1.5 pr-3">
                       <span className="text-record">{e.ruleCode}</span>
                       {e.versionNumber != null && <span className="text-muted"> v{e.versionNumber}</span>}

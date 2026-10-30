@@ -1,3 +1,5 @@
+import type { CoveragePair } from "./applicability";
+
 export type AISeverity = "CRITICAL" | "MAJOR" | "MODERATE" | "MINOR";
 
 export type AIRequiredAction = "REVISE_CONTENT" | "PROVIDE_EVIDENCE" | "CLARIFY" | "ACKNOWLEDGE";
@@ -56,6 +58,14 @@ export interface AIAnalysisResult {
   /** The persisted scan record (AIScanRun), set once the scan was written to history. */
   scanId?: string;
   scannedAt?: string;
+  /** The industry the rules were selected for (decision D2), null when unknown. */
+  industry?: string | null;
+  /**
+   * Coverage per market × platform. An uncovered pair shows "Insufficient
+   * policy coverage — manual review required." even when other pairs ran.
+   * Computed at scan time; not stored with the scan history.
+   */
+  coverage?: CoveragePair[];
 }
 
 export interface GroundedPolicyRuleContext {
@@ -71,6 +81,10 @@ export interface GroundedPolicyRuleContext {
   remediationAction: string;
   applicabilityConditions: string[];
   exceptions: string[];
+  /** Structured content (P0): how strict the rule is and what it restricts. */
+  restrictionLevel: string | null;
+  restrictedClaims: string[];
+  substantiationRequirements: string[];
   sources: Array<{
     sourceName: string;
     sectionReference: string;
@@ -87,6 +101,7 @@ export interface CreativeAnalysisInput {
   description?: string;
   context?: string;
   format: string;
+  industry?: string | null;
   markets: Array<{ code: string; name: string }>;
   platforms: Array<{ code: string; name: string }>;
   imageBuffer?: Buffer;

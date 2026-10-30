@@ -13,6 +13,7 @@ import { basePathFor } from "@/lib/navigation";
 import { uploadsConfigured } from "@/lib/review/blob";
 import { REVIEW_DISCLAIMER, REVIEW_OUTCOME_DESCRIPTION, REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
 import { authorize } from "@/lib/workflow/policy";
+import { industryLabel } from "@/lib/workflow/submission";
 import { cn } from "@/lib/cn";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { Card } from "@/components/ui/card";
@@ -31,6 +32,7 @@ import { EvidenceList } from "./review-history";
 import { SubmissionForm } from "./submission-form";
 import { SubmitPanel } from "./submit-panel";
 import { AICompliancePanel } from "./ai-compliance-panel";
+import { citableRulesForSubmission } from "@/lib/ai/service";
 
 /*
  * The review workspace for a client submission (workflow SUBMISSION_REVIEW),
@@ -81,11 +83,14 @@ export async function SubmissionView({
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
   const canManageEvidence = role === "CLIENT" && authorize(user, "MANAGE_EVIDENCE", facts).ok;
-  const [targeting, review, scanHistory] = await Promise.all([
+  const [targeting, review, scanHistory, citable] = await Promise.all([
     editable ? getTargetingOptions() : Promise.resolve(null),
     reviewLoad,
     role === "TEAM" ? getScanHistory(user, creativeId) : Promise.resolve([]),
+    // Rules a reviewer may cite while reviewing (the server re-checks each choice).
+    role === "TEAM" && submission.status === "IN_REVIEW" ? citableRulesForSubmission(user, creativeId) : Promise.resolve([]),
   ]);
+  const ruleChoices = citable.map((r) => ({ versionId: r.currentVersion.id, label: `${r.code} v${r.currentVersion.versionNumber} — ${r.title}` }));
   if (!review) notFound();
   const chat = await chatLoad;
 
@@ -167,6 +172,7 @@ export async function SubmissionView({
             evidence={review.evidence}
             markets={submission.markets}
             platforms={submission.platforms}
+            rules={ruleChoices}
           />
         ) : (
           inReview && (
@@ -175,7 +181,7 @@ export async function SubmissionView({
             </p>
           )
         )}
-        {inReview && <AddFindingForm creativeId={submission.id} markets={submission.markets} platforms={submission.platforms} />}
+        {inReview && <AddFindingForm creativeId={submission.id} markets={submission.markets} platforms={submission.platforms} rules={ruleChoices} />}
       </div>
     ),
   };
@@ -194,6 +200,14 @@ export async function SubmissionView({
             creativeId={submission.id}
             configured={uploadsConfigured()}
             findings={remediation ? openInCycle.map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue })) : []}
+          />
+        )}
+        {target && (
+          <EvidenceForm
+            creativeId={submission.id}
+            configured={uploadsConfigured()}
+            findings={cycleFindings.filter((f) => f.status !== "DISMISSED").map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue }))}
+            reviewer={{ rules: ruleChoices }}
           />
         )}
       </div>
@@ -377,7 +391,7 @@ export async function SubmissionView({
                 <summary className="text-small flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-brand-700 hover:text-brand-800">
                   <span>Edit details</span>
                   <span className="text-caption font-normal text-muted group-open:hidden">
-                    Title, description, context{submission.status === "DRAFT" ? ", markets and platforms" : ""}
+                    Title, description, context{submission.status === "DRAFT" ? ", industry, markets and platforms" : ""}
                   </span>
                 </summary>
                 <div className="mt-4">
@@ -392,6 +406,7 @@ export async function SubmissionView({
                       description: submission.description ?? "",
                       context: submission.context ?? "",
                       format: submission.format,
+                      industry: submission.industry ?? "",
                       markets: submission.markets.map((m) => m.code),
                       platforms: submission.platforms.map((p) => p.code),
                     }}
@@ -546,7 +561,12 @@ function NextActionContent({
         {canSubmit && (
           <SubmitPanel
             creativeId={submission.id}
-            readiness={{ file: Boolean(submission.current), market: submission.markets.length > 0, platform: submission.platforms.length > 0 }}
+            readiness={{
+              file: Boolean(submission.current),
+              market: submission.markets.length > 0,
+              platform: submission.platforms.length > 0,
+              industry: Boolean(submission.industry),
+            }}
           />
         )}
       </>
@@ -585,6 +605,10 @@ function Details({ submission }: { submission: SubmissionDetail }) {
   const empty = <span className="text-muted">Not chosen yet</span>;
   return (
     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
+      <div>
+        <dt className="text-label mb-1">Industry</dt>
+        <dd className="text-small text-ink">{industryLabel(submission.industry) ?? empty}</dd>
+      </div>
       <div>
         <dt className="text-label mb-1">Target markets</dt>
         <dd className="text-small text-ink">{submission.markets.length ? submission.markets.map((m) => m.name).join(", ") : empty}</dd>

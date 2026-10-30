@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/auth/dal";
-import { completeReview, recordFinding, requestChanges, reviewFinding, startReview, updateDraftFinding } from "@/lib/workflow/commands";
+import { addReviewerEvidence, assessEvidence, completeReview, recordFinding, type ReviewerEvidenceInput, requestChanges, reviewFinding, startReview, updateDraftFinding } from "@/lib/workflow/commands";
 
 /*
  * Form actions for internal review. Thin wrappers: each re-loads the user from
@@ -38,6 +38,10 @@ function findingValues(formData: FormData) {
     actionDetails: text(formData, "actionDetails"),
     markets: formData.getAll("markets").map(String),
     platforms: formData.getAll("platforms").map(String),
+    claimText: text(formData, "claimText"),
+    claimLocation: text(formData, "claimLocation"),
+    suggestedRevision: text(formData, "suggestedRevision"),
+    ruleVersionId: text(formData, "ruleVersionId"),
   };
 }
 
@@ -63,6 +67,10 @@ export async function addFindingAction(_prev: ReviewActionState, formData: FormD
     actionDetails: values.actionDetails,
     marketCodes: values.markets,
     platformCodes: values.platforms,
+    claimText: values.claimText,
+    claimLocation: values.claimLocation,
+    suggestedRevision: values.suggestedRevision,
+    ruleVersionId: values.ruleVersionId,
   });
   if (!result.ok) return { error: result.error, values };
   revalidateWorkspaces();
@@ -82,6 +90,10 @@ export async function updateFindingAction(_prev: ReviewActionState, formData: Fo
     actionDetails: values.actionDetails,
     marketCodes: values.markets,
     platformCodes: values.platforms,
+    claimText: values.claimText,
+    claimLocation: values.claimLocation,
+    suggestedRevision: values.suggestedRevision,
+    ...(formData.has("ruleVersionId") ? { ruleVersionId: values.ruleVersionId } : {}),
   });
   if (!result.ok) return { error: result.error, values };
   revalidateWorkspaces();
@@ -146,4 +158,29 @@ export async function completeReviewAction(_prev: ReviewActionState, formData: F
   if (!result.ok) return { error: result.error, values };
   revalidateWorkspaces();
   return { ok: "Review completed and recorded." };
+}
+
+/** TEAM: record an assessment of submitted client evidence (shared with the client at the next decision). */
+export async function assessEvidenceAction(_prev: ReviewActionState, formData: FormData): Promise<ReviewActionState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: SIGN_IN };
+  const values = { result: text(formData, "result"), note: text(formData, "note") };
+  const result = await assessEvidence(user, { evidenceId: text(formData, "evidenceId"), ...values });
+  if (!result.ok) return { error: result.error, values };
+  revalidateWorkspaces();
+  return { ok: "Assessment recorded. The client sees it with your next decision." };
+}
+
+/**
+ * TEAM: add Clyntique evidence during the review. Called from the browser
+ * after any file has been uploaded to private storage; the command
+ * re-verifies the file and re-checks the cited rule.
+ */
+export async function addReviewerEvidenceAction(input: ReviewerEvidenceInput): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: SIGN_IN };
+  const result = await addReviewerEvidence(user, input);
+  if (!result.ok) return { ok: false, error: result.error };
+  revalidateWorkspaces();
+  return { ok: true };
 }

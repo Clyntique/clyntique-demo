@@ -199,6 +199,7 @@ async function main() {
       description: "Announces extended weekday clinic hours.",
       context: "Objective: awareness. Audience: existing patients. Key message: longer opening hours.",
       format: "FEED",
+      industry: "HEALTHCARE",
       marketCodes: ["US"],
       platformCodes: ["META"],
     }));
@@ -223,6 +224,7 @@ async function main() {
         name: "[SAMPLE] New patient welcome — Story",
         description: "Welcomes new patients and explains how to book.",
         format: "STORY",
+      industry: "HEALTHCARE",
         marketCodes: ["US"],
         platformCodes: ["META", "GOOGLE"],
       }));
@@ -234,6 +236,7 @@ async function main() {
       name: "[SAMPLE] Telehealth reminder (draft)",
       description: "Not submitted yet: visible to Client 1 only.",
       format: "STATIC",
+      industry: "HEALTHCARE",
       marketCodes: ["US"],
       platformCodes: ["META"],
     }));
@@ -251,6 +254,7 @@ async function main() {
         name: "[SAMPLE] Checkup booking reminder — Feed post",
         description: "Reminds parents to book school checkups.",
         format: "FEED",
+      industry: "HEALTHCARE",
         marketCodes: ["US"],
         platformCodes: ["META"],
       }));
@@ -272,6 +276,7 @@ async function main() {
       name: "[SAMPLE] Vaccination clinic poster (draft)",
       description: "Not submitted yet: visible to Client 2 only.",
       format: "STATIC",
+      industry: "HEALTHCARE",
       marketCodes: ["US"],
       platformCodes: ["META"],
     }));
@@ -287,6 +292,9 @@ async function main() {
   }
 
   if (SYNTHETIC_POLICY && !(await prisma.policyRule.findUnique({ where: { code: "SYNTHETIC-TEST-01" } }))) {
+    // No account is created here: the approver must be another existing TEAM user.
+    const secondTeam = await prisma.user.findFirst({ where: { role: "TEAM", id: { not: team.id } }, select: { id: true } });
+    if (!secondTeam) throw new Error("--synthetic-policy needs a second TEAM account (two-person control); none exists, nothing was written for the policy.");
     await prisma.$transaction(async (tx) => {
       const source = await tx.policySource.create({
         data: {
@@ -323,7 +331,11 @@ async function main() {
           verificationStatus: "VERIFIED",
           changeSummary: "Synthetic test fixture created by prisma/demo-fixtures.ts",
           createdById: team.id,
-          approvedById: team.id,
+          // Two-person control (P0): the team account is recorded as verifier
+          // and a second, existing TEAM account as approver.
+          verifiedById: team.id,
+          verifiedAt: new Date(),
+          approvedById: secondTeam.id,
           approvedAt: new Date(),
         },
       });

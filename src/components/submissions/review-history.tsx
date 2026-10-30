@@ -1,15 +1,25 @@
 import type { Role } from "@/generated/prisma/enums";
 import type { DecisionView, EvidenceView } from "@/lib/data/submission-review";
-import { REVIEW_DISCLAIMER, REVIEW_OUTCOME_DESCRIPTION, REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
+import {
+  DECISION_SOURCE_LABEL,
+  EVIDENCE_ASSESSMENT_LABEL,
+  EVIDENCE_ASSESSMENT_NOTICE,
+  REVIEW_DISCLAIMER,
+  REVIEW_OUTCOME_DESCRIPTION,
+  REVIEW_OUTCOME_LABEL,
+} from "@/lib/workflow/labels";
 import { cn } from "@/lib/cn";
 import { formatBytes } from "@/lib/media";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLinkIcon, FileIcon } from "@/components/ui/icons";
 import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
 import { WithdrawEvidenceForm } from "./client-remediation";
+import { AssessEvidenceForm } from "./assess-evidence-form";
+import { PolicyReference } from "./policy-reference";
 
-// Decision history and evidence for a submission (both roles). The only
-// control is withdrawing evidence, offered when the loader says it's allowed.
+// Decision history and evidence for a submission (both roles). The controls
+// are withdrawing evidence (client) and assessing it (team), each offered
+// only when the loader says it's allowed.
 // The data is already filtered for the viewer by getSubmissionReview.
 
 function formatDateTime(date: Date) {
@@ -29,7 +39,7 @@ export function DecisionHistory({ decisions, role }: { decisions: DecisionView[]
               <Badge className="bg-attention-soft text-attention-ink">Changes requested</Badge>
             )}
             <span className="text-meta">
-              V{d.versionNumber} · round {d.roundNumber}
+              V{d.versionNumber} · round {d.roundNumber} · {DECISION_SOURCE_LABEL.INTERNAL_REVIEW}
             </span>
           </div>
           <p className="text-body mt-1.5 break-words whitespace-pre-line text-ink">{d.summary}</p>
@@ -74,17 +84,28 @@ export function EvidenceList({
           <li key={e.id} id={`evidence-${e.id}`} className={cn("scroll-mt-6 rounded-xl border border-line bg-surface p-4 sm:p-5 shadow-xs transition-shadow", e.withdrawn && "bg-subtle/60")}>
             <div className="flex flex-wrap items-center gap-1.5">
               <Badge tone="outline">{EVIDENCE_TYPES[e.type]}</Badge>
-              {e.origin === "REVIEWER_ADDED" && <Badge>Added by reviewer</Badge>}
+              {e.origin === "REVIEWER_ADDED" && <Badge>Clyntique evidence</Badge>}
               {e.visibility === "INTERNAL" && role === "TEAM" && <Badge>Team only</Badge>}
-              {e.submittedWithRound ? (
-                <Badge tone="outline">Submitted with round {e.submittedWithRound}</Badge>
+              {e.submittedIn ? (
+                <Badge tone="outline">
+                  Submitted with cycle {e.submittedIn.cycleNumber}, round {e.submittedIn.roundNumber}
+                </Badge>
               ) : (
                 role === "CLIENT" && <Badge tone="outline">Not yet submitted</Badge>
               )}
+              {e.versionNumber !== null && <Badge tone="outline">Added with V{e.versionNumber}</Badge>}
               {e.withdrawn && <Badge>Withdrawn</Badge>}
             </div>
             <p className={cn("text-card-title sm:text-body mt-1.5 font-semibold text-ink break-words", e.withdrawn && "line-through decoration-faint")}>{e.title}</p>
+            {e.claimText && (
+              <p className="text-small mt-1 break-words text-ink">
+                <span className="font-medium text-ink-soft">Claim:</span> “{e.claimText}”
+                {e.claimLocation && <span className="text-meta"> · {e.claimLocation}</span>}
+              </p>
+            )}
+            {!e.claimText && e.claimLocation && <p className="text-meta mt-1">Location: {e.claimLocation}</p>}
             {e.description && <p className="text-small mt-1 break-words whitespace-pre-line text-ink-soft">{e.description}</p>}
+            {e.policy && <PolicyReference policy={e.policy} />}
             {e.file && (
               <a
                 href={`/api/media/evidence/${e.id}`}
@@ -118,6 +139,29 @@ export function EvidenceList({
             {e.withdrawable && (
               <div className="mt-2">
                 <WithdrawEvidenceForm evidenceId={e.id} />
+              </div>
+            )}
+            {e.assessments.length > 0 && (
+              <div className="mt-3 border-t border-line pt-3">
+                <p className="text-micro mb-1.5 font-semibold tracking-wider text-muted uppercase">Reviewer assessment</p>
+                <ol className="flex flex-col gap-2">
+                  {e.assessments.map((a, i) => (
+                    <li key={a.id} className={cn("text-small", i < e.assessments.length - 1 && "text-muted")}>
+                      <span className="font-medium text-ink">{EVIDENCE_ASSESSMENT_LABEL[a.result]}</span>
+                      {i < e.assessments.length - 1 && <span className="text-meta"> (superseded)</span>}
+                      {a.note && <span className="block break-words whitespace-pre-line text-ink-soft">{a.note}</span>}
+                      <span className="text-meta block">
+                        {a.reviewerName} · cycle {a.cycleNumber} · <time dateTime={a.createdAt.toISOString()}>{formatDateTime(a.createdAt)}</time>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                <p className="text-caption mt-2 text-muted">{EVIDENCE_ASSESSMENT_NOTICE}</p>
+              </div>
+            )}
+            {e.assessable && (
+              <div className="mt-3">
+                <AssessEvidenceForm evidenceId={e.id} />
               </div>
             )}
           </li>

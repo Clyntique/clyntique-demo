@@ -2,10 +2,11 @@ import type { Role } from "@/generated/prisma/enums";
 import type { EvidenceView, FindingEntry, FindingView } from "@/lib/data/submission-review";
 import type { Unmet } from "@/lib/workflow/findings";
 import { cn } from "@/lib/cn";
-import { REQUIRED_ACTION_LABEL, SEVERITY_CAPTION } from "@/lib/workflow/labels";
+import { AI_ORIGIN_NOTE, REQUIRED_ACTION_LABEL, SEVERITY_CAPTION } from "@/lib/workflow/labels";
 import { FindingStatusPill, SeverityMarker } from "@/components/ui/severity";
 import { RespondForm, type Choice } from "./client-remediation";
-import { DraftFindingControls, PublishedFindingControls, type TargetChoice } from "./review-panel";
+import { DraftFindingControls, PublishedFindingControls, type RuleChoice, type TargetChoice } from "./review-panel";
+import { PolicyReference } from "./policy-reference";
 
 // Findings for one submission. The data was already filtered for the viewer
 // (src/lib/data/submission-review.ts): a CLIENT never receives draft or
@@ -50,6 +51,7 @@ export function FindingsList({
   evidence,
   markets,
   platforms,
+  rules = [],
 }: {
   findings: FindingView[];
   role: Role;
@@ -62,6 +64,8 @@ export function FindingsList({
   evidence: EvidenceView[];
   markets: TargetChoice[];
   platforms: TargetChoice[];
+  /** TEAM, while in review: verified, approved rules a finding may cite. */
+  rules?: RuleChoice[];
 }) {
   if (!findings.length) return null;
   const evidenceById = new Map(evidence.map((e) => [e.id, e]));
@@ -98,18 +102,32 @@ export function FindingsList({
 
             <h3 className={cn("text-card-title sm:text-body mt-2.5 font-semibold break-words text-ink", f.status === "DISMISSED" && "line-through decoration-faint")}>{f.issue}</h3>
             {role === "CLIENT" && <p className="text-eyebrow mt-2.5">Why it matters</p>}
+            {f.claimText && (
+              <p className="text-small mt-1.5 break-words text-ink">
+                <span className="font-medium text-ink-soft">Claim:</span> “{f.claimText}”
+                {f.claimLocation && <span className="text-meta"> · {f.claimLocation}</span>}
+              </p>
+            )}
+            {!f.claimText && f.claimLocation && <p className="text-meta mt-1.5">Where: {f.claimLocation}</p>}
             <p className={cn("text-small break-words whitespace-pre-line text-ink-soft", role === "CLIENT" ? "mt-1" : "mt-1.5")}>{f.explanation}</p>
+            {f.policy && <PolicyReference policy={f.policy} />}
 
             <div className={cn("mt-3.5 rounded-lg border px-3.5 py-3", gaps.length ? "border-attention-line/70 bg-attention-soft/60" : "border-line bg-subtle/60")}>
               <p className="text-eyebrow mb-1">
                 {role === "CLIENT" ? `What you need to do · ${CLIENT_ACTION_LABEL[f.requiredAction]}` : `Required action · ${REQUIRED_ACTION_LABEL[f.requiredAction]}`}
               </p>
               <p className="text-small font-medium break-words whitespace-pre-line text-ink">{f.actionDetails}</p>
+              {f.suggestedRevision && (
+                <p className="text-small mt-2 break-words whitespace-pre-line text-ink-soft">
+                  <span className="font-medium text-ink">Suggested wording:</span> {f.suggestedRevision}
+                </p>
+              )}
             </div>
 
             <p className="text-caption mt-2.5 text-muted">
               {role === "TEAM" ? `Recorded by ${f.reviewerName}` : "Clyntique reviewer"} · {formatDate(f.publishedAt ?? f.createdAt)}
               <span className="sr-only"> · {SEVERITY_CAPTION}</span>
+              {role === "TEAM" && f.origin === "AI_SUGGESTION_ACCEPTED" && <span className="block">{AI_ORIGIN_NOTE}</span>}
             </p>
 
             {(f.entries.length > 0 || linked.length > 0) && <FindingTimeline entries={f.entries} linked={linked} role={role} />}
@@ -121,7 +139,7 @@ export function FindingsList({
               </p>
             )}
 
-            {editable && f.status === "DRAFT" && <DraftFindingControls finding={f} markets={markets} platforms={platforms} />}
+            {editable && f.status === "DRAFT" && <DraftFindingControls finding={f} markets={markets} platforms={platforms} rules={rules} />}
             {reviewingCycle === f.cycleNumber && open && f.publishedAt && <PublishedFindingControls finding={f} />}
             {respond && respond.cycle === f.cycleNumber && open && (
               <RespondForm

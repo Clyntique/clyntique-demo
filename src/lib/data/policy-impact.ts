@@ -67,6 +67,8 @@ export async function getPolicyImpact(user: CurrentUser): Promise<PolicyImpact |
 
   const [events, rules] = await Promise.all([
     prisma.policyRuleEvent.findMany({
+      // Rule history only; source events (P0) have no rule and belong to the Sources tab.
+      where: { ruleId: { not: null } },
       orderBy: { createdAt: "desc" },
       take: 100,
       select: {
@@ -173,7 +175,7 @@ export async function getPolicyImpact(user: CurrentUser): Promise<PolicyImpact |
 
   return {
     changes,
-    events: events.map((e) => ({
+    events: events.flatMap((e) => (e.rule ? [{
       id: e.id,
       kind: e.kind,
       ruleCode: e.rule.code,
@@ -182,7 +184,7 @@ export async function getPolicyImpact(user: CurrentUser): Promise<PolicyImpact |
       actorName: e.actor.name,
       note: e.note,
       createdAt: e.createdAt,
-    })),
+    }] : [])),
     rulesWithHistory: rules.filter((r) => r.versions.length > 1).length,
   };
 }

@@ -49,6 +49,7 @@ function draftValues(formData: FormData) {
     description: text(formData, "description"),
     context: text(formData, "context"),
     format: text(formData, "format"),
+    industry: text(formData, "industry"),
     markets: list(formData, "markets"),
     platforms: list(formData, "platforms"),
   };
@@ -66,6 +67,7 @@ export async function createSubmission(_prev: SubmissionFormState, formData: For
     description: values.description,
     context: values.context,
     format: values.format,
+    industry: values.industry,
     marketCodes: values.markets,
     platformCodes: values.platforms,
   });
@@ -87,6 +89,7 @@ export async function updateSubmission(_prev: SubmissionFormState, formData: For
     description: values.description,
     context: values.context,
     format: values.format,
+    ...(formData.has("industry") ? { industry: values.industry } : {}),
     ...(targeting ? { marketCodes: values.markets, platformCodes: values.platforms } : {}),
   });
   if (!result.ok) return { error: result.error, values };

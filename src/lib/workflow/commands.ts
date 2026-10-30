@@ -28,10 +28,12 @@ import { EVIDENCE_MAX_BYTES, evidenceKindFor, evidencePathMatches } from "@/lib/
 import { UPLOAD_KEY_PATTERN } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
 import { contentMatches, deleteUnreferencedBlob, headBlob, isPrivateBlobUrl } from "@/lib/review/blob";
-import { canRequestChanges, checkOutcome, evidenceIsFinal, moveFinding, type FindingMove } from "./findings";
+import { canRequestChanges, checkOutcome, evidenceIsFinal, moveFinding, submittedToTeam, type FindingMove } from "./findings";
 import { loadReadiness } from "./readiness";
 import { DENIAL_MESSAGE, authorize, canCreateSubmission, type SubmissionAction, type SubmissionFacts } from "./policy";
 import { SUBMIT_GAP_MESSAGE, submitGaps } from "./submission";
+import { SUBMISSION_INDUSTRIES } from "@/lib/ai/applicability";
+import { citableRuleVersion } from "@/lib/ai/service";
 import { checkDecisionTarget, transition, type WorkflowAction } from "./transitions";
 
 /*
@@ -165,6 +167,8 @@ export type DraftInput = {
   description?: string;
   context?: string;
   format: string;
+  /** HEALTHCARE, MEDICAL_AESTHETICS or OTHER (decision D2); "" clears it on a draft. Left out: unchanged. */
+  industry?: string;
   marketCodes?: string[];
   platformCodes?: string[];
 };
@@ -178,7 +182,16 @@ function validateDraft(input: Omit<DraftInput, "projectId">) {
   if (description === null) return fail(`Keep the description under ${LIMITS.description} characters.`);
   if (context === null) return fail(`Keep the campaign context under ${LIMITS.context} characters.`);
   if (!format) return fail("Choose the creative type.");
-  return { ok: true as const, data: { name, description: description || null, context: context || null, format } };
+  let industry: string | null | undefined;
+  if (input.industry !== undefined) {
+    const value = String(input.industry ?? "").trim().toUpperCase();
+    if (value && !(SUBMISSION_INDUSTRIES as readonly string[]).includes(value)) return fail("Choose the industry from the list.");
+    industry = value || null;
+  }
+  return {
+    ok: true as const,
+    data: { name, description: description || null, context: context || null, format, ...(industry !== undefined ? { industry } : {}) },
+  };
 }
 
 /** CLIENT creates a draft submission in a project assigned to them. */
@@ -231,8 +244,10 @@ export async function updateDraft(user: CurrentUser, creativeId: string, input: 
   if (targeting && !isDraft) return fail("Markets and platforms can't be changed after submission.");
   if (!isDraft) {
     // The creative type is part of what the team reviewed and isn't snapshotted per round.
-    const stored = await prisma.creative.findUnique({ where: { id: g.s.id }, select: { format: true } });
+    const stored = await prisma.creative.findUnique({ where: { id: g.s.id }, select: { format: true, industry: true } });
     if (stored && stored.format !== valid.data.format) return fail("The creative type can't be changed after submission.");
+    // The industry decides which policies apply, so it is fixed once submitted too.
+    if (stored && valid.data.industry !== undefined && stored.industry !== valid.data.industry) return fail("The industry can't be changed after submission.");
   }
   const markets = await validCodes("market", input.marketCodes ?? []);
   const platforms = await validCodes("platform", input.platformCodes ?? []);
@@ -265,8 +280,8 @@ export async function updateDraft(user: CurrentUser, creativeId: string, input: 
  * these from the round, so later edits stay private until the next round.
  */
 async function detailsSnapshot(tx: Prisma.TransactionClient, creativeId: string) {
-  const c = await tx.creative.findUniqueOrThrow({ where: { id: creativeId }, select: { name: true, description: true, context: true } });
-  return { submittedName: c.name, submittedDescription: c.description, submittedContext: c.context };
+  const c = await tx.creative.findUniqueOrThrow({ where: { id: creativeId }, select: { name: true, description: true, context: true, industry: true } });
+  return { submittedName: c.name, submittedDescription: c.description, submittedContext: c.context, submittedIndustry: c.industry };
 }
 
 /** CLIENT submits a draft: opens review cycle 1 and round 1 on the newest version. */
@@ -276,12 +291,13 @@ export async function submitForReview(user: CurrentUser, creativeId: string): Pr
   const bad = checkTransition("SUBMIT", g.s, user);
   if (bad) return fail(bad);
   // Drafts may be incomplete; a submission needs a file, a target market and a platform.
-  const [version, marketCount, platformCount] = await Promise.all([
+  const [version, marketCount, platformCount, details] = await Promise.all([
     latestVersion(g.s.id),
     prisma.submissionMarket.count({ where: { creativeId: g.s.id, market: { active: true } } }),
     prisma.submissionPlatform.count({ where: { creativeId: g.s.id, platform: { active: true } } }),
+    prisma.creative.findUnique({ where: { id: g.s.id }, select: { industry: true } }),
   ]);
-  const gaps = submitGaps({ versionCount: version ? 1 : 0, marketCount, platformCount });
+  const gaps = submitGaps({ versionCount: version ? 1 : 0, marketCount, platformCount, hasIndustry: Boolean(details?.industry) });
   if (gaps.length || !version) return fail(`Before submitting: ${gaps.map((gap) => SUBMIT_GAP_MESSAGE[gap]).join(" ")}`);
 
   return run("submitForReview", async () =>
@@ -293,12 +309,18 @@ export async function submitForReview(user: CurrentUser, creativeId: string): Pr
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
       // Re-read under the row lock: an upload or targeting edit that committed
       // after the checks above is either included here or rejected.
-      const [lockedVersion, lockedMarkets, lockedPlatforms] = await Promise.all([
+      const [lockedVersion, lockedMarkets, lockedPlatforms, lockedDetails] = await Promise.all([
         latestVersion(g.s.id, tx),
         tx.submissionMarket.count({ where: { creativeId: g.s.id, market: { active: true } } }),
         tx.submissionPlatform.count({ where: { creativeId: g.s.id, platform: { active: true } } }),
+        tx.creative.findUnique({ where: { id: g.s.id }, select: { industry: true } }),
       ]);
-      const lockedGaps = submitGaps({ versionCount: lockedVersion ? 1 : 0, marketCount: lockedMarkets, platformCount: lockedPlatforms });
+      const lockedGaps = submitGaps({
+        versionCount: lockedVersion ? 1 : 0,
+        marketCount: lockedMarkets,
+        platformCount: lockedPlatforms,
+        hasIndustry: Boolean(lockedDetails?.industry),
+      });
       if (lockedGaps.length || !lockedVersion) throw new Conflict(`Before submitting: ${lockedGaps.map((gap) => SUBMIT_GAP_MESSAGE[gap]).join(" ")}`);
       const cycle = await tx.reviewCycle.create({ data: { creativeId: g.s.id, number: 1, openedById: user.id }, select: { id: true } });
       const round = await tx.submissionRound.create({
@@ -442,6 +464,9 @@ export type EvidenceInput = {
   file?: { uploadKey: string; url: string; fileName: string } | null;
   /** Published findings in the open cycle this evidence supports. */
   findingIds?: string[];
+  /** The claim in the creative it supports, and where it appears (decision D3). */
+  claimText?: string;
+  claimLocation?: string;
 };
 
 function validLink(value: string) {
@@ -469,8 +494,14 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
   const title = clean(input.title, LIMITS.name);
   const description = clean(input.description, LIMITS.text);
   const source = clean(input.source, LIMITS.name);
+  const claimText = clean(input.claimText, LIMITS.finding);
+  const claimLocation = clean(input.claimLocation, LIMITS.name);
   const type = Object.values(EvidenceTypes).find((t) => t === input.type) as EvidenceType | undefined;
   if (!title || title.length < 2) return fail("Give the evidence a title (2–120 characters).");
+  if (claimText === null) return fail(`Keep the claim under ${LIMITS.finding} characters.`);
+  if (claimLocation === null) return fail(`Keep the claim location under ${LIMITS.name} characters.`);
+  // Reviewer reference types are Clyntique's own; a client can't file evidence as one.
+  if (type === "POLICY_REFERENCE") return fail("Choose the type of evidence.");
   if (!type) return fail("Choose the type of evidence.");
   if (description === null) return fail(`Keep the description under ${LIMITS.text} characters.`);
   if (source === null) return fail(`Keep the source under ${LIMITS.name} characters.`);
@@ -525,6 +556,8 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
           description: description || null,
           source: source || null,
           url: link.url,
+          claimText: claimText || null,
+          claimLocation: claimLocation || null,
           origin: "CLIENT_SUBMITTED",
           visibility: "SHARED",
           addedById: user.id,
@@ -621,6 +654,159 @@ export async function withdrawEvidence(user: CurrentUser, evidenceId: string): P
 }
 
 // ---------------------------------------------------------------------------
+// TEAM: Clyntique evidence (P0, Oct 27)
+
+export type ReviewerEvidenceInput = Omit<EvidenceInput, "source"> & {
+  source?: string;
+  /** SHARED: the client sees it with the next published decision. INTERNAL: team only. */
+  visibility: string;
+  /** Optional reviewed rule version it cites (re-checked like a finding's). */
+  ruleVersionId?: string;
+};
+
+/**
+ * TEAM adds Clyntique evidence during an active review: a policy reference,
+ * an official source, a file or a note, optionally citing a reviewed rule and
+ * linked to findings of the current cycle. Recorded as REVIEWER_ADDED on the
+ * version under review. Never edited or deleted; a SHARED item reaches the
+ * client only with the next published decision, as "Clyntique reviewer".
+ */
+export async function addReviewerEvidence(user: CurrentUser, input: ReviewerEvidenceInput): Promise<CommandResult<{ evidenceId: string }>> {
+  const g = await guard(user, "ADD_REVIEWER_EVIDENCE", String(input.creativeId ?? ""));
+  if (!g.ok) return g;
+
+  const title = clean(input.title, LIMITS.name);
+  const description = clean(input.description, LIMITS.text);
+  const source = clean(input.source, LIMITS.name);
+  const claimText = clean(input.claimText, LIMITS.finding);
+  const claimLocation = clean(input.claimLocation, LIMITS.name);
+  const type = Object.values(EvidenceTypes).find((t) => t === input.type) as EvidenceType | undefined;
+  const visibility = input.visibility === "SHARED" || input.visibility === "INTERNAL" ? input.visibility : null;
+  if (!title || title.length < 2) return fail("Give the evidence a title (2–120 characters).");
+  if (!type) return fail("Choose the type of evidence.");
+  if (!visibility) return fail("Choose whether the client will see it.");
+  if (description === null) return fail(`Keep the description under ${LIMITS.text} characters.`);
+  if (source === null) return fail(`Keep the source under ${LIMITS.name} characters.`);
+  if (claimText === null) return fail(`Keep the claim under ${LIMITS.finding} characters.`);
+  if (claimLocation === null) return fail(`Keep the claim location under ${LIMITS.name} characters.`);
+  const link = validLink(String(input.url ?? "").trim());
+  if (!link.ok) return fail("Enter a full web address starting with https://, or leave the link empty.");
+  if (!input.file && !link.url && !description && !input.ruleVersionId) return fail("Attach a file, add a link, cite a policy, or describe the evidence.");
+
+  const current = await currentRound(g.s.id);
+  if (!current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
+  const cited = await citedRuleVersion(user, g.s.id, input.ruleVersionId);
+  if (!cited.ok) return cited;
+
+  // Findings of the current cycle it supports (any not withdrawn).
+  const findingIds = [...new Set((Array.isArray(input.findingIds) ? input.findingIds : []).map(String))];
+  if (findingIds.length) {
+    const usable = await prisma.finding.count({ where: { id: { in: findingIds }, creativeId: g.s.id, cycleId: current.cycle.id, status: { not: "DISMISSED" } } });
+    if (usable !== findingIds.length) return fail("Some of those findings aren't part of this review.");
+  }
+
+  let file: VerifiedFile | null = null;
+  if (input.file) {
+    if (typeof input.file !== "object") return fail("This upload couldn't be verified. Please upload the file again.");
+    const checked = await verifyEvidenceUpload(g.s.id, input.file);
+    if (!checked.ok) return checked;
+    if (checked.existingId) return { ok: true, evidenceId: checked.existingId }; // retry of an upload already recorded
+    file = checked.file;
+  }
+
+  return run("addReviewerEvidence", async () =>
+    prisma.$transaction(async (tx) => {
+      // A decision committed meanwhile closes the review: nothing is added after it.
+      await lockSubmission(tx, g.s, "IN_REVIEW");
+      const evidence = await tx.evidence.create({
+        data: {
+          creativeId: g.s.id,
+          title,
+          type,
+          description: description || null,
+          source: source || null,
+          url: link.url,
+          claimText: claimText || null,
+          claimLocation: claimLocation || null,
+          policyRuleVersionId: cited.id,
+          origin: "REVIEWER_ADDED",
+          visibility,
+          addedById: user.id,
+          versionId: current.round!.versionId,
+          fileUrl: file?.url ?? null,
+          fileName: file?.name ?? null,
+          mimeType: file?.mimeType ?? null,
+          fileSize: file?.size ?? null,
+        },
+        select: { id: true },
+      });
+      if (findingIds.length) {
+        await tx.findingEvidence.createMany({ data: findingIds.map((findingId) => ({ findingId, evidenceId: evidence.id, linkedById: user.id })) });
+      }
+      // No activity: like draft findings, it reaches the client with the next decision.
+      return { ok: true as const, evidenceId: evidence.id };
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TEAM: assessment of client evidence (P0, Oct 27)
+
+export const EVIDENCE_ASSESSMENT_RESULTS = ["ACCEPTED_FOR_REVIEW", "INSUFFICIENT", "NOT_RELEVANT", "NEEDS_CLARIFICATION"] as const;
+
+/**
+ * TEAM records how a piece of client evidence was assessed in the current
+ * review cycle. Append-only: a new assessment supersedes the previous one in
+ * the record, nothing is edited. Only submitted client evidence that wasn't
+ * withdrawn can be assessed. The client sees it only once a decision is
+ * published after it (decision D5), and never with the reviewer's name (D4).
+ */
+export async function assessEvidence(
+  user: CurrentUser,
+  input: { evidenceId: string; result: string; note?: string },
+): Promise<CommandResult<{ assessmentId: string }>> {
+  const evidence = input.evidenceId
+    ? await prisma.evidence.findUnique({
+        where: { id: String(input.evidenceId) },
+        select: { id: true, creativeId: true, origin: true, withdrawnAt: true, createdAt: true },
+      })
+    : null;
+  if (!evidence) return fail("This evidence is no longer available.");
+  const g = await guard(user, "RECORD_FINDING", evidence.creativeId);
+  if (!g.ok) return g;
+  const result = EVIDENCE_ASSESSMENT_RESULTS.find((r) => r === input.result);
+  if (!result) return fail("Choose an assessment.");
+  const note = clean(input.note, LIMITS.note);
+  if (note === null) return fail(`Keep the note under ${LIMITS.note} characters.`);
+  if (result !== "ACCEPTED_FOR_REVIEW" && !note) return fail("Explain what is missing or unclear, so the client knows what to provide.");
+  if (evidence.origin !== "CLIENT_SUBMITTED") return fail("Only client evidence can be assessed.");
+  if (evidence.withdrawnAt) return fail("This evidence was withdrawn.");
+
+  const current = await currentRound(g.s.id);
+  if (!current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
+  const lastRound = await prisma.submissionRound.findFirst({
+    where: { creativeId: g.s.id },
+    orderBy: { submittedAt: "desc" },
+    select: { submittedAt: true },
+  });
+  // Client work the team hasn't received yet doesn't exist for the team.
+  if (!submittedToTeam(evidence.createdAt, lastRound?.submittedAt ?? null)) return fail("This evidence is no longer available.");
+
+  return run("assessEvidence", async () =>
+    prisma.$transaction(async (tx) => {
+      // A decision committed meanwhile closes the review: no assessments after it.
+      await lockSubmission(tx, g.s, "IN_REVIEW");
+      const assessment = await tx.evidenceAssessment.create({
+        data: { evidenceId: evidence.id, cycleId: current.cycle.id, reviewerId: user.id, result, note: note || null },
+        select: { id: true },
+      });
+      // No activity: like draft findings, it reaches the client with the next decision.
+      return { ok: true as const, assessmentId: assessment.id };
+    }),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // TEAM: review
 
 /** TEAM starts reviewing a submitted round. */
@@ -653,11 +839,21 @@ export type FindingInput = {
   marketCodes?: string[];
   platformCodes?: string[];
   /**
-   * Optional cited Policy Library rule version. Only set by server code that
-   * has already checked the rule is active, verified and applicable (the AI
-   * suggestion flow); never taken from a form.
+   * Optional cited Policy Library rule version (the reviewer's choice, or the
+   * AI suggestion's rule). Re-checked here: it must be the current approved
+   * version of a verified rule applicable to this submission. On an edit, ""
+   * removes it and leaving it out keeps it.
    */
   ruleVersionId?: string;
+  /** The claim and part of the creative concerned, and suggested compliant wording (P0). */
+  claimText?: string;
+  claimLocation?: string;
+  suggestedRevision?: string;
+  /**
+   * Set only by the AI acceptance flow (server code): the finding records that
+   * a reviewer accepted an AI suggestion, and from which scan.
+   */
+  aiSuggestion?: { scanRunId?: string | null };
 };
 
 async function validateFinding(input: Omit<FindingInput, "creativeId">) {
@@ -673,10 +869,41 @@ async function validateFinding(input: Omit<FindingInput, "creativeId">) {
   if (!severity) return fail("Choose a severity.");
   if (!requiredAction) return fail("Choose the required client action.");
   if (!actionDetails) return fail("Say exactly what the client needs to do.");
+  const claimText = clean(input.claimText, LIMITS.finding);
+  const claimLocation = clean(input.claimLocation, LIMITS.name);
+  const suggestedRevision = clean(input.suggestedRevision, LIMITS.text);
+  if (claimText === null) return fail(`Keep the claim under ${LIMITS.finding} characters.`);
+  if (claimLocation === null) return fail(`Keep the claim location under ${LIMITS.name} characters.`);
+  if (suggestedRevision === null) return fail(`Keep the suggested wording under ${LIMITS.text} characters.`);
   const markets = await validCodes("market", input.marketCodes ?? []);
   const platforms = await validCodes("platform", input.platformCodes ?? []);
   if (!markets.ok || !platforms.ok) return fail("Choose markets and platforms from the list.");
-  return { ok: true as const, data: { issue, explanation, actionDetails, severity, requiredAction }, markets: markets.codes, platforms: platforms.codes };
+  return {
+    ok: true as const,
+    data: {
+      issue,
+      explanation,
+      actionDetails,
+      severity,
+      requiredAction,
+      claimText: claimText || null,
+      claimLocation: claimLocation || null,
+      suggestedRevision: suggestedRevision || null,
+    },
+    markets: markets.codes,
+    platforms: platforms.codes,
+  };
+}
+
+const RULE_NOT_CITABLE =
+  "That policy isn't a current, verified and approved rule for this submission's markets, platforms and industry. Choose another, or leave it out.";
+
+/** The cited rule version, if any, after checking it is citable for this submission now. */
+async function citedRuleVersion(user: CurrentUser, creativeId: string, ruleVersionId: string | undefined) {
+  const id = String(ruleVersionId ?? "").trim();
+  if (!id) return { ok: true as const, id: null };
+  const rule = await citableRuleVersion(user, creativeId, id);
+  return rule ? { ok: true as const, id: rule.currentVersion.id } : fail(RULE_NOT_CITABLE);
 }
 
 /** TEAM records a DRAFT finding (team-only until published) on the version under review. */
@@ -691,6 +918,12 @@ export async function recordFinding(user: CurrentUser, input: FindingInput): Pro
 
   const current = await currentRound(g.s.id);
   if (!current?.round || current.cycle.closedAt) return fail(DENIAL_MESSAGE.INVALID_STATE);
+  const cited = await citedRuleVersion(user, g.s.id, input.ruleVersionId);
+  if (!cited.ok) return cited;
+  // Only a scan of this submission is linked; anything else is left out.
+  const scanRunId = input.aiSuggestion?.scanRunId
+    ? ((await prisma.aIScanRun.findFirst({ where: { id: String(input.aiSuggestion.scanRunId), creativeId: g.s.id }, select: { id: true } }))?.id ?? null)
+    : null;
 
   return run("recordFinding", async () =>
     prisma.$transaction(async (tx) => {
@@ -708,7 +941,12 @@ export async function recordFinding(user: CurrentUser, input: FindingInput): Pro
           requiredAction,
           actionDetails,
           status: "DRAFT",
-          ruleVersionId: input.ruleVersionId ?? null,
+          claimText: valid.data.claimText,
+          claimLocation: valid.data.claimLocation,
+          suggestedRevision: valid.data.suggestedRevision,
+          ruleVersionId: cited.id,
+          origin: input.aiSuggestion ? "AI_SUGGESTION_ACCEPTED" : "REVIEWER",
+          aiScanRunId: scanRunId,
           markets: { create: markets.codes.map((marketCode) => ({ marketCode })) },
           platforms: { create: platforms.codes.map((platformCode) => ({ platformCode })) },
         },
@@ -731,7 +969,7 @@ export async function updateDraftFinding(
 ): Promise<CommandResult> {
   const finding = await prisma.finding.findUnique({
     where: { id: String(input.findingId ?? "") },
-    select: { id: true, creativeId: true, status: true },
+    select: { id: true, creativeId: true, status: true, ruleVersionId: true },
   });
   if (!finding) return fail("This finding is no longer available.");
   const g = await guard(user, "RECORD_FINDING", finding.creativeId);
@@ -739,11 +977,18 @@ export async function updateDraftFinding(
   if (finding.status !== "DRAFT") return fail("Only draft findings can be edited. This one has already been shared with the client.");
   const valid = await validateFinding(input);
   if (!valid.ok) return valid;
+  // The rule it already cites stays as it is; a different one is re-checked.
+  let ruleChange: { ruleVersionId: string | null } | Record<string, never> = {};
+  if (input.ruleVersionId !== undefined && String(input.ruleVersionId).trim() !== (finding.ruleVersionId ?? "")) {
+    const cited = await citedRuleVersion(user, g.s.id, input.ruleVersionId);
+    if (!cited.ok) return cited;
+    ruleChange = { ruleVersionId: cited.id };
+  }
 
   return run("updateDraftFinding", async () =>
     prisma.$transaction(async (tx) => {
       await lockSubmission(tx, g.s, "IN_REVIEW");
-      const { count } = await tx.finding.updateMany({ where: { id: finding.id, status: "DRAFT" }, data: valid.data });
+      const { count } = await tx.finding.updateMany({ where: { id: finding.id, status: "DRAFT" }, data: { ...valid.data, ...ruleChange } });
       if (!count) throw new Conflict("This finding changed meanwhile. Refresh and try again.");
       await tx.findingMarket.deleteMany({ where: { findingId: finding.id } });
       await tx.findingPlatform.deleteMany({ where: { findingId: finding.id } });

@@ -171,6 +171,7 @@ describe("the team doesn't see client work prepared since the last submission", 
       fileUrl: BLOB(`evidence/${id}.pdf`),
       addedBy: { name: "Client A" },
       findings: [{ findingId: "f1", linkedAt: createdAt }],
+      assessments: [],
       ...extra,
     });
     h.prisma.evidence.findMany.mockResolvedValue([
