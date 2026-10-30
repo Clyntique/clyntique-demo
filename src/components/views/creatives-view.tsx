@@ -92,6 +92,13 @@ export async function CreativesView({ role, searchParams }: { role: Role; search
               ? "Client submissions appear here once they are submitted for review."
               : "Create a submission to upload a creative and send it for review."
           }
+          action={
+            role === "CLIENT" && !active ? (
+              <Link href="/dashboard/submissions/new" className={buttonClasses({ size: "sm" })}>
+                <PlusIcon /> New submission
+              </Link>
+            ) : undefined
+          }
         />
       )}
     </>

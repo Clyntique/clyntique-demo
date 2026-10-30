@@ -324,6 +324,17 @@ export function EvidenceForm({
               <span className="text-meta">{file ? formatBytes(file.size) : EVIDENCE_FILE_HINT}</span>
             </span>
           </label>
+          {file && !busy && (
+            <div className="mt-1 flex justify-end">
+              <button
+                type="button"
+                onClick={() => chooseFile(null)}
+                className="text-caption text-muted hover:text-critical-ink transition-colors cursor-pointer"
+              >
+                Clear selected file
+              </button>
+            </div>
+          )}
           {fileError && (
             <p role="alert" className="mt-1.5 text-caption text-critical-ink">
               {fileError}
@@ -421,18 +432,25 @@ export function ResubmitPanel({ creativeId, items, nextRound }: { creativeId: st
       <input type="hidden" name="readiness" value={readiness} />
       <ul className="flex flex-col gap-2">
         {items.map((item) => (
-          <li key={item.key} className="flex items-start gap-2.5 text-small">
-            <span
-              aria-hidden
-              className={cn(
-                "mt-px flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:size-3",
-                item.done ? "bg-positive-soft text-positive-ink ring-positive-line" : "bg-surface text-transparent ring-line-strong",
-              )}
-            >
-              <CheckIcon />
-            </span>
-            <span className={item.done ? "text-ink" : "text-muted"}>{item.label}</span>
-            <span className="sr-only">{item.done ? "(done)" : "(to do)"}</span>
+          <li key={item.key} className="flex items-start justify-between gap-2.5 text-small">
+            <div className="flex items-start gap-2.5 min-w-0">
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-px flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:size-3",
+                  item.done ? "bg-positive-soft text-positive-ink ring-positive-line" : "bg-surface text-transparent ring-line-strong",
+                )}
+              >
+                <CheckIcon />
+              </span>
+              <span className={item.done ? "text-ink" : "text-muted"}>{item.label}</span>
+              <span className="sr-only">{item.done ? "(done)" : "(to do)"}</span>
+            </div>
+            {!item.done && (
+              <a href={`#finding-${item.key}`} className="text-caption font-medium text-brand-700 hover:underline shrink-0">
+                Fix &rarr;
+              </a>
+            )}
           </li>
         ))}
       </ul>

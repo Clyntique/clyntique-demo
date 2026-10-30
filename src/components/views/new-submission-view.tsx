@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { SubmissionForm } from "@/components/submissions/submission-form";
 import { buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { FolderIcon } from "@/components/ui/icons";
+import { FolderIcon, MessageIcon } from "@/components/ui/icons";
 import { EmptyState } from "@/components/ui/states";
 import type { SearchParams } from "./projects-view";
 
@@ -61,12 +61,20 @@ export async function NewSubmissionView({
           title="No project yet."
           description="Submissions belong to a project. The Clyntique team sets up your project; it will appear here once it's ready."
           action={
-            <Link
-              href="/dashboard"
-              className={buttonClasses({ variant: "secondary", size: "sm" })}
-            >
-              Back to overview
-            </Link>
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              <Link
+                href="/dashboard/messages/new"
+                className={buttonClasses({ variant: "primary", size: "sm" })}
+              >
+                <MessageIcon /> Message account team
+              </Link>
+              <Link
+                href="/dashboard"
+                className={buttonClasses({ variant: "secondary", size: "sm" })}
+              >
+                Back to overview
+              </Link>
+            </div>
           }
         />
       )}

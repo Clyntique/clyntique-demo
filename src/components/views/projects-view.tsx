@@ -6,7 +6,7 @@ import { requestTime } from "@/lib/format";
 import { basePathFor } from "@/lib/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button, buttonClasses } from "@/components/ui/button";
-import { FolderIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
+import { FolderIcon, MessageIcon, PlusIcon, SearchIcon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/states";
 import { ProjectList } from "@/components/workspace/project-list";
@@ -77,9 +77,13 @@ export async function ProjectsView({ role, searchParams }: { role: Role; searchP
               : "Projects shared with you will appear here."
           }
           action={
-            role === "TEAM" && (
+            role === "TEAM" ? (
               <Link href="/admin/projects/new" className={buttonClasses({ size: "sm" })}>
                 <PlusIcon /> New project
+              </Link>
+            ) : (
+              <Link href="/dashboard/messages/new" className={buttonClasses({ size: "sm", variant: "secondary" })}>
+                <MessageIcon /> Message account team
               </Link>
             )
           }

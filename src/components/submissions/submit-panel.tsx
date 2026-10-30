@@ -30,18 +30,31 @@ export function SubmitPanel({ creativeId, readiness }: { creativeId: string; rea
         {ITEMS.map(({ key, label }) => {
           const done = readiness[key];
           return (
-            <li key={key} className="flex items-center gap-2.5 text-small">
-              <span
-                aria-hidden
-                className={cn(
-                  "flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:size-3",
-                  done ? "bg-positive-soft text-positive-ink ring-positive-line" : "bg-surface text-transparent ring-line-strong",
-                )}
-              >
-                <CheckIcon />
-              </span>
-              <span className={done ? "text-ink" : "text-muted"}>{label}</span>
-              <span className="sr-only">{done ? "(done)" : "(missing)"}</span>
+            <li key={key} className="flex items-center justify-between gap-2.5 text-small">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-5 shrink-0 items-center justify-center rounded-full ring-1 ring-inset [&_svg]:size-3",
+                    done ? "bg-positive-soft text-positive-ink ring-positive-line" : "bg-surface text-transparent ring-line-strong",
+                  )}
+                >
+                  <CheckIcon />
+                </span>
+                <span className={done ? "text-ink" : "text-muted"}>{label}</span>
+                <span className="sr-only">{done ? "(done)" : "(missing)"}</span>
+              </div>
+              {!done && (
+                key === "file" ? (
+                  <a href="#upload" className="text-caption font-medium text-brand-700 hover:underline shrink-0">
+                    Upload &rarr;
+                  </a>
+                ) : (
+                  <a href="#details" className="text-caption font-medium text-brand-700 hover:underline shrink-0">
+                    Edit &rarr;
+                  </a>
+                )
+              )}
             </li>
           );
         })}

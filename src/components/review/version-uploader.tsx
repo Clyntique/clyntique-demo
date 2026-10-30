@@ -176,6 +176,20 @@ export function VersionUploader({
               : `Images: JPEG, PNG, WebP up to ${formatBytes(limits.imageBytes)} · Videos: MP4, WebM up to ${formatBytes(limits.videoBytes)}`}
           </span>
         </label>
+        {file && !busy && (
+          <div className="mt-1 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                chooseFile(null);
+                if (inputRef.current) inputRef.current.value = "";
+              }}
+              className="text-caption text-muted hover:text-critical-ink transition-colors cursor-pointer"
+            >
+              Clear selected file
+            </button>
+          </div>
+        )}
         {fileError && (
           <p role="alert" className="mt-1.5 text-caption text-critical-ink">
             {fileError}
