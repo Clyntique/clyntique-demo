@@ -78,8 +78,9 @@ export function FindingsList({
         return (
           <li
             key={f.id}
+            id={`finding-${f.id}`}
             className={cn(
-              "rounded-xl border bg-surface p-4 sm:p-5 shadow-xs transition-shadow",
+              "scroll-mt-6 rounded-xl border bg-surface p-4 sm:p-5 shadow-xs transition-shadow",
               f.status === "DRAFT"
                 ? "border-dashed border-line-strong bg-subtle/30"
                 : gaps.length

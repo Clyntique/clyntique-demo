@@ -819,7 +819,7 @@ function ClientRow({ item, now }: { item: ClientItem; now: number }) {
         </div>
       </Link>
       {item.status !== "REVIEW_COMPLETE" && item.status !== "DRAFT" && (
-        <div className="mt-3 pl-13">
+        <div className="mt-3 pl-13 max-sm:pl-0">
           <SubmissionSteps status={item.status} round={item.roundNumber} />
         </div>
       )}

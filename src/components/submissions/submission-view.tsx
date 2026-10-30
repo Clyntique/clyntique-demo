@@ -383,11 +383,14 @@ export async function SubmissionView({
             </Card>
           )}
 
-          <Card className="p-5 shadow-xs">
+          <Card id="details" className="scroll-mt-6 p-5 shadow-xs">
             <h2 className="text-section-title mb-4 text-ink">Submission details</h2>
             <Details submission={submission} />
             {editable && targeting && (
-              <details className="group mt-5 border-t border-line pt-4" open={!submission.current}>
+              <details
+                className="group mt-5 border-t border-line pt-4"
+                open={!submission.current || !submission.industry || submission.markets.length === 0 || submission.platforms.length === 0}
+              >
                 <summary className="text-small flex cursor-pointer list-none items-center justify-between gap-3 font-medium text-brand-700 hover:text-brand-800">
                   <span>Edit details</span>
                   <span className="text-caption font-normal text-muted group-open:hidden">

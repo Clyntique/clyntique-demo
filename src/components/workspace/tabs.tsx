@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export type TabSpec = { id: string; label: string; count?: number; content: ReactNode };
@@ -14,6 +14,38 @@ export function Tabs({ tabs, defaultId, label }: { tabs: TabSpec[]; defaultId: s
   const [active, setActive] = useState(tabs.some((t) => t.id === defaultId) ? defaultId : tabs[0]?.id);
   const base = useId();
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    function handleHash() {
+      const hash = window.location.hash;
+      if (!hash) return;
+      if (hash.startsWith("#evidence")) {
+        setActive("evidence");
+      } else if (hash.startsWith("#finding")) {
+        setActive("findings");
+      } else if (hash.startsWith("#history")) {
+        setActive("history");
+      } else if (hash.startsWith("#messages")) {
+        setActive("messages");
+      } else if (hash.startsWith("#ai-compliance")) {
+        setActive("ai-compliance");
+      }
+    }
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const id = hash.slice(1);
+      const el = document.getElementById(id);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  }, [active]);
 
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
     const i = tabs.findIndex((t) => t.id === active);
