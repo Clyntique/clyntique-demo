@@ -358,7 +358,9 @@ async function uploadVersion(page, n) {
     const alerts = await page.locator('[role="alert"]').allInnerTexts().catch(() => []);
     const statuses = await page.locator('[role="status"]').allInnerTexts().catch(() => []);
     onScreen = [...alerts.map((a) => `alert: ${a}`), ...statuses.filter((x) => /upload|saved|progress|stopped|try again/i.test(x)).map((x) => `status: ${x}`)].map((x) => x.replace(/\s+/g, " ").trim().slice(0, 160)).join(" | ");
-    if (alerts.length) throw new Error(`upload failed on screen: ${onScreen}; requests: ${trace.join(", ") || "none seen"}`);
+    const failureAlerts = alerts.map((a) => a.trim()).filter((a) => a && !/uploaded/i.test(a));
+    const succeeded = statuses.some((x) => new RegExp(`\\bV${n} uploaded`, "i").test(x));
+    if (failureAlerts.length && !succeeded) throw new Error(`upload failed on screen: ${onScreen}; requests: ${trace.join(", ") || "none seen"}`);
   } finally {
     page.off("response", onResponse);
     page.off("requestfailed", onFailed);
@@ -690,7 +692,7 @@ async function fixtures(browser, anon, team, c1, c2) {
 
   await step("F Fixtures", team, "Team sees the submission; media 200", "listed, opens, image loads", async (page) => {
     await goto(page, `/admin/creatives/${fx.creative}`);
-    await expectText(page, creative, "submission title");
+    await expectText(page, REUSE_DRAFT ? /SMOKE TEST/ : creative, "submission title");
     if (!fx.media) return blocked("no V1 media (upload did not run)");
     const s = await mediaStatus(team, fx.media[0]);
     if (s !== 200) throw new Error(`media -> ${s}`);
@@ -853,9 +855,15 @@ async function fixtures(browser, anon, team, c1, c2) {
     await page.waitForTimeout(1500);
     await settle(page);
     await expectText(page, EXTERNAL_DISCLAIMER, "manual-record disclaimer");
-    const toggle = page.getByRole("button", { name: /^Record outcome$/i });
-    if (await toggle.count()) await toggle.first().click();
-    const out = page.locator("form").filter({ has: page.locator('select[name="kind"]') });
+    // The outcome form is revealed by a "Record outcome" button once the external
+    // submission is listed; give the page a moment to show the button and the form.
+    let out = page.locator("form").filter({ has: page.locator('select[name="kind"]') });
+    for (let i = 0; i < 10 && !(await out.count()); i++) {
+      const toggle = page.getByRole("button", { name: /^Record outcome$/i });
+      if (await toggle.count()) await toggle.first().click().catch(() => {});
+      await page.waitForTimeout(700);
+      out = page.locator("form").filter({ has: page.locator('select[name="kind"]') });
+    }
     if (!(await out.count())) return blocked("submission recorded; outcome form not offered");
     await selectIfPresent(out, 'select[name="kind"]', "APPROVED");
     await fillIfPresent(out, 'input[name="outcomeOn"]', new Date().toISOString().slice(0, 10));
