@@ -30,7 +30,13 @@ export default function SignupPage() {
 
         {/* Top: Brand Logo */}
         <div className="relative z-10 flex flex-col gap-1.5">
-          <Brand size="lg" className="select-none" />
+          <Link
+            href="/"
+            aria-label="Clyntique homepage"
+            className="inline-flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 transition-opacity hover:opacity-90 w-fit"
+          >
+            <Brand size="lg" className="select-none" />
+          </Link>
           <div className="pl-0.5 pt-1 text-[10px] font-semibold tracking-[0.22em] uppercase text-muted/90">
             <p>Client Workspace</p>
             <p className="text-muted/70 text-[9px] tracking-[0.2em] mt-0.5">Creative Review · Approvals</p>
@@ -67,7 +73,13 @@ export default function SignupPage() {
 
         {/* Mobile Header */}
         <div className="relative z-10 flex items-center justify-between border-b border-line bg-surface/90 backdrop-blur px-6 py-5 lg:hidden">
-          <Brand size="md" className="select-none" />
+          <Link
+            href="/"
+            aria-label="Clyntique homepage"
+            className="inline-flex items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 transition-opacity hover:opacity-90"
+          >
+            <Brand size="md" className="select-none" />
+          </Link>
           <span className="text-micro font-semibold uppercase tracking-wider text-muted">New Account</span>
         </div>
 
@@ -121,6 +133,15 @@ export default function SignupPage() {
                   Sign in to your workspace
                 </Link>
               </p>
+              <p className="text-caption text-muted mt-2">
+                Evaluating Clyntique for YC?{" "}
+                <Link
+                  href="/demo"
+                  className="font-semibold text-gold-700 hover:text-gold-900 underline-offset-2 hover:underline"
+                >
+                  Try the interactive demo &rarr;
+                </Link>
+              </p>
             </div>
 
             <p className="text-caption mt-6 text-center text-muted/80 lg:hidden leading-relaxed">
@@ -132,8 +153,14 @@ export default function SignupPage() {
         {/* Bottom Security Footer */}
         <footer className="relative z-10 border-t border-line/60 py-4 text-center">
           <div className="inline-flex items-center gap-2 text-caption text-muted/80">
-            <BrandMark width={18} />
-            <span className="font-semibold tracking-wider text-ink-soft text-micro uppercase">Clyntique</span>
+            <Link
+              href="/"
+              aria-label="Clyntique homepage"
+              className="inline-flex items-center gap-2 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 transition-opacity hover:opacity-80"
+            >
+              <BrandMark width={18} />
+              <span className="font-semibold tracking-wider text-ink-soft text-micro uppercase">Clyntique</span>
+            </Link>
             <span className="text-faint">|</span>
             <span>Security</span>
             <span className="text-faint">·</span>
