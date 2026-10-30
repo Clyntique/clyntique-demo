@@ -10,9 +10,21 @@ import { localBlobMockOrigin } from "./local-blob-mock";
  * readable, and every read goes through /api/media/[versionId], which checks
  * the viewer's access first. The SDK authenticates with BLOB_READ_WRITE_TOKEN
  * (required for client upload tokens), or OIDC (BLOB_STORE_ID) on Vercel.
+ *
+ * The token is passed explicitly to every server-side call below. Without it
+ * the SDK prefers OIDC with BLOB_STORE_ID when both are present, so a
+ * BLOB_STORE_ID that names another store (a second store connected to the
+ * same environment) makes head/get/del look in the wrong store while uploads,
+ * which always use the token, land in the right one.
  */
 
 const ACCESS = "private" as const;
+
+/** The read-write token for the creatives store, when set, so OIDC + BLOB_STORE_ID never wins over it. */
+function blobAuth(): { token?: string } {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  return token ? { token } : {};
+}
 
 /** Client uploads need the read-write token to sign upload tokens. */
 export function uploadsConfigured() {
@@ -33,7 +45,7 @@ export function isPrivateBlobUrl(value: string) {
 
 export async function headBlob(url: string): Promise<HeadBlobResult | null> {
   try {
-    return await head(url);
+    return await head(url, blobAuth());
   } catch {
     return null;
   }
@@ -43,6 +55,7 @@ export async function headBlob(url: string): Promise<HeadBlobResult | null> {
 export function readBlob(pathnameOrUrl: string, init: { range?: string | null; ifNoneMatch?: string | null }) {
   return get(pathnameOrUrl, {
     access: ACCESS,
+    ...blobAuth(),
     ifNoneMatch: init.ifNoneMatch ?? undefined,
     headers: init.range ? { range: init.range } : undefined,
   });
@@ -67,7 +80,7 @@ function ascii(bytes: Uint8Array, start: number, end: number) {
 export async function contentMatches(url: string, mimeType: string): Promise<boolean> {
   const check = SIGNATURES[mimeType];
   if (!check) return false;
-  const result = await get(url, { access: ACCESS, useCache: false, headers: { range: "bytes=0-31" } });
+  const result = await get(url, { access: ACCESS, ...blobAuth(), useCache: false, headers: { range: "bytes=0-31" } });
   if (!result || result.statusCode !== 200) return false;
 
   const reader = result.stream.getReader();
@@ -98,7 +111,7 @@ export async function deleteUnreferencedBlob(url: string) {
   ]);
   if (version || evidence) return false;
   try {
-    await del(url);
+    await del(url, blobAuth());
     return true;
   } catch (error) {
     console.error("Blob cleanup failed", error instanceof Error ? error.name : "unknown error");
