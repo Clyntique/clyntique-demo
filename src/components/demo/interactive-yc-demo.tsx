@@ -403,7 +403,7 @@ export function InteractiveYcDemo() {
                     </h3>
                     <p className="text-caption text-slate-300 mt-2">
                       {activeVersion === 2
-                        ? 'Includes verified FDA & Meta compliant bottom-third disclosure (14pt high contrast).'
+                        ? 'Illustrative demo status: bottom-third disclosure added (14pt high contrast). Internal review only, not FDA or platform approval.'
                         : 'Flagged for superlative therapeutic claim without immediate 24-hr clinical substantiation.'}
                     </p>
                   </div>
