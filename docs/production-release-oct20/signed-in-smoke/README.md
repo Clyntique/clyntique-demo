@@ -49,7 +49,11 @@ powershell -ExecutionPolicy Bypass -File .\run-smoke.ps1 -Fixtures
 It asks you to type `CREATE SMOKE TEST RECORDS`, then runs part 1 again, then creates and uses only these records. Every title and note starts with `[SMOKE TEST <time>]`.
 
 1. **Team:** one project, "[SMOKE TEST …] Production smoke project", assigned to Client 1.
-2. **Client 1:** one submission in it ("Smoke reminder — Feed post"), with the first market and platform ticked. V1 and V2 are generated 240×160 PNGs, uploaded to the Production Blob store.
+2. **Client 1:** one submission in it ("Smoke reminder — Feed post"), with the industry set to Healthcare (Submit stays disabled without one) and the first market and platform ticked. V1 and V2 are generated 240×160 PNGs, uploaded to the Production Blob store. With `-Creative <file>` (PNG, JPEG or WebP under 4 MB), V1 is that labelled file instead, so the real Blob upload and the live AI scan run on it:
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\run-smoke.ps1 -Fixtures -Creative D:\clyntique-demo\test-assets\smoke\smoke-test-creative.png
+   ```
 3. One chat message from the client and one reply from the Team, on that submission.
 4. One AI scan run. With 0 verified rules it must say "Insufficient policy coverage".
 5. **Review loop:** 1 finding, changes requested, client response, 1 evidence link (example.com), resubmission, finding resolved, review completed as "Issues resolved".

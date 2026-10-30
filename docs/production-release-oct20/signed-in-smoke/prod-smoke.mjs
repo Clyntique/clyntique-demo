@@ -22,10 +22,13 @@
 //
 // Options: --base <url> (default https://clyntique-demo.vercel.app), --out <dir>,
 //   --fixtures (needs SMOKE_FIXTURES_APPROVED=yes), --expect-projects <n> (default 4),
-//   --timeout <ms> per step (default 90000), --headed.
+//   --timeout <ms> per step (default 90000), --headed,
+//   --creative <file> (with --fixtures: upload this labelled image as V1 instead
+//     of the generated PNG, so the real Blob upload and the live AI scan use it;
+//     PNG/JPEG/WebP under 4 MB; V2 stays a generated PNG).
 
-import { mkdirSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, extname, join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import { deflateSync } from "node:zlib";
@@ -53,6 +56,13 @@ const FIXTURES = argv.includes("--fixtures");
 const EXPECT_PROJECTS = Number(opt("expect-projects", "4"));
 const STEP_TIMEOUT = Number(opt("timeout", "90000"));
 const TAG = `[SMOKE TEST ${STAMP.slice(0, 16).replace("T", " ")}]`;
+const CREATIVE = opt("creative", null) ? resolve(opt("creative", null)) : null;
+const CREATIVE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" };
+if (CREATIVE) {
+  const type = CREATIVE_TYPES[extname(CREATIVE).toLowerCase()];
+  if (!type) { console.error("--creative must be a .png, .jpg, .jpeg or .webp file. Nothing was run."); process.exit(1); }
+  if (readFileSync(CREATIVE).length > 4 * 1024 * 1024) { console.error("--creative must be under 4 MB (the AI scan limit). Nothing was run."); process.exit(1); }
+}
 
 // ---------------------------------------------------------------- secrets
 const ACCOUNTS = {};
@@ -303,7 +313,8 @@ async function uploadVersion(page, n) {
   if (/File uploads aren.t set up in this environment/i.test(await text(page))) return blocked("uploads are not configured on this deployment");
   const input = page.locator('input[type="file"]');
   if (!(await input.count())) return blocked("no file input offered in this state");
-  await input.first().setInputFiles({ name: `smoke-test-v${n}.png`, mimeType: "image/png", buffer: makePng(n) });
+  if (n === 1 && CREATIVE) await input.first().setInputFiles({ name: `smoke-test-v1${extname(CREATIVE).toLowerCase()}`, mimeType: CREATIVE_TYPES[extname(CREATIVE).toLowerCase()], buffer: readFileSync(CREATIVE) });
+  else await input.first().setInputFiles({ name: `smoke-test-v${n}.png`, mimeType: "image/png", buffer: makePng(n) });
   await page.waitForTimeout(500);
   const btn = page.getByRole("button", { name: /^Upload (file|V\d+)$/ });
   if (!(await btn.count())) return blocked("no Upload button after choosing the file");
@@ -551,6 +562,12 @@ async function fixtures(browser, anon, team, c1, c2) {
     await selectIfPresent(page, 'select[name="projectId"]', project);
     const radio = page.locator('input[type="radio"][name="format"]');
     if (await radio.count()) await page.locator("label").filter({ has: radio.first() }).first().click();
+    // The industry decides which verified policies apply; Submit stays disabled until one is chosen.
+    const industry = page.locator('input[type="radio"][name="industry"]');
+    if (await industry.count()) {
+      const healthcare = page.locator('input[type="radio"][name="industry"][value="HEALTHCARE"]');
+      await page.locator("label").filter({ has: (await healthcare.count()) ? healthcare : industry.first() }).first().click();
+    }
     for (const name of ["markets", "platforms"]) {
       const box = page.locator(`input[type="checkbox"][name="${name}"]`);
       if ((await box.count()) && !(await box.first().isChecked())) await page.locator("label").filter({ has: box.first() }).first().click();
@@ -571,7 +588,7 @@ async function fixtures(browser, anon, team, c1, c2) {
     return "not-found for the Team";
   }, { critical: true });
 
-  const up1 = await step("F Fixtures", c1, "Upload V1 (Production Blob, private)", "V1 listed; preview loads from /api/media", async (page) => {
+  const up1 = await step("F Fixtures", c1, CREATIVE ? `Upload V1: labelled creative ${basename(CREATIVE)} (Production Blob, private)` : "Upload V1 (Production Blob, private)", "V1 listed; preview loads from /api/media", async (page) => {
     const r = await uploadVersion(page, 1);
     if (r.urls) fx.media = r.urls;
     return r;
@@ -825,7 +842,7 @@ async function fixtures(browser, anon, team, c1, c2) {
 }
 
 async function main() {
-  log(`Clyntique Production smoke test against ${BASE}; mode: ${FIXTURES ? `read-only + fixtures labelled "${TAG}"` : "read-only"}; output ${OUT}`);
+  log(`Clyntique Production smoke test against ${BASE}; mode: ${FIXTURES ? `read-only + fixtures labelled "${TAG}"${CREATIVE ? ` with V1 from ${basename(CREATIVE)}` : ""}` : "read-only"}; output ${OUT}`);
   const browser = await chromium.launch({ headless: !argv.includes("--headed"), ...(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {}) });
   const anon = await newRole(browser, "ANONYMOUS");
   const team = await newRole(browser, "TEAM");
