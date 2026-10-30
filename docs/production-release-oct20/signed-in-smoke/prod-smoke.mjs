@@ -319,13 +319,22 @@ function makePng(seed) {
 
 async function uploadVersion(page, n) {
   if (/File uploads aren.t set up in this environment/i.test(await text(page))) return blocked("uploads are not configured on this deployment");
-  const input = page.locator('input[type="file"]');
-  if (!(await input.count())) return blocked("no file input offered in this state");
-  if (n === 1 && CREATIVE) await input.first().setInputFiles({ name: `smoke-test-v1${extname(CREATIVE).toLowerCase()}`, mimeType: CREATIVE_TYPES[extname(CREATIVE).toLowerCase()], buffer: readFileSync(CREATIVE) });
-  else await input.first().setInputFiles({ name: `smoke-test-v${n}.png`, mimeType: "image/png", buffer: makePng(n) });
+  // The page can hold several file inputs (the evidence form has its own,
+  // id "evidence-file-<id>"); the version uploader's input is id "file-<id>".
+  const input = page.locator('input[type="file"][id^="file-"]');
+  if (!(await input.count())) return blocked("no creative file input offered in this state");
+  const name = n === 1 && CREATIVE ? `smoke-test-v1${extname(CREATIVE).toLowerCase()}` : `smoke-test-v${n}.png`;
+  if (n === 1 && CREATIVE) await input.first().setInputFiles({ name, mimeType: CREATIVE_TYPES[extname(CREATIVE).toLowerCase()], buffer: readFileSync(CREATIVE) });
+  else await input.first().setInputFiles({ name, mimeType: "image/png", buffer: makePng(n) });
   await page.waitForTimeout(500);
+  const chosen = await page.locator(`label[for="${await input.first().getAttribute("id")}"]`).innerText().catch(() => "");
+  if (!chosen.includes(name)) {
+    const alert = await page.locator('[role="alert"]').allInnerTexts().catch(() => []);
+    throw new Error(`the file was not taken by the uploader (label shows "${chosen.replace(/\s+/g, " ").slice(0, 80)}"${alert.length ? `; alert: ${alert.join(" | ").slice(0, 120)}` : ""})`);
+  }
   const btn = page.getByRole("button", { name: /^Upload (file|V\d+)$/ });
   if (!(await btn.count())) return blocked("no Upload button after choosing the file");
+  if (await btn.first().isDisabled()) throw new Error("Upload button stayed disabled after the file was chosen");
   await btn.first().click();
   await page.waitForFunction(() => !/Uploading/.test(document.body.innerText), null, { timeout: 90000 }).catch(() => {});
   await page.waitForTimeout(1500);
