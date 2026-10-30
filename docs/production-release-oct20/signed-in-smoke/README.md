@@ -54,6 +54,8 @@ It asks you to type `CREATE SMOKE TEST RECORDS`, then runs part 1 again, then cr
    ```powershell
    powershell -ExecutionPolicy Bypass -File .\run-smoke.ps1 -Fixtures -Creative D:\clyntique-demo\test-assets\smoke\smoke-test-creative.png
    ```
+
+   If an earlier run already created a [SMOKE TEST] draft and stopped before the upload, `-ReuseDraft latest` (or `-ReuseDraft <id>` from the draft's `/dashboard/creatives/<id>` address) continues on that draft instead of creating another project and draft. The kit refuses a submission that is not labelled [SMOKE TEST] or is no longer a draft.
 3. One chat message from the client and one reply from the Team, on that submission.
 4. One AI scan run. With 0 verified rules it must say "Insufficient policy coverage".
 5. **Review loop:** 1 finding, changes requested, client response, 1 evidence link (example.com), resubmission, finding resolved, review completed as "Issues resolved".

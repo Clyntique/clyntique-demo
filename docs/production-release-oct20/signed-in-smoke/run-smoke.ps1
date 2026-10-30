@@ -2,9 +2,10 @@
 #   Read-only (default, changes nothing):   powershell -ExecutionPolicy Bypass -File .\run-smoke.ps1
 #   With the approved [SMOKE TEST] records: powershell -ExecutionPolicy Bypass -File .\run-smoke.ps1 -Fixtures
 #   Same, uploading a labelled creative as V1: ... -Fixtures -Creative D:\clyntique-demo\test-assets\smoke\smoke-test-creative.png
+#   Continue on an existing [SMOKE TEST] draft instead of creating new records: ... -Fixtures -ReuseDraft latest
 # Passwords are typed at hidden prompts, passed only to this one test run, and
 # removed afterwards. Nothing is written to disk except the report and screenshots.
-param([switch]$Fixtures, [string]$Base = "https://clyntique-demo.vercel.app", [int]$ExpectProjects = 4, [string]$Creative = "")
+param([switch]$Fixtures, [string]$Base = "https://clyntique-demo.vercel.app", [int]$ExpectProjects = 4, [string]$Creative = "", [string]$ReuseDraft = "")
 $ErrorActionPreference = "Stop"
 
 function Read-Secret([string]$Prompt) {
@@ -29,11 +30,13 @@ try {
 
   $nodeArgs = @("prod-smoke.mjs", "--base", $Base, "--expect-projects", "$ExpectProjects")
   if ($Fixtures) {
-    Write-Host "This creates one [SMOKE TEST] project and one [SMOKE TEST] submission in Production for Client 1 (they cannot be deleted from the app)."
+    if ($ReuseDraft) { Write-Host "This continues on the existing [SMOKE TEST] draft ($ReuseDraft) in Production for Client 1: uploads, submission, review loop and one AI scan. No new project or draft." }
+    else { Write-Host "This creates one [SMOKE TEST] project and one [SMOKE TEST] submission in Production for Client 1 (they cannot be deleted from the app)." }
     $confirm = Read-Host "Type CREATE SMOKE TEST RECORDS to continue"
     if ($confirm -ne "CREATE SMOKE TEST RECORDS") { Write-Host "Not confirmed. Nothing was run."; exit 1 }
     $env:SMOKE_FIXTURES_APPROVED = "yes"
     $nodeArgs += "--fixtures"
+    if ($ReuseDraft) { $nodeArgs += @("--reuse-draft", $ReuseDraft) }
     if ($Creative) {
       if (-not (Test-Path $Creative)) { Write-Host "Creative file not found: $Creative. Nothing was run."; exit 1 }
       $nodeArgs += @("--creative", (Resolve-Path $Creative).Path)

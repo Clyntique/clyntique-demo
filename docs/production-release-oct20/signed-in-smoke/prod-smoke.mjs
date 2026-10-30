@@ -23,6 +23,9 @@
 // Options: --base <url> (default https://clyntique-demo.vercel.app), --out <dir>,
 //   --fixtures (needs SMOKE_FIXTURES_APPROVED=yes), --expect-projects <n> (default 4),
 //   --timeout <ms> per step (default 90000), --headed,
+//   --reuse-draft <id|latest> (with --fixtures: skip creating the project and the
+//     draft and continue on an existing [SMOKE TEST] draft of Client 1; "latest"
+//     picks the newest [SMOKE TEST] draft in Client 1's submissions list),
 //   --creative <file> (with --fixtures: upload this labelled image as V1 instead
 //     of the generated PNG, so the real Blob upload and the live AI scan use it;
 //     PNG/JPEG/WebP under 4 MB; V2 stays a generated PNG).
@@ -56,6 +59,7 @@ const FIXTURES = argv.includes("--fixtures");
 const EXPECT_PROJECTS = Number(opt("expect-projects", "4"));
 const STEP_TIMEOUT = Number(opt("timeout", "90000"));
 const TAG = `[SMOKE TEST ${STAMP.slice(0, 16).replace("T", " ")}]`;
+const REUSE_DRAFT = opt("reuse-draft", null);
 const CREATIVE = opt("creative", null) ? resolve(opt("creative", null)) : null;
 const CREATIVE_TYPES = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp" };
 if (CREATIVE) {
@@ -194,12 +198,16 @@ async function settle(page) {
 // A server action finishing late (e.g. after sending a message) can navigate the
 // page away again; if the page did not stay on `path`, wait and load it once more.
 // A second mismatch is a genuine redirect and is returned as is.
+// Navigation waits for the DOM only (networkidle is waited for inside settle(),
+// with a catch), so a slow network or a long-lived request cannot fail a step
+// whose page already rendered. The navigation itself gets the step budget.
 async function goto(page, path) {
-  let res = await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
+  const options = { waitUntil: "domcontentloaded", timeout: Math.max(30000, STEP_TIMEOUT - 15000) };
+  let res = await page.goto(`${BASE}${path}`, options);
   await settle(page);
   if (new URL(page.url()).pathname !== path.split("?")[0]) {
     await page.waitForTimeout(2000);
-    res = await page.goto(`${BASE}${path}`, { waitUntil: "networkidle" });
+    res = await page.goto(`${BASE}${path}`, options);
     await settle(page);
   }
   return res;
@@ -543,7 +551,28 @@ async function fixtures(browser, anon, team, c1, c2) {
   const project = `${TAG} Production smoke project`;
   const creative = `${TAG} Smoke reminder — Feed post`;
 
-  const p1 = await step("F Fixtures", team, "Create the [SMOKE TEST] project for Client 1", "project created and assigned", async (page) => {
+  if (REUSE_DRAFT) {
+    const r = await step("F Fixtures", c1, `Reuse the existing [SMOKE TEST] draft (${REUSE_DRAFT === "latest" ? "newest in the list" : "given id"})`, "draft opens in Draft state for Client 1", async (page) => {
+      let id = REUSE_DRAFT;
+      if (id === "latest") {
+        await goto(page, "/dashboard/creatives");
+        const links = page.locator('a[href*="/dashboard/creatives/"]', { hasText: /SMOKE TEST/ });
+        if (!(await links.count())) throw new Error("no [SMOKE TEST] submission in Client 1's list");
+        id = new URL(await links.first().getAttribute("href"), BASE).pathname.split("/").filter(Boolean).pop();
+      }
+      if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error("the draft id must be the last part of its /dashboard/creatives/<id> address");
+      await goto(page, `/dashboard/creatives/${id}`);
+      const t = await text(page);
+      if (NOT_FOUND.test(t)) throw new Error("the draft was not found for Client 1");
+      if (!/SMOKE TEST/.test(t)) throw new Error("the submission is not labelled [SMOKE TEST]; refusing to touch it");
+      if (!/Draft/.test(t)) throw new Error("the submission is not in Draft state; refusing to touch it");
+      fx.creative = id;
+      return `reusing draft <id>; no new project or draft created`;
+    });
+    if (r.status !== "PASS") return;
+  }
+
+  const p1 = REUSE_DRAFT ? { status: "PASS" } : await step("F Fixtures", team, "Create the [SMOKE TEST] project for Client 1", "project created and assigned", async (page) => {
     await goto(page, "/admin/projects/new");
     await page.locator('input[name="name"]').fill(project);
     if (!(await selectIfPresent(page, 'select[name="clientId"]', ACCOUNTS.client.email))) throw new Error("client not offered in the project form");
@@ -556,7 +585,7 @@ async function fixtures(browser, anon, team, c1, c2) {
   });
   if (p1.status !== "PASS") return;
 
-  const d1 = await step("F Fixtures", c1, "Create a draft submission", "draft opens in Draft state", async (page) => {
+  const d1 = REUSE_DRAFT ? { status: "PASS" } : await step("F Fixtures", c1, "Create a draft submission", "draft opens in Draft state", async (page) => {
     await goto(page, "/dashboard/submissions/new");
     await page.locator('input[name="name"]').fill(creative);
     await selectIfPresent(page, 'select[name="projectId"]', project);
@@ -842,7 +871,7 @@ async function fixtures(browser, anon, team, c1, c2) {
 }
 
 async function main() {
-  log(`Clyntique Production smoke test against ${BASE}; mode: ${FIXTURES ? `read-only + fixtures labelled "${TAG}"${CREATIVE ? ` with V1 from ${basename(CREATIVE)}` : ""}` : "read-only"}; output ${OUT}`);
+  log(`Clyntique Production smoke test against ${BASE}; mode: ${FIXTURES ? `read-only + fixtures labelled "${TAG}"${CREATIVE ? ` with V1 from ${basename(CREATIVE)}` : ""}${REUSE_DRAFT ? ` reusing draft ${REUSE_DRAFT}` : ""}` : "read-only"}; output ${OUT}`);
   const browser = await chromium.launch({ headless: !argv.includes("--headed"), ...(process.env.PW_CHROME ? { executablePath: process.env.PW_CHROME } : {}) });
   const anon = await newRole(browser, "ANONYMOUS");
   const team = await newRole(browser, "TEAM");
