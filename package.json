@@ -18,6 +18,7 @@
     "db:migrate:status": "prisma migrate status",
     "db:restore": "tsx prisma/db-restore.ts",
     "db:grant-policy-admin": "tsx prisma/grant-policy-admin.ts",
+    "db:production-policy-admins": "tsx prisma/production-policy-admins.ts",
     "db:policy-research-import": "tsx prisma/policy-research-import.ts",
     "db:demo-fixtures": "node --conditions=react-server --import tsx prisma/demo-fixtures.ts",
     "db:concurrency-check": "node --conditions=react-server --import tsx prisma/concurrency-check.ts",
