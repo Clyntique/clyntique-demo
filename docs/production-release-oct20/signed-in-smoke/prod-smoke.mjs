@@ -335,13 +335,38 @@ async function uploadVersion(page, n) {
   const btn = page.getByRole("button", { name: /^Upload (file|V\d+)$/ });
   if (!(await btn.count())) return blocked("no Upload button after choosing the file");
   if (await btn.first().isDisabled()) throw new Error("Upload button stayed disabled after the file was chosen");
-  await btn.first().click();
-  await page.waitForFunction(() => !/Uploading/.test(document.body.innerText), null, { timeout: 90000 }).catch(() => {});
-  await page.waitForTimeout(1500);
-  await page.reload({ waitUntil: "networkidle" });
+  // Trace the upload's requests (token request, Blob API, the save action) so a
+  // failure says where it stopped. Hosts, paths and statuses only: no query strings.
+  const trace = [];
+  const pagePath = new URL(page.url()).pathname;
+  const interesting = (u) => /\/api\/creatives\/upload|vercel\.com\/api\/blob|blob\.vercel-storage\.com/.test(u) || new URL(u).pathname === pagePath;
+  const describe = (req) => { const u = new URL(req.url()); return `${req.method()} ${u.hostname}${u.pathname.replace(/\/creatives\/[^/]+/, "/creatives/<id>").slice(0, 70)}`; };
+  const onResponse = (r) => { if (interesting(r.url())) trace.push(`${r.status()} ${describe(r.request())}`); };
+  const onFailed = (req) => { if (interesting(req.url())) trace.push(`FAILED ${describe(req)} (${req.failure()?.errorText ?? "network error"})`); };
+  page.on("response", onResponse);
+  page.on("requestfailed", onFailed);
+  let onScreen = "";
+  try {
+    await btn.first().click();
+    // Wait until the uploader is no longer busy: the "Uploading…" status is gone
+    // and either an alert (failure) or the saved notice (success) is shown.
+    await page.waitForFunction(() => {
+      const t = document.body.innerText;
+      return !/Uploading/.test(t) && (document.querySelector('[role="alert"]') !== null || /uploaded|saved|ready for the client|can review it now|\bV\d+\b/i.test(t));
+    }, null, { timeout: 150000 }).catch(() => {});
+    await page.waitForTimeout(1500);
+    const alerts = await page.locator('[role="alert"]').allInnerTexts().catch(() => []);
+    const statuses = await page.locator('[role="status"]').allInnerTexts().catch(() => []);
+    onScreen = [...alerts.map((a) => `alert: ${a}`), ...statuses.filter((x) => /upload|saved|progress|stopped|try again/i.test(x)).map((x) => `status: ${x}`)].map((x) => x.replace(/\s+/g, " ").trim().slice(0, 160)).join(" | ");
+    if (alerts.length) throw new Error(`upload failed on screen: ${onScreen}; requests: ${trace.join(", ") || "none seen"}`);
+  } finally {
+    page.off("response", onResponse);
+    page.off("requestfailed", onFailed);
+  }
+  await page.reload({ waitUntil: "domcontentloaded" });
   await settle(page);
   const t = await text(page);
-  if (!new RegExp(`\\bV${n}\\b|Version ${n}`).test(t)) throw new Error(`V${n} not shown after upload: ${(t.match(/(upload[^.]{0,100}|couldn.t[^.]{0,100})/i) ?? ["no message"])[0]}`);
+  if (!new RegExp(`\\bV${n}\\b|Version ${n}`).test(t)) throw new Error(`V${n} not shown after upload; on screen before reload: ${onScreen || "no message"}; requests: ${trace.join(", ") || "none seen"}`);
   const urls = await mediaUrls(page);
   if (!urls.length) throw new Error("no /api/media preview after upload");
   await page.waitForTimeout(1000);
