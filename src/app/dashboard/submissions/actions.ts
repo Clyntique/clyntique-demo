@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/dal";
+import { prisma } from "@/lib/prisma";
+import { formatContextWithReviewTier, type ReviewTier } from "@/lib/plans/review-tier";
 import {
   addEvidence,
   createDraft,
@@ -103,7 +105,23 @@ export async function submitSubmission(_prev: SubmissionFormState, formData: For
   const user = await getCurrentUser();
   if (!user) return { error: SIGN_IN };
 
-  const result = await submitForReview(user, text(formData, "creativeId"));
+  const creativeId = text(formData, "creativeId");
+  const reviewTier = text(formData, "reviewTier");
+  if (reviewTier === "AI_ONLY" || reviewTier === "HUMAN_REVIEW") {
+    try {
+      const c = await prisma.creative.findUnique({ where: { id: creativeId }, select: { context: true } });
+      if (c) {
+        await prisma.creative.update({
+          where: { id: creativeId },
+          data: { context: formatContextWithReviewTier(c.context, reviewTier as ReviewTier) },
+        });
+      }
+    } catch {
+      // Non-blocking preference update
+    }
+  }
+
+  const result = await submitForReview(user, creativeId);
   if (!result.ok) return { error: result.error };
 
   revalidateWorkspaces();

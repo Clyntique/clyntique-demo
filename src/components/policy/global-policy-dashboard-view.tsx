@@ -10,9 +10,11 @@ import {
   PENDING_REVIEW_RULES,
   TRACKED_REGULATORY_AUTHORITIES,
   RECENT_REGULATORY_UPDATES,
+  ALL_GLOBAL_POLICIES,
   type CellCoverage,
   type CoverageStatus,
   type PendingReviewItem,
+  type GlobalPolicyRuleDetail,
 } from "@/lib/policy/dashboard-data";
 import {
   ShieldIcon,
@@ -22,6 +24,9 @@ import {
   LayersIcon,
   ExternalLinkIcon,
   ArrowRightIcon,
+  SearchIcon,
+  ChevronRightIcon,
+  BookOpenIcon,
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
@@ -30,6 +35,46 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
   const [selectedMarket, setSelectedMarket] = useState<string>("ALL");
   const [selectedPlatform, setSelectedPlatform] = useState<string>("ALL");
   const [activeCellModal, setActiveCellModal] = useState<CellCoverage | null>(null);
+
+  // Policy Directory state
+  const [ruleSearch, setRuleSearch] = useState("");
+  const [rulePlatform, setRulePlatform] = useState<string>("ALL");
+  const [ruleMarket, setRuleMarket] = useState<string>("ALL");
+  const [ruleIndustry, setRuleIndustry] = useState<string>("ALL");
+  const [ruleVerification, setRuleVerification] = useState<"ALL" | "VERIFIED_ACTIVE" | "PENDING_VERIFICATION" | "UNVERIFIED_DRAFT">("ALL");
+  const [expandedRuleCodes, setExpandedRuleCodes] = useState<Set<string>>(new Set());
+
+  const toggleRuleExpand = (code: string) => {
+    setExpandedRuleCodes((prev) => {
+      const next = new Set(prev);
+      if (next.has(code)) next.delete(code);
+      else next.add(code);
+      return next;
+    });
+  };
+
+  // Filter policies based on user selection
+  const filteredPolicies = ALL_GLOBAL_POLICIES.filter((rule) => {
+    if (rulePlatform !== "ALL" && rule.platformCode !== rulePlatform) return false;
+    if (ruleMarket !== "ALL" && rule.jurisdictionCode !== ruleMarket) return false;
+    if (ruleIndustry !== "ALL" && rule.industry !== ruleIndustry) return false;
+    if (ruleVerification !== "ALL" && rule.verificationStatus !== ruleVerification) return false;
+    if (ruleSearch.trim()) {
+      const q = ruleSearch.toLowerCase();
+      const matches =
+        rule.code.toLowerCase().includes(q) ||
+        rule.title.toLowerCase().includes(q) ||
+        rule.category.toLowerCase().includes(q) ||
+        rule.authorityName.toLowerCase().includes(q) ||
+        rule.summary.toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    return true;
+  });
+
+  const verifiedRuleCount = filteredPolicies.filter((r) => r.verificationStatus === "VERIFIED_ACTIVE").length;
+  const unverifiedDraftCount = filteredPolicies.filter((r) => r.verificationStatus === "UNVERIFIED_DRAFT").length;
+  const pendingCount = filteredPolicies.filter((r) => r.verificationStatus === "PENDING_VERIFICATION").length;
 
   // Simulator state
   const [simPlatform, setSimPlatform] = useState("META");
@@ -380,6 +425,373 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
         </div>
       </div>
 
+      {/* Policy Rules Registry & Verification Directory */}
+      <div className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-line mb-6">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-md bg-brand-50 px-2 py-0.5 text-micro font-semibold text-brand-700 mb-1">
+              <BookOpenIcon className="size-3" />
+              <span>Statutory & Platform Policy Registry</span>
+            </div>
+            <h2 className="text-card-title font-bold text-ink">
+              Global Policy Rules & Verification Directory
+            </h2>
+            <p className="text-caption text-ink-soft mt-0.5">
+              Inspect active compliance mandates by platform, country, industry, and verification state. Only dual-admin verified rules are active in the AI Policy Engine; research drafts remain non-operational.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-micro font-semibold text-ink-soft bg-subtle px-2.5 py-1 rounded-md border border-line">
+              {filteredPolicies.length} Rules Shown ({verifiedRuleCount} Active · {pendingCount} Pending · {unverifiedDraftCount} Drafts)
+            </span>
+          </div>
+        </div>
+
+        {/* Filter Toolbar */}
+        <div className="flex flex-col gap-3 mb-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted pointer-events-none" />
+              <input
+                type="text"
+                value={ruleSearch}
+                onChange={(e) => setRuleSearch(e.target.value)}
+                placeholder="Search rule code, title, authority, or keywords..."
+                className="w-full rounded-lg border border-line bg-surface pl-9 pr-3 py-2 text-caption text-ink placeholder:text-muted focus:border-brand-500 focus:outline-none"
+              />
+              {ruleSearch && (
+                <button
+                  type="button"
+                  onClick={() => setRuleSearch("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-micro font-semibold text-muted hover:text-ink cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Quick status filter pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <button
+                type="button"
+                onClick={() => setRuleVerification("ALL")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1.5 text-micro font-semibold transition-colors cursor-pointer shrink-0",
+                  ruleVerification === "ALL"
+                    ? "bg-ink text-white"
+                    : "bg-subtle text-ink-soft hover:bg-line"
+                )}
+              >
+                All Statuses
+              </button>
+              <button
+                type="button"
+                onClick={() => setRuleVerification("VERIFIED_ACTIVE")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1.5 text-micro font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1",
+                  ruleVerification === "VERIFIED_ACTIVE"
+                    ? "bg-positive-soft text-positive-ink border border-positive-ink/30 font-bold"
+                    : "bg-subtle text-ink-soft hover:bg-line"
+                )}
+              >
+                <CheckIcon className="size-3" />
+                Active in AI Engine ({ALL_GLOBAL_POLICIES.filter(r => r.verificationStatus === "VERIFIED_ACTIVE").length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRuleVerification("PENDING_VERIFICATION")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1.5 text-micro font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1",
+                  ruleVerification === "PENDING_VERIFICATION"
+                    ? "bg-attention-soft text-attention-ink border border-attention-ink/30 font-bold"
+                    : "bg-subtle text-ink-soft hover:bg-line"
+                )}
+              >
+                <ClockIcon className="size-3" />
+                Pending Verification ({ALL_GLOBAL_POLICIES.filter(r => r.verificationStatus === "PENDING_VERIFICATION").length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRuleVerification("UNVERIFIED_DRAFT")}
+                className={cn(
+                  "rounded-lg px-2.5 py-1.5 text-micro font-semibold transition-colors cursor-pointer shrink-0 flex items-center gap-1",
+                  ruleVerification === "UNVERIFIED_DRAFT"
+                    ? "bg-critical-soft text-critical-ink border border-critical-ink/30 font-bold"
+                    : "bg-subtle text-ink-soft hover:bg-line"
+                )}
+              >
+                <AlertIcon className="size-3" />
+                Unverified Drafts ({ALL_GLOBAL_POLICIES.filter(r => r.verificationStatus === "UNVERIFIED_DRAFT").length})
+              </button>
+            </div>
+          </div>
+
+          {/* Secondary Select Dropdowns */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+            <div>
+              <label htmlFor="filter-platform" className="block text-micro font-semibold text-muted mb-1">
+                Platform:
+              </label>
+              <select
+                id="filter-platform"
+                value={rulePlatform}
+                onChange={(e) => setRulePlatform(e.target.value)}
+                className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-caption font-medium text-ink focus:outline-none"
+              >
+                <option value="ALL">All Platforms & Statutory</option>
+                <option value="META">Meta (FB / IG)</option>
+                <option value="GOOGLE">Google Ads</option>
+                <option value="TIKTOK">TikTok Ads</option>
+                <option value="SNAPCHAT">Snapchat Ads</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="filter-market" className="block text-micro font-semibold text-muted mb-1">
+                Market / Country:
+              </label>
+              <select
+                id="filter-market"
+                value={ruleMarket}
+                onChange={(e) => setRuleMarket(e.target.value)}
+                className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-caption font-medium text-ink focus:outline-none"
+              >
+                <option value="ALL">All Jurisdictions</option>
+                <option value="US">🇺🇸 United States (US)</option>
+                <option value="GB">🇬🇧 United Kingdom (GB)</option>
+                <option value="AE">🇦🇪 United Arab Emirates (AE)</option>
+                <option value="EU">🇪🇺 European Union (EU)</option>
+                <option value="GLOBAL">🌐 Global Platform Standards</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="filter-industry" className="block text-micro font-semibold text-muted mb-1">
+                Industry:
+              </label>
+              <select
+                id="filter-industry"
+                value={ruleIndustry}
+                onChange={(e) => setRuleIndustry(e.target.value)}
+                className="w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-caption font-medium text-ink focus:outline-none"
+              >
+                <option value="ALL">All Industries</option>
+                <option value="HEALTHCARE">Healthcare & Pharma</option>
+                <option value="MEDICAL_AESTHETICS">Medical Aesthetics</option>
+                <option value="GENERAL">General Commercial Advertising</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Missing Coverage Alert Banner */}
+        {filteredPolicies.length === 0 ? (
+          <div className="rounded-xl border border-attention-line bg-attention-soft/50 p-6 text-center">
+            <div className="flex flex-col items-center justify-center max-w-md mx-auto space-y-2">
+              <AlertIcon className="size-8 text-attention-ink" />
+              <h3 className="text-small font-bold text-ink">Missing Policy Coverage Detected</h3>
+              <p className="text-caption text-ink-soft">
+                No policy rules match your selected filters (Platform: <strong>{rulePlatform}</strong>, Market: <strong>{ruleMarket}</strong>, Industry: <strong>{ruleIndustry}</strong>).
+              </p>
+              <p className="text-micro text-attention-ink font-medium">
+                Clyntique&apos;s Policy Engine boundary rule: Any creative targeting an unmonitored scope receives an explicit &ldquo;Insufficient policy coverage — manual review required&rdquo; routing instead of ungrounded AI clearance.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setRuleSearch("");
+                  setRulePlatform("ALL");
+                  setRuleMarket("ALL");
+                  setRuleIndustry("ALL");
+                  setRuleVerification("ALL");
+                }}
+                className="mt-2 rounded-lg bg-ink px-4 py-1.5 text-caption font-semibold text-white hover:bg-ink-soft transition-colors cursor-pointer"
+              >
+                Reset All Filters
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredPolicies.map((rule) => {
+              const isExpanded = expandedRuleCodes.has(rule.code);
+              return (
+                <div
+                  key={rule.code}
+                  className={cn(
+                    "rounded-xl border transition-all p-5",
+                    rule.verificationStatus === "VERIFIED_ACTIVE"
+                      ? "border-line bg-surface hover:border-brand-500/60"
+                      : rule.verificationStatus === "PENDING_VERIFICATION"
+                      ? "border-attention-line/80 bg-attention-soft/10"
+                      : "border-critical-line/70 bg-critical-soft/10"
+                  )}
+                >
+                  {/* Top Bar with Badges */}
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-micro font-bold text-ink bg-subtle px-2 py-0.5 rounded border border-line">
+                        {rule.code}
+                      </span>
+                      <span className="rounded bg-brand-50 text-brand-700 px-2 py-0.5 text-micro font-medium">
+                        {rule.platformName}
+                      </span>
+                      <span className="rounded bg-subtle text-ink-soft px-2 py-0.5 text-micro font-medium">
+                        {rule.jurisdictionName} ({rule.jurisdictionCode})
+                      </span>
+                      <span className="rounded bg-subtle text-ink-soft px-2 py-0.5 text-micro font-medium">
+                        {rule.industry}
+                      </span>
+                    </div>
+
+                    <RuleVerificationBadge status={rule.verificationStatus} />
+                  </div>
+
+                  {/* Title & Authority */}
+                  <div className="mt-2.5">
+                    <h3 className="text-small font-bold text-ink sm:text-base">
+                      {rule.title}
+                    </h3>
+                    <div className="text-micro text-muted mt-0.5">
+                      Authority: <strong>{rule.authorityName}</strong> · Category: {rule.category}
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <p className="mt-2 text-caption text-ink-soft leading-relaxed">
+                    {rule.summary}
+                  </p>
+
+                  {/* Pending Update Warning Note (if present) */}
+                  {rule.pendingUpdatesNote && (
+                    <div className="mt-3 rounded-lg border border-attention-line bg-attention-soft/40 p-2.5 flex items-start gap-2 text-caption text-attention-ink">
+                      <ClockIcon className="size-4 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Pending Regulatory Shift:</strong> {rule.pendingUpdatesNote}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Warning Callout for Unverified Drafts */}
+                  {rule.verificationStatus === "UNVERIFIED_DRAFT" && (
+                    <div className="mt-3 rounded-lg border border-critical-line bg-critical-soft/30 p-2.5 flex items-start gap-2 text-caption text-critical-ink">
+                      <AlertIcon className="size-4 shrink-0 mt-0.5" />
+                      <div>
+                        <strong>Draft Rule — Non-Operational:</strong> This policy is currently staged for regulatory review and cannot be evaluated by the AI Policy Engine until signed off by two distinct policy administrators.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Expand / Collapse Action */}
+                  <div className="mt-4 pt-3 border-t border-line flex flex-wrap items-center justify-between gap-3 text-micro">
+                    <div className="text-muted flex items-center gap-3">
+                      <span>Last Audited: <strong>{rule.lastCheckedDate}</strong></span>
+                      <span>•</span>
+                      <span>Version: <strong>v{rule.versionHistory[0]?.versionNumber || 1}</strong></span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleRuleExpand(rule.code)}
+                      className="inline-flex items-center gap-1 font-semibold text-brand-700 hover:text-brand-800 cursor-pointer"
+                    >
+                      <span>{isExpanded ? "Hide Details & Audit Trail" : "View Sources, Legal Basis & Version History"}</span>
+                      <ChevronRightIcon className={cn("size-3.5 transition-transform", isExpanded && "rotate-90")} />
+                    </button>
+                  </div>
+
+                  {/* Expanded Detail Panel */}
+                  {isExpanded && (
+                    <div className="mt-4 pt-4 border-t border-line/80 space-y-4 animate-in fade-in duration-150">
+                      {/* Legal Explanation */}
+                      <div>
+                        <h4 className="text-micro font-bold uppercase tracking-wider text-muted mb-1">
+                          Legal Explanation & Statutory Basis
+                        </h4>
+                        <p className="text-caption text-ink bg-subtle/50 p-3 rounded-lg border border-line">
+                          {rule.legalExplanation}
+                        </p>
+                      </div>
+
+                      {/* Remediation Action */}
+                      <div>
+                        <h4 className="text-micro font-bold uppercase tracking-wider text-muted mb-1">
+                          Remediation Guidance for Advertisers
+                        </h4>
+                        <div className="text-caption text-brand-900 bg-brand-50/70 p-3 rounded-lg border border-brand-200">
+                          {rule.remediationAction}
+                        </div>
+                      </div>
+
+                      {/* Source Links with Citations */}
+                      <div>
+                        <h4 className="text-micro font-bold uppercase tracking-wider text-muted mb-1.5">
+                          Official Source Citations ({rule.sourceLinks.length})
+                        </h4>
+                        <div className="space-y-1.5">
+                          {rule.sourceLinks.map((src, i) => (
+                            <div
+                              key={i}
+                              className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-line bg-surface text-caption"
+                            >
+                              <div>
+                                <div className="font-semibold text-ink">{src.title}</div>
+                                <div className="text-micro text-muted font-mono">{src.citation}</div>
+                              </div>
+                              <a
+                                href={src.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-micro font-semibold text-brand-600 hover:text-brand-800 shrink-0"
+                              >
+                                <span>Official Doc</span>
+                                <ExternalLinkIcon className="size-3" />
+                              </a>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Version Audit History */}
+                      <div>
+                        <h4 className="text-micro font-bold uppercase tracking-wider text-muted mb-1.5">
+                          Immutable Version Audit Trail
+                        </h4>
+                        <div className="rounded-lg border border-line divide-y divide-line overflow-hidden bg-surface">
+                          {rule.versionHistory.map((ver, idx) => (
+                            <div key={idx} className="p-2.5 text-caption flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-micro font-bold bg-subtle px-2 py-0.5 rounded border border-line">
+                                  v{ver.versionNumber}
+                                </span>
+                                <span className={cn(
+                                  "text-micro font-semibold px-2 py-0.5 rounded",
+                                  ver.status === "ACTIVE" ? "bg-positive-soft text-positive-ink" : "bg-attention-soft text-attention-ink"
+                                )}>
+                                  {ver.status}
+                                </span>
+                                <span className="text-ink-soft text-micro">
+                                  {ver.notes}
+                                </span>
+                              </div>
+                              <div className="text-micro text-muted shrink-0">
+                                <span>{ver.author}</span> · <span>{ver.date}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Dual-Admin Verification Pipeline */}
       <div className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-line mb-5">
@@ -655,6 +1067,36 @@ function StageBadge({ stage }: { stage: PendingReviewItem["verificationStage"] }
       return (
         <span className="rounded-full bg-subtle px-2.5 py-0.5 text-micro font-semibold text-ink-soft">
           Research Draft
+        </span>
+      );
+  }
+}
+
+function RuleVerificationBadge({
+  status,
+}: {
+  status: GlobalPolicyRuleDetail["verificationStatus"];
+}) {
+  switch (status) {
+    case "VERIFIED_ACTIVE":
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-positive-soft px-3 py-1 text-micro font-bold text-positive-ink border border-positive-ink/20">
+          <CheckIcon className="size-3" />
+          <span>Dual-Admin Verified · Active in AI Engine</span>
+        </span>
+      );
+    case "PENDING_VERIFICATION":
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-attention-soft px-3 py-1 text-micro font-bold text-attention-ink border border-attention-ink/20">
+          <ClockIcon className="size-3" />
+          <span>Pending 2nd Admin · NOT Active in AI Engine</span>
+        </span>
+      );
+    case "UNVERIFIED_DRAFT":
+      return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-critical-soft px-3 py-1 text-micro font-bold text-critical-ink border border-critical-ink/20">
+          <AlertIcon className="size-3" />
+          <span>Unverified Draft · NOT Active in AI Engine</span>
         </span>
       );
   }

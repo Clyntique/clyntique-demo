@@ -14,7 +14,14 @@ import {
   COVERAGE_MATRIX_CELLS,
   PENDING_REVIEW_RULES,
   TRACKED_REGULATORY_AUTHORITIES,
+  ALL_GLOBAL_POLICIES,
 } from "@/lib/policy/dashboard-data";
+import {
+  parseReviewTier,
+  formatContextWithReviewTier,
+  getReviewTierLabel,
+  getReviewTierDetails,
+} from "@/lib/plans/review-tier";
 
 describe("AI-Only vs Human Review Plans Prototype", () => {
   it("defines AI-Only plan with rapid automated screening", () => {
@@ -162,5 +169,147 @@ describe("Page Routes & Component Integration", () => {
     const navLinksSrc = readFileSync("src/components/layout/nav-links.tsx", "utf8");
     expect(navLinksSrc).toContain('label: "Policy dashboard"');
     expect(navLinksSrc).toContain('label: "Plans & Add-ons"');
+  });
+});
+
+describe("Review Tier Context Integration (Safe zero-migration persistence)", () => {
+  it("defaults to HUMAN_REVIEW when context has no explicit tag", () => {
+    expect(parseReviewTier(null)).toBe("HUMAN_REVIEW");
+    expect(parseReviewTier("")).toBe("HUMAN_REVIEW");
+    expect(parseReviewTier("Video ad targeting 25-45 demographic")).toBe("HUMAN_REVIEW");
+  });
+
+  it("extracts AI_ONLY and HUMAN_REVIEW accurately from context tag", () => {
+    expect(parseReviewTier("Context info\n\n[Review Tier: AI_ONLY]")).toBe("AI_ONLY");
+    expect(parseReviewTier("Context info\n\n[Review Tier: HUMAN_REVIEW]")).toBe("HUMAN_REVIEW");
+    expect(parseReviewTier("[Review Tier: AI_ONLY]\n\nLeading text")).toBe("AI_ONLY");
+  });
+
+  it("formats context without modifying core text and replaces old tags cleanly", () => {
+    const initial = "Targeting aesthetic patients in Texas.";
+    const withAiOnly = formatContextWithReviewTier(initial, "AI_ONLY");
+    expect(withAiOnly).toBe("Targeting aesthetic patients in Texas.\n\n[Review Tier: AI_ONLY]");
+    expect(parseReviewTier(withAiOnly)).toBe("AI_ONLY");
+
+    const upgradedToHuman = formatContextWithReviewTier(withAiOnly, "HUMAN_REVIEW");
+    expect(upgradedToHuman).toBe("Targeting aesthetic patients in Texas.\n\n[Review Tier: HUMAN_REVIEW]");
+    expect(parseReviewTier(upgradedToHuman)).toBe("HUMAN_REVIEW");
+  });
+
+  it("provides user-facing labels and SLA descriptions", () => {
+    expect(getReviewTierLabel("AI_ONLY")).toBe("AI-Only Review");
+    expect(getReviewTierLabel("HUMAN_REVIEW")).toBe("Human Review (Add-on)");
+
+    const aiDetails = getReviewTierDetails("AI_ONLY");
+    expect(aiDetails.slaText).toContain("< 60 seconds");
+    expect(aiDetails.isPaidAddon).toBe(false);
+
+    const humanDetails = getReviewTierDetails("HUMAN_REVIEW");
+    expect(humanDetails.slaText).toContain("24-hour");
+    expect(humanDetails.isPaidAddon).toBe(true);
+  });
+});
+
+describe("Granular Global Policy Rules & Dual-Admin Grounding Boundary", () => {
+  it("provides comprehensive rule dataset spanning platforms and jurisdictions", () => {
+    expect(ALL_GLOBAL_POLICIES.length).toBeGreaterThanOrEqual(10);
+
+    const platforms = new Set(ALL_GLOBAL_POLICIES.map((r) => r.platformCode));
+    expect(platforms.has("META")).toBe(true);
+    expect(platforms.has("GOOGLE")).toBe(true);
+    expect(platforms.has("TIKTOK")).toBe(true);
+    expect(platforms.has("SNAPCHAT")).toBe(true);
+    expect(platforms.has("ALL")).toBe(true);
+
+    const jurisdictions = new Set(ALL_GLOBAL_POLICIES.map((r) => r.jurisdictionCode));
+    expect(jurisdictions.has("US")).toBe(true);
+    expect(jurisdictions.has("GB")).toBe(true);
+    expect(jurisdictions.has("AE")).toBe(true);
+    expect(jurisdictions.has("EU")).toBe(true);
+    expect(jurisdictions.has("GLOBAL")).toBe(true);
+  });
+
+  it("strictly enforces AI Engine usability flag based on dual verification status", () => {
+    for (const rule of ALL_GLOBAL_POLICIES) {
+      if (rule.verificationStatus === "VERIFIED_ACTIVE") {
+        expect(rule.isUsableByAI).toBe(true);
+      } else {
+        // Pending and Draft rules must NEVER be presented as usable by the AI policy engine
+        expect(rule.isUsableByAI).toBe(false);
+      }
+    }
+
+    const verifiedCount = ALL_GLOBAL_POLICIES.filter((r) => r.verificationStatus === "VERIFIED_ACTIVE").length;
+    const draftCount = ALL_GLOBAL_POLICIES.filter((r) => r.verificationStatus === "UNVERIFIED_DRAFT").length;
+    const pendingCount = ALL_GLOBAL_POLICIES.filter((r) => r.verificationStatus === "PENDING_VERIFICATION").length;
+
+    expect(verifiedCount).toBeGreaterThanOrEqual(5);
+    expect(draftCount).toBeGreaterThanOrEqual(3);
+    expect(pendingCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it("contains valid source citations, direct links, and version audit trails for each rule", () => {
+    for (const rule of ALL_GLOBAL_POLICIES) {
+      expect(rule.sourceLinks.length).toBeGreaterThanOrEqual(1);
+      for (const src of rule.sourceLinks) {
+        expect(src.title.length).toBeGreaterThan(0);
+        expect(src.url.startsWith("http")).toBe(true);
+        expect(src.citation.length).toBeGreaterThan(0);
+      }
+
+      expect(rule.versionHistory.length).toBeGreaterThanOrEqual(1);
+      for (const ver of rule.versionHistory) {
+        expect(ver.versionNumber).toBeGreaterThanOrEqual(1);
+        expect(["ACTIVE", "DRAFT", "PENDING_APPROVAL"]).toContain(ver.status);
+        expect(ver.author.length).toBeGreaterThan(0);
+        expect(ver.notes.length).toBeGreaterThan(0);
+      }
+
+      expect(rule.lastCheckedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
+  });
+
+  it("flags pending regulatory updates and research questions for draft policies", () => {
+    const mohapRule = ALL_GLOBAL_POLICIES.find((r) => r.code === "RX-AE-MOHAP-01");
+    expect(mohapRule).toBeDefined();
+    expect(mohapRule?.verificationStatus).toBe("UNVERIFIED_DRAFT");
+    expect(mohapRule?.pendingUpdatesNote).toContain("EDE");
+
+    const ftcRule = ALL_GLOBAL_POLICIES.find((r) => r.code === "RX-US-FTC-HP-01");
+    expect(ftcRule).toBeDefined();
+    expect(ftcRule?.verificationStatus).toBe("PENDING_VERIFICATION");
+    expect(ftcRule?.pendingUpdatesNote).toBeDefined();
+  });
+});
+
+describe("UI Integration: Review Tier & Global Policy Directory", () => {
+  it("integrates review preference selection into SubmitPanel", () => {
+    const submitPanelSrc = readFileSync("src/components/submissions/submit-panel.tsx", "utf8");
+    expect(submitPanelSrc).toContain('name="reviewTier"');
+    expect(submitPanelSrc).toContain('value="HUMAN_REVIEW"');
+    expect(submitPanelSrc).toContain('value="AI_ONLY"');
+    expect(submitPanelSrc).toContain("Human Review (Add-on)");
+    expect(submitPanelSrc).toContain("AI-Only Review");
+  });
+
+  it("integrates ReviewTierCard into SubmissionView with one-click upgrade/switch", () => {
+    const submissionViewSrc = readFileSync("src/components/submissions/submission-view.tsx", "utf8");
+    expect(submissionViewSrc).toContain("<ReviewTierCard");
+    expect(submissionViewSrc).toContain("submission.context");
+
+    const reviewCardSrc = readFileSync("src/components/submissions/review-tier-card.tsx", "utf8");
+    expect(reviewCardSrc).toContain("Review Type & Request Status");
+    expect(reviewCardSrc).toContain("Switch to AI-only review");
+    expect(reviewCardSrc).toContain("Request Human Review (Add-on)");
+    expect(reviewCardSrc).toContain("updateReviewTierAction");
+  });
+
+  it("renders Policy Rules Directory and missing coverage warning in GlobalPolicyDashboardView", () => {
+    const dashSrc = readFileSync("src/components/policy/global-policy-dashboard-view.tsx", "utf8");
+    expect(dashSrc).toContain("Global Policy Rules & Verification Directory");
+    expect(dashSrc).toContain("RuleVerificationBadge");
+    expect(dashSrc).toContain("Missing Policy Coverage Detected");
+    expect(dashSrc).toContain("Draft Rule — Non-Operational");
+    expect(dashSrc).toContain("Immutable Version Audit Trail");
   });
 });
