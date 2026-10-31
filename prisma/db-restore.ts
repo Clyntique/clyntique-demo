@@ -33,6 +33,10 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "PolicyRule",
   "PolicyRuleVersion",
   "PolicyRuleVersionSource",
+  // Policy source monitoring (20261031160000): a proposal references two
+  // snapshots, a PolicyRuleVersion and users, so snapshots come first.
+  "PolicySourceSnapshot",
+  "PolicySourceChangeProposal",
   "ReviewCycle",
   "SubmissionRound",
   "ReviewDecision",
@@ -40,6 +44,8 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "FindingEvent",
   "FindingResponse",
   "Evidence",
+  // P0 two-sided evidence (20261028000000): references Evidence, ReviewCycle, User.
+  "EvidenceAssessment",
   "FindingEvidence",
   "FindingMarket",
   "FindingPlatform",
