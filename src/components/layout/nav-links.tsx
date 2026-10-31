@@ -4,20 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
-import { ActivityIcon, FolderIcon, HomeIcon, ImageIcon, InboxIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
+import { ActivityIcon, FolderIcon, HomeIcon, ImageIcon, InboxIcon, LayersIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
 import { basePathFor } from "@/lib/navigation";
 
 // Intentionally small: only sections that exist. The review queue is TEAM-only.
 // Both roles call client work "Submissions" (TEAM listings also include
 // earlier creatives from the client-approval workflow).
-const ITEMS = [
-  { label: "Overview", segment: "", icon: HomeIcon, teamOnly: false },
+const ITEMS: {
+  label: string;
+  segment: string;
+  icon: React.ComponentType<{ className?: string }>;
+  teamOnly?: boolean;
+  clientOnly?: boolean;
+}[] = [
+  { label: "Overview", segment: "", icon: HomeIcon },
   { label: "Review queue", segment: "/review", icon: InboxIcon, teamOnly: true },
-  { label: "Submissions", segment: "/creatives", icon: ImageIcon, teamOnly: false },
-  { label: "Projects", segment: "/projects", icon: FolderIcon, teamOnly: false },
-  { label: "Messages", segment: "/messages", icon: MessageIcon, teamOnly: false },
-  { label: "Activity", segment: "/activity", icon: ActivityIcon, teamOnly: false },
+  { label: "Submissions", segment: "/creatives", icon: ImageIcon },
+  { label: "Projects", segment: "/projects", icon: FolderIcon },
+  { label: "Messages", segment: "/messages", icon: MessageIcon },
+  { label: "Activity", segment: "/activity", icon: ActivityIcon },
   { label: "Policy library", segment: "/policy-library", icon: ShieldIcon, teamOnly: true },
+  { label: "Policy dashboard", segment: "/policy-dashboard", icon: LayersIcon, teamOnly: true },
+  { label: "Plans & Add-ons", segment: "/plans", icon: ShieldIcon, clientOnly: true },
 ];
 
 export type NavCounts = Partial<Record<string, number>>;
@@ -48,7 +56,7 @@ export function NavList({
 
   return (
     <ul className={cn("flex flex-col", collapsed ? "gap-1.5" : "gap-0.5")}>
-      {ITEMS.filter((item) => role === "TEAM" || !item.teamOnly).map(({ label, segment, icon: Icon }) => {
+      {ITEMS.filter((item) => (item.teamOnly ? role === "TEAM" : item.clientOnly ? role === "CLIENT" : true)).map(({ label, segment, icon: Icon }) => {
         const href = base + segment;
         const active = pathname !== null && (segment ? pathname.startsWith(href) : pathname === href);
         const count = counts?.[segment];
