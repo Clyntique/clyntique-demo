@@ -445,3 +445,375 @@ export const RECENT_REGULATORY_UPDATES: RegulatoryUpdateEvent[] = [
     actionRequired: "Rule RX-META-HW-02 active in policy engine; human review required for ambiguous dermatology claims.",
   },
 ];
+
+
+// ---------------------------------------------------------------------------
+// Granular Global Policy Rules with Source Links, Version History & Audits
+// ---------------------------------------------------------------------------
+
+export interface GlobalPolicyRuleDetail {
+  code: string;
+  title: string;
+  platformCode: string;
+  platformName: string;
+  jurisdictionCode: string;
+  jurisdictionName: string;
+  industry: "HEALTHCARE" | "MEDICAL_AESTHETICS" | "GENERAL";
+  category: string;
+  authorityName: string;
+  authorityType: "REGULATION" | "PLATFORM_POLICY" | "INTERNAL_RISK";
+  verificationStatus: "VERIFIED_ACTIVE" | "PENDING_VERIFICATION" | "UNVERIFIED_DRAFT";
+  isUsableByAI: boolean;
+  summary: string;
+  legalExplanation: string;
+  remediationAction: string;
+  sourceLinks: { title: string; url: string; citation: string }[];
+  versionHistory: { versionNumber: number; status: string; date: string; author: string; notes: string }[];
+  lastCheckedDate: string;
+  pendingUpdatesNote?: string;
+}
+
+export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
+  {
+    code: "RX-META-HW-01",
+    title: "Weight Loss and Cosmetic Procedures Age Gating (18+)",
+    platformCode: "META",
+    platformName: "Meta (Facebook & Instagram)",
+    jurisdictionCode: "GLOBAL",
+    jurisdictionName: "Global Platform Standard",
+    industry: "HEALTHCARE",
+    category: "Targeting restrictions",
+    authorityName: "Meta Advertising Standards",
+    authorityType: "PLATFORM_POLICY",
+    verificationStatus: "VERIFIED_ACTIVE",
+    isUsableByAI: true,
+    summary: "Ads promoting weight loss products, dietary supplements, and cosmetic procedures must be targeted exclusively to users aged 18 and older.",
+    legalExplanation: "Meta strictly restricts content related to physical appearance and body modification to adult audiences to protect minors from unrealistic body standards.",
+    remediationAction: "Update ad set targeting in Meta Ads Manager to restrict minimum age to 18+.",
+    sourceLinks: [
+      {
+        title: "Meta Health and Wellness Policy",
+        url: "https://www.facebook.com/policies_center/ads/health_and_wellness",
+        citation: "Meta Business Advertising Policies § Health and Wellness",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "ACTIVE", date: "2026-10-15", author: "A. Patel (Platform Lead)", notes: "Initial verified baseline version." },
+    ],
+    lastCheckedDate: "2026-10-27",
+  },
+  {
+    code: "RX-META-HW-02",
+    title: "Prohibition of Drastic Before-and-After Weight Loss Imagery",
+    platformCode: "META",
+    platformName: "Meta (Facebook & Instagram)",
+    jurisdictionCode: "GLOBAL",
+    jurisdictionName: "Global Platform Standard",
+    industry: "HEALTHCARE",
+    category: "Before and after images",
+    authorityName: "Meta Advertising Standards",
+    authorityType: "PLATFORM_POLICY",
+    verificationStatus: "UNVERIFIED_DRAFT",
+    isUsableByAI: false,
+    summary: "Ads must not depict side-by-side weight loss comparisons, pinched fat close-ups, or negative body image depictions.",
+    legalExplanation: "Side-by-side weight loss images generate high negative feedback and violate Meta's personal health attribute and sensational content guidelines.",
+    remediationAction: "Replace split before-and-after comparison imagery with lifestyle shots focusing on healthy habits without body measurements.",
+    sourceLinks: [
+      {
+        title: "Meta Personal Health Policies",
+        url: "https://www.facebook.com/policies_center/ads/personal_health",
+        citation: "Meta Ad Standards § Personal Health Attributes",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-26", author: "A. Patel (Platform Lead)", notes: "Research draft staged from policy pack. Awaiting dual-admin verification." },
+    ],
+    lastCheckedDate: "2026-10-26",
+    pendingUpdatesNote: "Cross-examining distinction between weight loss side-by-sides (prohibited) vs non-invasive dermatological rejuvenation (18+ restricted).",
+  },
+  {
+    code: "RX-META-PA-01",
+    title: "Prohibition on Asserting or Implying Personal Health Attributes",
+    platformCode: "META",
+    platformName: "Meta (Facebook & Instagram)",
+    jurisdictionCode: "GLOBAL",
+    jurisdictionName: "Global Platform Standard",
+    industry: "GENERAL",
+    category: "Personal health attributes",
+    authorityName: "Meta Advertising Standards",
+    authorityType: "PLATFORM_POLICY",
+    verificationStatus: "VERIFIED_ACTIVE",
+    isUsableByAI: true,
+    summary: "Ad copy and creative must not assert or imply that the viewer has a specific medical condition, disability, or physical flaw (e.g. 'Struggling with acne?').",
+    legalExplanation: "Meta prohibits predatory targeting based on sensitive personal health attributes under FTC and GDPR privacy compliance frameworks.",
+    remediationAction: "Rephrase second-person direct assertions ('Do you have diabetes?') to product-focused or experiential statements ('Innovative management options').",
+    sourceLinks: [
+      {
+        title: "Meta Personal Attributes Policy",
+        url: "https://www.facebook.com/policies_center/ads/personal_attributes",
+        citation: "Meta Ad Standards § 4.3 Personal Attributes",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "ACTIVE", date: "2026-10-18", author: "K. Vance (Policy Admin)", notes: "Approved by two policy admins for active AI scanning." },
+    ],
+    lastCheckedDate: "2026-10-25",
+  },
+  {
+    code: "RX-GOOG-HM-01",
+    title: "Prescription Medicine & Online Prescribing Certification",
+    platformCode: "GOOGLE",
+    platformName: "Google Ads",
+    jurisdictionCode: "GLOBAL",
+    jurisdictionName: "Global Platform Standard",
+    industry: "HEALTHCARE",
+    category: "Prescription medicines",
+    authorityName: "Google Ads Policy",
+    authorityType: "PLATFORM_POLICY",
+    verificationStatus: "VERIFIED_ACTIVE",
+    isUsableByAI: true,
+    summary: "Prescription medicine terms and online pharmacy promotions require Google healthcare certification and legitimacy check.",
+    legalExplanation: "Google prevents illegal prescription drug trafficking and off-label promotion across search and YouTube advertising channels.",
+    remediationAction: "Obtain LegitScript or Google Healthcare Advertiser certificate before bidding on prescription brand names.",
+    sourceLinks: [
+      {
+        title: "Google Ads Healthcare and Medicines Policy",
+        url: "https://support.google.com/adspolicy/answer/176031",
+        citation: "Google Advertising Policies § Healthcare",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "ACTIVE", date: "2026-10-16", author: "S. Miller (Legal Analyst)", notes: "Active rule covering Google search and display campaigns." },
+    ],
+    lastCheckedDate: "2026-10-24",
+  },
+  {
+    code: "RX-TT-CS-01",
+    title: "Cosmetic Surgery Conditions and Age Restrictions",
+    platformCode: "TIKTOK",
+    platformName: "TikTok Ads",
+    jurisdictionCode: "US",
+    jurisdictionName: "United States",
+    industry: "MEDICAL_AESTHETICS",
+    category: "Restricted procedures",
+    authorityName: "TikTok Commercial Content Policy",
+    authorityType: "PLATFORM_POLICY",
+    verificationStatus: "PENDING_VERIFICATION",
+    isUsableByAI: false,
+    summary: "Cosmetic surgery advertising requires direct TikTok sales representative approval, 18+ age gating, and mandatory health warning captions.",
+    legalExplanation: "TikTok restricts invasive aesthetic procedures to protect teenage users and requires verified medical credentials from licensed clinics.",
+    remediationAction: "Include visible statutory disclaimer: 'Results vary. Seek consultation from a licensed medical specialist.' and restrict audience to 18+.",
+    sourceLinks: [
+      {
+        title: "TikTok Commercial Advertising Terms",
+        url: "https://www.tiktok.com/legal/page/row/commercial-terms/en",
+        citation: "TikTok Ad Policy § Restricted Businesses & Cosmetic Procedures",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "PENDING_APPROVAL", date: "2026-10-27", author: "A. Patel (Platform Lead)", notes: "Verified by 1st admin; awaiting 2nd admin approval." },
+    ],
+    lastCheckedDate: "2026-10-27",
+    pendingUpdatesNote: "Awaiting final approver sign-off. Not active in AI engine.",
+  },
+  {
+    code: "RX-US-FTC-HP-01",
+    title: "Competent and Reliable Scientific Evidence for Health Claims",
+    platformCode: "ALL",
+    platformName: "All Platforms (Regulatory)",
+    jurisdictionCode: "US",
+    jurisdictionName: "United States",
+    industry: "HEALTHCARE",
+    category: "Substantiation",
+    authorityName: "Federal Trade Commission (FTC)",
+    authorityType: "REGULATION",
+    verificationStatus: "PENDING_VERIFICATION",
+    isUsableByAI: false,
+    summary: "Health, efficacy, and therapeutic claims in advertising must be substantiated by competent and reliable scientific evidence prior to dissemination.",
+    legalExplanation: "FTC Section 5 enforcement actions penalize deceptive health marketing when claims are not supported by randomized controlled clinical trials.",
+    remediationAction: "Attach clinical study DOI or FDA clearance documentation to the creative evidence tab before publishing efficacy claims.",
+    sourceLinks: [
+      {
+        title: "FTC Health Products Compliance Guidance",
+        url: "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
+        citation: "FTC Business Guidance (Dec 2022) § Efficacy Substantiation Standard",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "PENDING_APPROVAL", date: "2026-10-27", author: "S. Miller (Legal Analyst)", notes: "Submitted for second-admin verification." },
+    ],
+    lastCheckedDate: "2026-10-27",
+    pendingUpdatesNote: "Reviewing sample FTC trial benchmarks for non-Rx dietary supplements.",
+  },
+  {
+    code: "RX-US-FTC-EN-01",
+    title: "Honest Endorsements and Material Connection Disclosures",
+    platformCode: "ALL",
+    platformName: "All Platforms (Regulatory)",
+    jurisdictionCode: "US",
+    jurisdictionName: "United States",
+    industry: "GENERAL",
+    category: "Testimonials and endorsements",
+    authorityName: "Federal Trade Commission (FTC)",
+    authorityType: "REGULATION",
+    verificationStatus: "VERIFIED_ACTIVE",
+    isUsableByAI: true,
+    summary: "Testimonials must reflect honest opinions and disclose material connections (paid sponsorship, free treatment, employment) prominently.",
+    legalExplanation: "FTC 16 CFR § 255 requires clear and conspicuous disclosure that cannot be hidden below the fold or in buried hashtags.",
+    remediationAction: "Include visible #Ad or 'Paid Partnership' badge in the first 3 lines of video captions and on-screen overlay.",
+    sourceLinks: [
+      {
+        title: "FTC Guides Concerning the Use of Endorsements and Testimonials",
+        url: "https://www.ftc.gov/business-guidance/resources/ftcs-endorsement-guides-what-people-are-asking",
+        citation: "16 CFR Part 255 § Endorsement Guides",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "ACTIVE", date: "2026-10-20", author: "K. Vance (Policy Admin)", notes: "Verified and active in AI scan engine." },
+    ],
+    lastCheckedDate: "2026-10-28",
+  },
+  {
+    code: "RX-GB-ASA-01",
+    title: "CAP Code Rule 12.1: Objective Claims for Medicines & Treatments",
+    platformCode: "ALL",
+    platformName: "All Platforms (UK Statutory)",
+    jurisdictionCode: "GB",
+    jurisdictionName: "United Kingdom",
+    industry: "HEALTHCARE",
+    category: "Substantiation & licensing",
+    authorityName: "Advertising Standards Authority (ASA) / CAP",
+    authorityType: "REGULATION",
+    verificationStatus: "VERIFIED_ACTIVE",
+    isUsableByAI: true,
+    summary: "Objective claims must be backed by evidence, if relevant consisting of trials conducted on people. Medicinal or medical claims and claims for medical devices may be made only for a medicinal product or device that is appropriately licensed.",
+    legalExplanation: "CAP Code Section 12 mandates stringent clinical substantiation for human health claims and strictly prohibits misleading medical claims.",
+    remediationAction: "Ensure CE/UKCA marking and MHRA authorization are explicitly stated and referenced in compliance documentation.",
+    sourceLinks: [
+      {
+        title: "ASA & CAP Rule 12: Medicines, medical devices, treatments and health",
+        url: "https://www.asa.org.uk/type/non_broadcast/code_section/12.html",
+        citation: "UK CAP Code § Rule 12.1 Objective Claims",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "ACTIVE", date: "2026-10-21", author: "K. Vance (Policy Admin)", notes: "Dual-admin approved for active AI scanning." },
+    ],
+    lastCheckedDate: "2026-10-28",
+  },
+  {
+    code: "RX-EU-MDR-01",
+    title: "EU Medical Device Regulation (MDR) Ad Claims Substantiation",
+    platformCode: "ALL",
+    platformName: "All Platforms (EU Statutory)",
+    jurisdictionCode: "EU",
+    jurisdictionName: "European Union",
+    industry: "HEALTHCARE",
+    category: "Substantiation",
+    authorityName: "European Medicines Agency (EMA) / EU MDR",
+    authorityType: "REGULATION",
+    verificationStatus: "VERIFIED_ACTIVE",
+    isUsableByAI: true,
+    summary: "In the promotion and advertising of devices, it is prohibited to use text, names, trademarks, pictures and figurative or other signs that may mislead the user or patient regarding the device's intended purpose, safety and performance.",
+    legalExplanation: "Regulation (EU) 2017/745 Article 7 strictly prohibits misleading claims, creating false impressions, or failing to inform the user of likely risks.",
+    remediationAction: "Verify intended purpose aligns strictly with EU MDR technical documentation and include mandatory risk contraindications.",
+    sourceLinks: [
+      {
+        title: "Regulation (EU) 2017/745 on Medical Devices (MDR)",
+        url: "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32017R0745",
+        citation: "EU MDR 2017/745 Article 7 § Claims",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "ACTIVE", date: "2026-10-22", author: "S. Miller (Legal Analyst)", notes: "Dual-admin verified baseline rule." },
+    ],
+    lastCheckedDate: "2026-10-26",
+  },
+  {
+    code: "RX-AE-MOHAP-01",
+    title: "Healthcare and Medical Product Advertisement Pre-Approval",
+    platformCode: "ALL",
+    platformName: "All Platforms (UAE Regulatory)",
+    jurisdictionCode: "AE",
+    jurisdictionName: "United Arab Emirates",
+    industry: "HEALTHCARE",
+    category: "Credentials and licensing",
+    authorityName: "Ministry of Health & Prevention (MOHAP) / EDE",
+    authorityType: "REGULATION",
+    verificationStatus: "UNVERIFIED_DRAFT",
+    isUsableByAI: false,
+    summary: "All healthcare, clinic, and medical advertisements targeting the UAE must obtain prior authorization and display official permit numbers.",
+    legalExplanation: "Federal Law No. 4 of 2015 and Cabinet Resolution No. 23 of 2020 mandate health media license issuance prior to distribution.",
+    remediationAction: "Obtain advertising license from MOHAP or DHA (Dubai) and overlay the official approval code on creative end-cards.",
+    sourceLinks: [
+      {
+        title: "MOHAP Health Advertisement Licensing Service",
+        url: "https://www.mohap.gov.ae/en/services/health-advertisement-licensing",
+        citation: "Cabinet Resolution No. 23 of 2020 § Media Advertisement Standards",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "Dr. L. Al-Mansoori (Regulatory Counsel)", notes: "Draft staged. Medical product advertising oversight transitioning to EDE." },
+    ],
+    lastCheckedDate: "2026-10-28",
+    pendingUpdatesNote: "Flagged: Emirates Drug Establishment (EDE) oversight mandate transition effective 2025/2026. Awaiting counsel verification.",
+  },
+  {
+    code: "RX-AE-MEDIA-01",
+    title: "UAE Media Council Commercial Advertiser Permit",
+    platformCode: "ALL",
+    platformName: "All Platforms (UAE Regulatory)",
+    jurisdictionCode: "AE",
+    jurisdictionName: "United Arab Emirates",
+    industry: "GENERAL",
+    category: "Credentials and licensing",
+    authorityName: "UAE Media Council",
+    authorityType: "REGULATION",
+    verificationStatus: "UNVERIFIED_DRAFT",
+    isUsableByAI: false,
+    summary: "Companies and influencers executing commercial advertisements in the UAE must hold an active UAE Media Council Advertiser Permit.",
+    legalExplanation: "Federal Decree-Law No. 55 of 2023 on the Regulation of Media requires institutional advertiser registration.",
+    remediationAction: "Verify that the publisher or promoting influencer holds a valid Media Council license number.",
+    sourceLinks: [
+      {
+        title: "UAE Media Council Advertiser Permit Guide",
+        url: "https://uaemc.gov.ae/en/services/advertiser-permit",
+        citation: "UAE Media Council Regulations § Commercial Advertising",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "K. Vance (Policy Admin)", notes: "Research draft staged. Awaiting legal confirmation." },
+    ],
+    lastCheckedDate: "2026-10-28",
+    pendingUpdatesNote: "Confirming advertiser permit requirements for foreign agencies promoting UAE clinics.",
+  },
+  {
+    code: "RX-SNAP-HC-01",
+    title: "Snapchat Healthcare and Dietary Supplement Targeting",
+    platformCode: "SNAPCHAT",
+    platformName: "Snapchat Ads",
+    jurisdictionCode: "GLOBAL",
+    jurisdictionName: "Global Platform Standard",
+    industry: "HEALTHCARE",
+    category: "Targeting restrictions",
+    authorityName: "Snap Advertising Policies",
+    authorityType: "PLATFORM_POLICY",
+    verificationStatus: "UNVERIFIED_DRAFT",
+    isUsableByAI: false,
+    summary: "Ads promoting pharmaceuticals, medical treatments, and supplements must comply with local laws, restrict delivery to 18+, and avoid sensationalized wellness claims.",
+    legalExplanation: "Snap restricts health products to adult users and disallows content that promotes body shaming, dramatic physical transformations, or unapproved supplements.",
+    remediationAction: "Apply 18+ age targeting in Snap Ads Manager and avoid dramatic physiological before-and-after claims.",
+    sourceLinks: [
+      {
+        title: "Snap Commercial & Advertising Policies",
+        url: "https://www.snap.com/en-US/ad-policies",
+        citation: "Snap Ad Policies § Health, Wellness, and Fitness",
+      },
+    ],
+    versionHistory: [
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "A. Patel (Platform Lead)", notes: "Research draft staged. Awaiting dual-admin approval." },
+    ],
+    lastCheckedDate: "2026-10-28",
+    pendingUpdatesNote: "Draft staged for Snap Ads v4 policies. Awaiting second-admin verification before AI engine deployment.",
+  },
+];
