@@ -26,6 +26,7 @@ describe("prisma/migrations", () => {
       "20261019180000_reviewer_chat",
       "20261019190000_lifecycle_records",
       "20261028000000_policy_structure_and_evidence",
+      "20261031160000_policy_source_monitoring",
     ]);
   });
 
@@ -154,5 +155,23 @@ describe("prisma/migrations", () => {
     // Existing findings become REVIEWER findings; no row is written.
     expect(body).toContain(`"origin" "FindingOrigin" NOT NULL DEFAULT 'REVIEWER'`);
     expect(body).not.toMatch(/\bINSERT\b|\bUPDATE\s+"/i);
+  });
+
+  it("the policy-source-monitoring migration (Oct 31) only creates and adds, with history on RESTRICT and monitoring off by default", () => {
+    const body = statements("20261031160000_policy_source_monitoring");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|ALTER TYPE "\w+" ADD VALUE IF NOT EXISTS|ALTER TABLE "\w+" ADD COLUMN|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 60));
+    for (const k of kinds) expect(k).toMatch(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|ALTER TYPE "\w+" ADD VALUE IF NOT EXISTS|ALTER TABLE "\w+" ADD (COLUMN|CONSTRAINT))$/);
+    expect([...body.matchAll(/CREATE TABLE "(\w+)"/g)].map((m) => m[1])).toEqual(["PolicySourceSnapshot", "PolicySourceChangeProposal"]);
+    expect(body).not.toMatch(/ALTER COLUMN|\bINSERT\b|\bUPDATE\s+"/i);
+    // Existing sources are not monitored until an admin turns it on.
+    expect(body).toContain(`"monitoringEnabled" BOOLEAN NOT NULL DEFAULT false`);
+    expect(body).toContain(`"checkIntervalHours" INTEGER NOT NULL DEFAULT 24`);
+    // Snapshots, proposals and their reviewers are history: nothing cascades.
+    for (const m of body.matchAll(/ON DELETE (\w+)/g)) expect(m[1]).toBe("RESTRICT");
+    expect(body).toMatch(/"PolicySourceChangeProposal" ADD CONSTRAINT[^;]*"resultingVersionId"[^;]*REFERENCES "PolicyRuleVersion"/);
   });
 });
