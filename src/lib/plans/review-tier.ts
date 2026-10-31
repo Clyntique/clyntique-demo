@@ -22,6 +22,11 @@ export interface ReviewTierDetails {
 
 const TIER_TAG_REGEX = /\[Review Tier:\s*(AI_ONLY|HUMAN_REVIEW)\]/i;
 
+export function stripReviewTier(context?: string | null): string {
+  if (!context) return "";
+  return context.replace(TIER_TAG_REGEX, "").trim();
+}
+
 export function parseReviewTier(context?: string | null): ReviewTier {
   if (!context) return "HUMAN_REVIEW"; // Default in pilot is full review
   const match = context.match(TIER_TAG_REGEX);
@@ -30,25 +35,25 @@ export function parseReviewTier(context?: string | null): ReviewTier {
 }
 
 export function getReviewTierLabel(tier: ReviewTier): string {
-  return tier === "AI_ONLY" ? "AI-Only Review" : "Human Review (Add-on)";
+  return tier === "AI_ONLY" ? "AI-Only Review" : "Human Review (Optional Add-on)";
 }
 
 export function formatContextWithReviewTier(existingContext?: string | null, tier: ReviewTier = "HUMAN_REVIEW"): string {
-  const clean = (existingContext ?? "").replace(TIER_TAG_REGEX, "").trim();
+  const clean = stripReviewTier(existingContext);
   const tag = `[Review Tier: ${tier}]`;
   return clean ? `${clean}\n\n${tag}` : tag;
 }
 
 export function getReviewTierDetails(tier: ReviewTier, submissionStatus: string = "DRAFT"): ReviewTierDetails {
   if (tier === "AI_ONLY") {
-    let statusLabel = "AI Pre-Screening Active";
-    let statusDescription = "Automated compliance checks running against verified platform advertising policies.";
+    let statusLabel = "AI Automated Scan Selected";
+    let statusDescription = "Automated compliance pre-screening against verified platform advertising policies.";
     if (submissionStatus === "DRAFT") {
       statusLabel = "AI-Only Review Selected";
-      statusDescription = "Instant automated policy verification upon submission. Human review not requested.";
+      statusDescription = "Automated policy scan will execute upon submission. Human specialist review is not requested.";
     } else if (submissionStatus === "REVIEW_COMPLETE") {
       statusLabel = "AI Compliance Screening Complete";
-      statusDescription = "Automated policy scan finished. Defensible human audit record was not requested.";
+      statusDescription = "Automated policy pre-scan completed. Human review dual-check was not selected.";
     }
 
     return {
@@ -58,22 +63,22 @@ export function getReviewTierDetails(tier: ReviewTier, submissionStatus: string 
       isPaidAddon: false,
       statusLabel,
       statusDescription,
-      slaText: "< 60 seconds turnaround",
+      slaText: "Automated scan (illustrative target)",
     };
   }
 
   // HUMAN_REVIEW
   let statusLabel = "Human Review Requested";
-  let statusDescription = "Senior Regulatory Specialist assigned to verify claims, check evidence, and issue defensible audit record.";
+  let statusDescription = "Senior Regulatory Specialist dual check requested (subject to queue availability / pilot quota).";
   if (submissionStatus === "DRAFT") {
-    statusLabel = "Human Review Selected (Add-On)";
-    statusDescription = "Full dual-check review: automated scan + Senior Regulatory Specialist sign-off.";
+    statusLabel = "Human Review Selected (Add-on Option)";
+    statusDescription = "Dual-check requested: automated AI scan paired with Senior Regulatory Specialist review.";
   } else if (submissionStatus === "SUBMITTED") {
-    statusLabel = "Awaiting Regulatory Reviewer";
-    statusDescription = "In queue for line-by-line inspection and evidence verification by Clyntique review team.";
+    statusLabel = "In Review Queue";
+    statusDescription = "Queued for line-by-line inspection and evidence review by Clyntique compliance specialists.";
   } else if (submissionStatus === "IN_REVIEW") {
-    statusLabel = "Being Reviewed by Regulatory Specialist";
-    statusDescription = "A Senior Compliance Reviewer is actively evaluating claims, targeting, and evidence.";
+    statusLabel = "Being Evaluated by Regulatory Reviewer";
+    statusDescription = "A compliance specialist is evaluating claims, targeting parameters, and attached evidence.";
   } else if (submissionStatus === "CHANGES_REQUESTED") {
     statusLabel = "Reviewer Feedback Shared";
     statusDescription = "The compliance reviewer identified findings that require your remediation.";
@@ -84,11 +89,11 @@ export function getReviewTierDetails(tier: ReviewTier, submissionStatus: string 
 
   return {
     tier: "HUMAN_REVIEW",
-    label: "Human Review (Add-on)",
+    label: "Human Review (Optional Add-on)",
     badgeTone: "brand",
     isPaidAddon: true,
     statusLabel,
     statusDescription,
-    slaText: "24-hour SLA guarantee",
+    slaText: "Standard queue (illustrative target)",
   };
 }

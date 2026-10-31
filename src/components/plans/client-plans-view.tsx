@@ -181,7 +181,7 @@ export function ClientPlansView() {
                   <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: "66%" }} />
                 </div>
                 <p className="mt-2 text-micro text-muted">
-                  Pre-purchased single-review escalations with guaranteed 24h SLA.
+                  Optional single-review dual-check credits (illustrative pilot quota; non-binding queue targets).
                 </p>
               </div>
             </div>
@@ -196,7 +196,7 @@ export function ClientPlansView() {
               <div>
                 <h3 className="text-small font-bold text-ink">Need an urgent single creative escalation?</h3>
                 <p className="text-caption text-ink-soft">
-                  Use your on-demand credits or add single reviews for $49 without changing your baseline plan.
+                  Request human review for high-stakes campaigns via pilot quota or optional add-on without changing your baseline plan.
                 </p>
               </div>
             </div>
