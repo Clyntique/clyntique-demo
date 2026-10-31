@@ -178,19 +178,23 @@ model User {
   createdPolicyRuleVersions  PolicyRuleVersion[] @relation("RuleVersionCreatedBy")
   approvedPolicyRuleVersions PolicyRuleVersion[] @relation("RuleVersionApprovedBy")
 
-  clientConversations        Conversation[]       @relation("ConversationClient")
-  reviewerConversations      Conversation[]       @relation("ConversationReviewer")
-  sentMessages               Message[]            @relation("MessageSender")
-  readMessages               Message[]            @relation("MessageReader")
+  clientConversations        Conversation[]               @relation("ConversationClient")
+  reviewerConversations      Conversation[]               @relation("ConversationReviewer")
+  sentMessages               Message[]                    @relation("MessageSender")
+  readMessages               Message[]                    @relation("MessageReader")
   // Lifecycle records (Oct 19 sprint)
-  aiScanRuns                 AIScanRun[]          @relation("ScanInitiatedBy")
-  externalSubmissions        ExternalSubmission[] @relation("ExternalSubmissionRecordedBy")
-  externalOutcomes           ExternalOutcome[]    @relation("ExternalOutcomeRecordedBy")
-  policyRuleEvents           PolicyRuleEvent[]    @relation("PolicyRuleEventActor")
+  aiScanRuns                 AIScanRun[]                  @relation("ScanInitiatedBy")
+  externalSubmissions        ExternalSubmission[]         @relation("ExternalSubmissionRecordedBy")
+  externalOutcomes           ExternalOutcome[]            @relation("ExternalOutcomeRecordedBy")
+  policyRuleEvents           PolicyRuleEvent[]            @relation("PolicyRuleEventActor")
   // P0 policy verification and evidence assessment (Oct 27)
-  verifiedPolicyRuleVersions PolicyRuleVersion[]  @relation("RuleVersionVerifiedBy")
-  verifiedPolicySources      PolicySource[]       @relation("SourceVerifiedBy")
-  evidenceAssessments        EvidenceAssessment[] @relation("EvidenceAssessedBy")
+  verifiedPolicyRuleVersions PolicyRuleVersion[]          @relation("RuleVersionVerifiedBy")
+  verifiedPolicySources      PolicySource[]               @relation("SourceVerifiedBy")
+  evidenceAssessments        EvidenceAssessment[]         @relation("EvidenceAssessedBy")
+  // Policy source monitoring (Oct 31)
+  triggeredSourceSnapshots   PolicySourceSnapshot[]       @relation("SnapshotTriggeredBy")
+  detectedSourceChanges      PolicySourceChangeProposal[] @relation("ChangeDetectedBy")
+  resolvedSourceChanges      PolicySourceChangeProposal[] @relation("ChangeResolvedBy")
 }
 
 // A campaign/client project, e.g. "Acme Health — Q4 Campaign".
@@ -756,9 +760,25 @@ model PolicySource {
   verifiedAt         DateTime?
   verificationNote   String?
 
-  citations  PolicyRuleVersionSource[]
-  verifiedBy User?                     @relation("SourceVerifiedBy", fields: [verifiedById], references: [id], onDelete: Restrict)
-  events     PolicyRuleEvent[]
+  // Policy source monitoring (Oct 31). Monitoring never changes the source's
+  // verification status or any rule: a detected change only opens a
+  // PolicySourceChangeProposal for a policy admin to review.
+  monitoringEnabled   Boolean                   @default(false)
+  // How often a due check may run (daily by default). No job is scheduled by
+  // the application; checks run on demand or from an operator-triggered runner.
+  checkIntervalHours  Int                       @default(24)
+  lastCheckedAt       DateTime?
+  lastCheckOutcome    PolicySourceFetchOutcome?
+  consecutiveFailures Int                       @default(0)
+  // A human marked the publication as discontinued; checks stop, history stays.
+  discontinuedAt      DateTime?
+  discontinuedNote    String?
+
+  citations       PolicyRuleVersionSource[]
+  verifiedBy      User?                        @relation("SourceVerifiedBy", fields: [verifiedById], references: [id], onDelete: Restrict)
+  events          PolicyRuleEvent[]
+  snapshots       PolicySourceSnapshot[]
+  changeProposals PolicySourceChangeProposal[]
 
   @@index([authorityType, jurisdictionCode])
 }
@@ -822,16 +842,17 @@ model PolicyRuleVersion {
   // Why the version was marked REQUIRES_REVIEW.
   reviewNote                 String?
 
-  rule            PolicyRule                @relation(fields: [ruleId], references: [id], onDelete: Restrict)
-  createdBy       User                      @relation("RuleVersionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy      User?                     @relation("RuleVersionApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
-  verifiedBy      User?                     @relation("RuleVersionVerifiedBy", fields: [verifiedById], references: [id], onDelete: Restrict)
+  rule            PolicyRule                   @relation(fields: [ruleId], references: [id], onDelete: Restrict)
+  createdBy       User                         @relation("RuleVersionCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy      User?                        @relation("RuleVersionApprovedBy", fields: [approvedById], references: [id], onDelete: Restrict)
+  verifiedBy      User?                        @relation("RuleVersionVerifiedBy", fields: [verifiedById], references: [id], onDelete: Restrict)
   sources         PolicyRuleVersionSource[]
   findings        Finding[]
   scanChecks      AIScanRuleCheck[]
-  triggeredCycles ReviewCycle[]             @relation("CycleTriggerRuleVersion")
+  triggeredCycles ReviewCycle[]                @relation("CycleTriggerRuleVersion")
   events          PolicyRuleEvent[]
-  evidence        Evidence[]                @relation("EvidencePolicyRuleVersion")
+  evidence        Evidence[]                   @relation("EvidencePolicyRuleVersion")
+  changeProposals PolicySourceChangeProposal[] @relation("ProposalResultingVersion")
 
   @@unique([ruleId, versionNumber])
   @@index([status, verificationStatus])
@@ -858,6 +879,94 @@ model PolicyRuleVersionSource {
 
   @@index([versionId])
   @@index([sourceId])
+}
+
+// ---------------------------------------------------------------------------
+// Policy source monitoring (Oct 31). Official pages are fetched (on demand, or
+// by an operator-triggered runner), normalized and hashed. Each fetch is an
+// append-only snapshot. A meaningful difference from the previous good
+// snapshot opens a change proposal in the human-review queue. Nothing here
+// edits, verifies, approves or retires a rule or a source; those stay with
+// the two-person Policy Library workflow.
+
+enum PolicySourceFetchOutcome {
+  OK
+  REDIRECTED // the final URL differs from the registered official URL
+  NOT_FOUND // 404 or 410
+  BLOCKED // 403, 429 or a bot challenge
+  UNREACHABLE // DNS, connection or timeout failure
+  ERROR // any other HTTP or parsing error
+  SKIPPED // not fetched: non-official domain, discontinued, or disabled
+}
+
+enum PolicyChangeKind {
+  CONTENT_CHANGED
+  REDIRECTED
+  NOT_FOUND
+  ACCESS_PROBLEM // repeated blocked or unreachable results
+}
+
+enum PolicyChangeProposalStatus {
+  PENDING_REVIEW
+  NO_RULE_CHANGE // a policy admin read the change and no rule needs updating
+  RULE_UPDATE_STARTED // a policy admin opened a new rule version (normal workflow)
+  DISMISSED // false positive, e.g. a layout-only change
+}
+
+model PolicySourceSnapshot {
+  id             String                   @id @default(cuid())
+  sourceId       String
+  fetchedAt      DateTime                 @default(now())
+  requestedUrl   String
+  finalUrl       String?
+  outcome        PolicySourceFetchOutcome
+  httpStatus     Int?
+  contentType    String?
+  byteLength     Int?
+  contentHash    String? // SHA-256 of the normalized text (or of the bytes for binary documents)
+  normalizedText String? // capped; the diff shown to reviewers is built from it
+  statedDate     DateTime? // a "last updated" or "effective" date the page itself states
+  errorMessage   String?
+  triggeredById  String? // null for an operator-triggered runner
+
+  source      PolicySource                 @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  triggeredBy User?                        @relation("SnapshotTriggeredBy", fields: [triggeredById], references: [id], onDelete: Restrict)
+  asPrevious  PolicySourceChangeProposal[] @relation("ProposalPreviousSnapshot")
+  asNew       PolicySourceChangeProposal[] @relation("ProposalNewSnapshot")
+
+  @@index([sourceId, fetchedAt])
+}
+
+model PolicySourceChangeProposal {
+  id                 String                     @id @default(cuid())
+  sourceId           String
+  kind               PolicyChangeKind
+  status             PolicyChangeProposalStatus @default(PENDING_REVIEW)
+  previousSnapshotId String?
+  newSnapshotId      String
+  // Machine-written summary of the difference, labelled as such in the UI.
+  summary            String
+  // Section-level diff: [{ op: "added" | "removed", text }]
+  diff               Json?
+  // Rule codes whose versions cite this source, computed at detection time.
+  affectedRuleCodes  String[]                   @default([])
+  detectedById       String
+  createdAt          DateTime                   @default(now())
+  resolvedById       String?
+  resolvedAt         DateTime?
+  resolutionNote     String?
+  // The rule version a policy admin proposed in response, if any.
+  resultingVersionId String?
+
+  source           PolicySource          @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  previousSnapshot PolicySourceSnapshot? @relation("ProposalPreviousSnapshot", fields: [previousSnapshotId], references: [id], onDelete: Restrict)
+  newSnapshot      PolicySourceSnapshot  @relation("ProposalNewSnapshot", fields: [newSnapshotId], references: [id], onDelete: Restrict)
+  detectedBy       User                  @relation("ChangeDetectedBy", fields: [detectedById], references: [id], onDelete: Restrict)
+  resolvedBy       User?                 @relation("ChangeResolvedBy", fields: [resolvedById], references: [id], onDelete: Restrict)
+  resultingVersion PolicyRuleVersion?    @relation("ProposalResultingVersion", fields: [resultingVersionId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([sourceId, createdAt])
 }
 
 // ---------------------------------------------------------------------------
@@ -1066,6 +1175,10 @@ enum PolicyRuleEventKind {
   SOURCE_CREATED
   SOURCE_EDITED
   SOURCE_VERIFIED
+  // Policy source monitoring (Oct 31)
+  SOURCE_CHANGE_DETECTED
+  SOURCE_CHANGE_REVIEWED
+  SOURCE_MONITORING_UPDATED
 }
 
 // Append-only history of changes to a policy rule or source, written by the

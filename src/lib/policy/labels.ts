@@ -1,4 +1,5 @@
-import type { PolicyRuleEventKind } from "@/generated/prisma/enums";
+import type { PolicyChangeKind, PolicyChangeProposalStatus, PolicyRuleEventKind, PolicySourceFetchOutcome } from "@/generated/prisma/enums";
+import type { SourceMonitorStatus } from "./monitoring/service";
 import type { PolicyAuthorityType, PolicyCategory, PolicyRestrictionLevel, PolicyRuleVersion, PolicySourceKind, PolicyVerificationStatus } from "./types";
 
 /** Plain-language names of Policy Library history events (rules and sources). */
@@ -14,6 +15,45 @@ export const POLICY_EVENT_LABEL: Record<PolicyRuleEventKind, string> = {
   SOURCE_CREATED: "Source added",
   SOURCE_EDITED: "Source edited",
   SOURCE_VERIFIED: "Source verified",
+  SOURCE_CHANGE_DETECTED: "Source change detected",
+  SOURCE_CHANGE_REVIEWED: "Source change reviewed",
+  SOURCE_MONITORING_UPDATED: "Source monitoring updated",
+};
+
+// Policy source monitoring (Oct 31).
+
+export const FETCH_OUTCOME_LABEL: Record<PolicySourceFetchOutcome, string> = {
+  OK: "Fetched",
+  REDIRECTED: "Redirected",
+  NOT_FOUND: "Not found",
+  BLOCKED: "Blocked",
+  UNREACHABLE: "Unreachable",
+  ERROR: "Error",
+  SKIPPED: "Skipped",
+};
+
+export const CHANGE_KIND_LABEL: Record<PolicyChangeKind, string> = {
+  CONTENT_CHANGED: "Content changed",
+  REDIRECTED: "URL redirects elsewhere",
+  NOT_FOUND: "Page not found",
+  ACCESS_PROBLEM: "Access problem",
+};
+
+export const PROPOSAL_STATUS_LABEL: Record<PolicyChangeProposalStatus, string> = {
+  PENDING_REVIEW: "Pending review",
+  NO_RULE_CHANGE: "Reviewed · no rule change",
+  RULE_UPDATE_STARTED: "Reviewed · rule update started",
+  DISMISSED: "Dismissed",
+};
+
+export const MONITOR_STATUS_LABEL: Record<SourceMonitorStatus, string> = {
+  DISCONTINUED: "Discontinued",
+  NOT_MONITORED: "Not monitored",
+  NEVER_CHECKED: "Never checked",
+  OK: "No change",
+  CHANGE_PENDING: "Change pending review",
+  ACCESS_PROBLEM: "Access problem",
+  LAST_CHECK_FAILED: "Last check failed",
 };
 
 // Plain-language names for the structured fields (P0, Oct 27).
