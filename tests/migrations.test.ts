@@ -175,3 +175,27 @@ describe("prisma/migrations", () => {
     expect(body).toMatch(/"PolicySourceChangeProposal" ADD CONSTRAINT[^;]*"resultingVersionId"[^;]*REFERENCES "PolicyRuleVersion"/);
   });
 });
+
+describe("backup restore script", () => {
+  const restore = readFileSync(join(process.cwd(), "prisma", "db-restore.ts"), "utf8");
+  const order = [...restore.matchAll(/^\s*"([A-Za-z_]+)",?$/gm)].map((m) => m[1]);
+  const models = [...readFileSync(join(process.cwd(), "prisma", "schema.prisma"), "utf8").matchAll(/^model\s+(\w+)\s*\{/gm)].map((m) => m[1]);
+
+  it("knows how to restore every table in the schema, so a fresh backup is never refused", () => {
+    expect(models.length).toBeGreaterThan(30);
+    const missing = models.filter((m) => !order.includes(m));
+    expect(missing).toEqual([]);
+    expect(order).toContain("_prisma_migrations");
+  });
+
+  it("restores parents before the rows that reference them", () => {
+    const before = (a: string, b: string) => expect(order.indexOf(a)).toBeLessThan(order.indexOf(b));
+    before("Evidence", "EvidenceAssessment");
+    before("ReviewCycle", "EvidenceAssessment");
+    before("User", "EvidenceAssessment");
+    before("PolicySource", "PolicySourceSnapshot");
+    before("PolicySourceSnapshot", "PolicySourceChangeProposal");
+    before("PolicyRuleVersion", "PolicySourceChangeProposal");
+    before("User", "PolicySourceChangeProposal");
+  });
+});
