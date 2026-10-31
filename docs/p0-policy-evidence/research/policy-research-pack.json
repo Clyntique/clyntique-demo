@@ -194,21 +194,21 @@
       },
       "version": {
         "title": "Body image and weight loss claims",
-        "summary": "Meta ads must not attack or shame a person's appearance or body parts, and must not show close-ups of pinched fat. Weight loss ads must not promise results within a set timeframe, use clickbait framing, attribute results solely to a wearable device, or claim to cure the diseases Meta lists as incurable.",
+        "summary": "Meta ads must not attack or shame a person's appearance, body parts or hygiene, and must not show close-ups of pinched fat. Weight loss or weight gain ads must not promise results within a set time without qualification, use clickbait framing, attribute results solely to a wearable device, or claim to cure the diseases Meta lists as incurable.",
         "legalExplanation": "Meta's health and wellness standard restricts body-shaming imagery and unrealistic weight loss claims. Prescription weight loss products fall under Meta's separate Drugs policy.",
         "remediationAction": "Remove shaming or close-up body imagery, timeframe promises, clickbait and wearable-only or cure claims; describe the service and its benefits without judging appearance.",
         "applicabilityConditions": [
           "The ad runs on Facebook or Instagram.",
-          "The ad promotes weight loss, or shows images of bodies or body parts, or copy about body shape or appearance."
+          "The ad promotes weight loss or weight gain, or cosmetic products or procedures, or shows images of bodies or body parts, or copy about body shape or appearance."
         ],
         "exceptions": [
           "Before-and-after images for cosmetic procedures are allowed when the ad targets people aged 18 or over."
         ],
         "restrictionLevel": "PROHIBITED",
         "restrictedClaims": [
-          "Attacks on, or shaming of, a person's appearance or body parts",
+          "Attacks on, or shaming of, a person's appearance, body parts or hygiene",
           "Close-up images of pinching fat",
-          "Results promised within a set timeframe, or clickbait framing",
+          "Results promised within a set time without qualification, or clickbait framing",
           "Results attributed solely to a wearable device",
           "Cure claims for conditions Meta lists as incurable"
         ],
