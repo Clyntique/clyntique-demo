@@ -6,10 +6,11 @@ import { Brand } from "@/components/layout/brand";
 import { MenuIcon, CloseIcon, ArrowRightIcon } from "@/components/ui/icons";
 
 const NAV_LINKS = [
-  { href: "#how-it-works", label: "How It Works" },
-  { href: "#workflow", label: "Workflow" },
-  { href: "#features", label: "Features" },
-  { href: "#policy-ai", label: "Policy AI" },
+  { href: "/#how-it-works", label: "How It Works" },
+  { href: "/#workflow", label: "Workflow" },
+  { href: "/#features", label: "Features" },
+  { href: "/pricing", label: "Pricing & Plans" },
+  { href: "/policy-dashboard", label: "Policy Dashboard" },
 ];
 
 export function MarketingNavbar() {

@@ -133,6 +133,9 @@ export function PolicyLibraryView({
         description="Advertising rules for healthcare and medical aesthetics, written in Clyntique's own words and linked to the official source. One admin verifies each version and a different admin approves it before the AI may use it."
         action={
           <div className="flex items-center gap-2">
+            <Link href="/admin/policy-dashboard" className={buttonClasses({ variant: "ghost", size: "sm" })}>
+              <LayersIcon className="size-4" /> Global Dashboard
+            </Link>
             <Link href="/admin/policy-library/impact" className={buttonClasses({ variant: "ghost", size: "sm" })}>
               Rule changes &amp; impact
             </Link>
