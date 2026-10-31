@@ -80,6 +80,13 @@ export const AlertIcon = (p: IconProps) => (
   </Icon>
 );
 
+export const InfoIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4M12 8h.01" />
+  </Icon>
+);
+
 export const LayersIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="m12 3 9 5-9 5-9-5Z" />
