@@ -95,7 +95,18 @@ export function DesktopSidebar({ role, user, counts }: DesktopSidebarProps) {
       )}
 
       {/* Main Navigation Area */}
-      <nav aria-label="Main navigation" className={cn("flex-1 py-3 overflow-y-auto", isCollapsed ? "px-2" : "px-3")}>
+      {/* Collapsed: the hover tooltips sit outside the 72px rail. A scroll container
+          (overflow-y-auto also makes overflow-x auto) would clip them and show a stray
+          scrollbar, so the rail only scrolls on viewports too short for its items. */}
+      <nav
+        aria-label="Main navigation"
+        className={cn(
+          "min-h-0 flex-1 py-3",
+          isCollapsed
+            ? "px-2 overflow-visible [@media(max-height:560px)]:overflow-x-hidden [@media(max-height:560px)]:overflow-y-auto"
+            : "px-3 overflow-y-auto"
+        )}
+      >
         <NavLinks role={role} layout="sidebar" counts={counts} collapsed={isCollapsed} />
       </nav>
 
