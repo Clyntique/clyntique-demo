@@ -9,6 +9,7 @@ import { INDUSTRY_LABEL } from "@/lib/workflow/submission";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { FormError } from "@/components/forms/form-error";
+import { stripReviewTier } from "@/lib/plans/review-tier";
 
 // Create or edit a client submission. Drafts may be incomplete; the submit
 // step (SubmitPanel) checks for a file, a market, a platform and the
@@ -158,7 +159,7 @@ export function SubmissionForm(
       </Field>
 
       <Field label="Campaign context (optional)" hint="Objective, audience and key message, so the reviewer understands the intent.">
-        <Textarea name="context" defaultValue={str("context")} maxLength={2000} />
+        <Textarea name="context" defaultValue={stripReviewTier(str("context"))} maxLength={2000} />
       </Field>
 
       {create && (

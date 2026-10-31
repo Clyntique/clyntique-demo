@@ -26,6 +26,7 @@ import {
   ClockIcon,
   FolderIcon,
   InboxIcon,
+  LayersIcon,
   MessageIcon,
   PlusIcon,
   ShieldIcon,
@@ -112,6 +113,9 @@ async function TeamDashboard({ user }: { user: CurrentUser }) {
         description={summary}
         action={
           <div className="flex items-center gap-2.5">
+            <Link href="/admin/policy-dashboard" prefetch={true} className={buttonClasses({ variant: "ghost" })}>
+              <LayersIcon className="size-4" /> Policy Dashboard
+            </Link>
             <Link href="/admin/projects/new" prefetch={true} className={buttonClasses({ variant: "secondary" })}>
               <PlusIcon className="size-4" /> New project
             </Link>
@@ -515,9 +519,14 @@ async function ClientDashboard({ user }: { user: CurrentUser }) {
         title={`Welcome back, ${firstName}`}
         description={summary}
         action={
-          <Link href="/dashboard/submissions/new" prefetch={true} className={buttonClasses({ variant: "primary" })}>
-            <PlusIcon className="size-4" /> New submission
-          </Link>
+          <div className="flex items-center gap-2.5">
+            <Link href="/dashboard/plans" prefetch={true} className={buttonClasses({ variant: "ghost" })}>
+              <ShieldIcon className="size-4" /> Plans &amp; Add-ons
+            </Link>
+            <Link href="/dashboard/submissions/new" prefetch={true} className={buttonClasses({ variant: "primary" })}>
+              <PlusIcon className="size-4" /> New submission
+            </Link>
+          </div>
         }
       />
 
