@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 describe("YC Demo & Auth UX Improvements", () => {
   it("Login page has clickable Clyntique logo linking to / on desktop and mobile", () => {
@@ -29,21 +29,48 @@ describe("YC Demo & Auth UX Improvements", () => {
     expect(loginSrc).toContain("Try Interactive Demo");
   });
 
-  it("Interactive YC demo component is completely isolated from production database", () => {
-    const demoSrc = readFileSync("src/components/demo/interactive-yc-demo.tsx", "utf8");
-    // Uses client-side React state only
-    expect(demoSrc).toContain('"use client"');
-    // Does not import prisma or server actions
-    expect(demoSrc).not.toContain('@/lib/prisma');
-    expect(demoSrc).not.toContain('prisma.');
-    // Supports both Client and Team roles
-    expect(demoSrc).toContain('role === "CLIENT"');
-    expect(demoSrc).toContain('role === "TEAM"');
-    // Covers the 5 core walkthrough stages
-    expect(demoSrc).toContain("1. Submit Creative");
-    expect(demoSrc).toContain("2. Attach Evidence");
-    expect(demoSrc).toContain("3. AI Policy Pre-Screening");
-    expect(demoSrc).toContain("4. Feedback &amp; Revisions");
-    expect(demoSrc).toContain("5. Sign-Off &amp; Audit Trail");
+  it("Interactive demo components are completely isolated from Production (no database, AI, storage or auth)", () => {
+    const dir = "src/components/demo";
+    const files = readdirSync(dir).filter((f) => f.endsWith(".tsx")).map((f) => readFileSync(`${dir}/${f}`, "utf8"));
+    const libFiles = readdirSync("src/lib/demo").map((f) => readFileSync(`src/lib/demo/${f}`, "utf8"));
+    expect(files.length).toBeGreaterThanOrEqual(6);
+    for (const src of files) {
+      // Client-side React state only
+      expect(src).toContain('"use client"');
+    }
+    for (const src of [...files, ...libFiles]) {
+      // No database, server actions, AI provider, Blob storage or auth imports
+      expect(src).not.toContain("@/lib/prisma");
+      expect(src).not.toContain("prisma.");
+      expect(src).not.toContain('"use server"');
+      expect(src).not.toContain("@/lib/ai/");
+      expect(src).not.toContain("@/lib/auth/");
+      expect(src).not.toContain("@/lib/review/");
+      expect(src).not.toContain("@vercel/blob");
+      expect(src).not.toMatch(/fetch\(/);
+    }
+    // Three role-based experiences, chosen without credentials
+    const chooser = readFileSync(`${dir}/role-chooser.tsx`, "utf8");
+    expect(chooser).toContain("Explore as Client 1");
+    expect(chooser).toContain("Explore as Client 2");
+    expect(chooser).toContain("Explore as Team");
+    expect(chooser).toContain("No sign-in needed");
+    // Simulated results and approvals are labelled
+    const data = readFileSync("src/lib/demo/data.ts", "utf8");
+    expect(data).toContain("Simulated AI result");
+    expect(data).toContain("Simulated approval");
+  });
+
+  it("Homepage links to /demo and keeps the real Login entry points", () => {
+    const navbar = readFileSync("src/components/marketing/navbar.tsx", "utf8");
+    expect(navbar).toContain('href="/demo"');
+    expect(navbar).toContain("Explore Demo");
+    expect(navbar).toContain('href="/auth/login"');
+    expect(navbar).toContain("Sign In");
+    const hero = readFileSync("src/components/marketing/hero-section.tsx", "utf8");
+    expect(hero).toContain('href="/demo"');
+    const cta = readFileSync("src/components/marketing/final-cta-section.tsx", "utf8");
+    expect(cta).toContain('href="/demo"');
+    expect(cta).toContain('href="/auth/login"');
   });
 });
