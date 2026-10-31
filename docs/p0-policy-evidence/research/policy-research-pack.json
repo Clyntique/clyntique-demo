@@ -2,7 +2,7 @@
   "_about": "Clyntique P0 policy research pack. Every entry is a DRAFT for human verification. Nothing here is verified or approved, and the import script only creates DRAFT / UNVERIFIED records.",
   "preparedOn": "2026-10-27",
   "status": "REQUIRES_REVIEW",
-  "method": "Official pages could not be opened from the research environment (network policy). Each summary was written in Clyntique's own words from search results that pointed to the official page, cross-checked against secondary summaries where available. No quotations and no dates are recorded; a policy admin adds them after reading the page.",
+  "method": "Official pages could not be opened from the research environment (network policy). Each summary was written in Clyntique's own words from search results that pointed to the official page, cross-checked against secondary summaries where available. No quotations and no dates are recorded; a policy admin adds them after reading the page. Oct 30, 2026 update: the official links were checked from GT (read-only) and the Meta and Google pages were read by machine; confirmed corrections were applied to the drafts below and are marked in each reviewNote. Nothing is verified until a policy admin reads the page.",
   "sources": [
     {
       "key": "meta-health-wellness",
@@ -11,7 +11,8 @@
       "authorityType": "PLATFORM_POLICY",
       "jurisdictionCode": "GLOBAL",
       "officialUrl": "https://transparency.meta.com/policies/ad-standards/restricted-goods-services/health-wellness",
-      "sourceKind": "PLATFORM_POLICY_PAGE"
+      "sourceKind": "PLATFORM_POLICY_PAGE",
+      "accessNote": "Page loaded Oct 30, 2026; no date stated."
     },
     {
       "key": "meta-personal-attributes",
@@ -20,7 +21,8 @@
       "authorityType": "PLATFORM_POLICY",
       "jurisdictionCode": "GLOBAL",
       "officialUrl": "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
-      "sourceKind": "PLATFORM_POLICY_PAGE"
+      "sourceKind": "PLATFORM_POLICY_PAGE",
+      "accessNote": "Page loaded Oct 30, 2026; no date stated."
     },
     {
       "key": "meta-cosmetic-procedures",
@@ -30,7 +32,7 @@
       "jurisdictionCode": "GLOBAL",
       "officialUrl": "https://transparency.meta.com/policies/ad-standards/content-specific-restrictions/cosmetic-procedures-and-wellness",
       "sourceKind": "PLATFORM_POLICY_PAGE",
-      "accessNote": "Seen only as a search result title. Confirm the page exists and what it says about before-and-after images."
+      "accessNote": "OBSOLETE: on Oct 30, 2026 this URL redirected to the Health and wellness page. No rule cites it. Do not add it to the Library; cite meta-health-wellness instead."
     },
     {
       "key": "google-healthcare-medicines",
@@ -40,7 +42,7 @@
       "jurisdictionCode": "GLOBAL",
       "officialUrl": "https://support.google.com/adspolicy/answer/176031",
       "sourceKind": "PLATFORM_HELP_ARTICLE",
-      "accessNote": "Requirements vary by country; the page links country tables and certification forms."
+      "accessNote": "Requirements vary by country; the page links country tables and certification forms. Page loaded Oct 30, 2026; no date stated. Country rows follow the viewer's country selector: the verifier selects United States by hand and reads that row."
     },
     {
       "key": "google-health-personalized",
@@ -49,7 +51,8 @@
       "authorityType": "PLATFORM_POLICY",
       "jurisdictionCode": "GLOBAL",
       "officialUrl": "https://support.google.com/adspolicy/answer/16701855",
-      "sourceKind": "PLATFORM_HELP_ARTICLE"
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "accessNote": "Page loaded Oct 30, 2026; no date stated."
     },
     {
       "key": "tiktok-healthcare",
@@ -59,7 +62,7 @@
       "jurisdictionCode": "GLOBAL",
       "officialUrl": "https://ads.tiktok.com/help/article/tiktok-ads-policy-healthcare-pharmaceuticals",
       "sourceKind": "PLATFORM_HELP_ARTICLE",
-      "accessNote": "Market tables differ; check the rows for the United States and the United Arab Emirates."
+      "accessNote": "Market tables differ; check the rows for the United States and the United Arab Emirates. INACCESSIBLE from GT on Oct 30, 2026 (TikTok is blocked in India); needs a reviewer outside India."
     },
     {
       "key": "tiktok-weight-management",
@@ -68,7 +71,8 @@
       "authorityType": "PLATFORM_POLICY",
       "jurisdictionCode": "GLOBAL",
       "officialUrl": "https://ads.tiktok.com/resources/help/article/tiktok-ads-policy-weight-management",
-      "sourceKind": "PLATFORM_HELP_ARTICLE"
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "accessNote": "INACCESSIBLE from GT on Oct 30, 2026 (TikTok is blocked in India); needs a reviewer outside India."
     },
     {
       "key": "tiktok-cosmetic-surgery-na",
@@ -78,7 +82,7 @@
       "jurisdictionCode": "US",
       "officialUrl": "https://ads.tiktok.com/help/article/update-to-cosmetic-surgery-na-march-2026",
       "sourceKind": "PLATFORM_HELP_ARTICLE",
-      "accessNote": "A policy update notice; confirm it is still current and which markets it covers."
+      "accessNote": "A policy update notice; confirm it is still current and which markets it covers. INACCESSIBLE from GT on Oct 30, 2026 (TikTok is blocked in India); needs a reviewer outside India."
     },
     {
       "key": "tiktok-handbook-metap",
@@ -88,7 +92,7 @@
       "jurisdictionCode": "AE",
       "officialUrl": "https://ads.tiktok.com/help/article/ad-policy-handbook-metap",
       "sourceKind": "PLATFORM_HELP_ARTICLE",
-      "accessNote": "Regional handbook; no rule drafted from it yet (see open questions)."
+      "accessNote": "Regional handbook; no rule drafted from it yet (see open questions). INACCESSIBLE from GT on Oct 30, 2026 (TikTok is blocked in India); needs a reviewer outside India."
     },
     {
       "key": "ftc-endorsement-guides-2023",
@@ -98,7 +102,7 @@
       "jurisdictionCode": "US",
       "officialUrl": "https://www.govinfo.gov/content/pkg/FR-2023-07-26/html/2023-14795.htm",
       "sourceKind": "STATUTE_OR_REGULATION",
-      "accessNote": "The Guides are advisory; FTC enforcement is under Section 5 of the FTC Act."
+      "accessNote": "The Guides are advisory; FTC enforcement is under Section 5 of the FTC Act. Page loaded Oct 30, 2026; it states \"Effective July 26, 2023\"."
     },
     {
       "key": "ftc-health-products-guidance",
@@ -108,7 +112,7 @@
       "jurisdictionCode": "US",
       "officialUrl": "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
       "sourceKind": "REGULATOR_GUIDANCE",
-      "accessNote": "URL not confirmed by the search (only law firm summaries were found). Confirm the address on ftc.gov before verifying."
+      "accessNote": "URL not confirmed by the search (only law firm summaries were found). Confirm the address on ftc.gov before verifying. UNCONFIRMED: the URL returned 403/404 from GT on Oct 30, 2026. Find the guidance page on ftc.gov in a normal browser before entry."
     },
     {
       "key": "mohap-health-ad-guidelines",
@@ -118,7 +122,7 @@
       "jurisdictionCode": "AE",
       "officialUrl": "https://mohap.gov.ae/assets/download/4cbc4da5/Guidelines%20for%20Health%20Advertisement%20Approval%20Requestion_637720409404515599.pdf.aspx",
       "sourceKind": "REGULATOR_GUIDANCE",
-      "accessNote": "PDF on the MOHAP site. Emirate regulators (DHA in Dubai, DOH in Abu Dhabi) may also require approval."
+      "accessNote": "INACCESSIBLE on Oct 30, 2026 (connection reset). OUTDATED (probable): MOHAP's own notice says approval of medical-product advertising moved to the Emirates Drug Establishment; who approves service and facility ads is unconfirmed. Emirate regulators (DHA in Dubai, DOH in Abu Dhabi) may also require approval. Replace with a current official source before entry."
     },
     {
       "key": "uae-media-ad-guide",
@@ -128,7 +132,7 @@
       "jurisdictionCode": "AE",
       "officialUrl": "https://u.ae/-/media/Media/Media-In-UAE/NMC-AD-Guide-EN-PDF-presntation.ashx",
       "sourceKind": "REGULATOR_GUIDANCE",
-      "accessNote": "May be superseded by the newer media regulation law and the UAE Media Council's advertiser permit. Confirm the current source."
+      "accessNote": "DEAD LINK: 404 on Oct 30, 2026. OUTDATED: superseded by the newer media regulation and the UAE Media Council's advertiser permit (2025). Replace the citation before entry."
     }
   ],
   "rules": [
@@ -142,21 +146,26 @@
         "category": "TARGETING_RESTRICTION"
       },
       "version": {
-        "title": "Weight loss and cosmetic ads: adults only",
-        "summary": "Meta only allows ads for weight loss products and services and for cosmetic products and procedures when they target people aged 18 or over.",
+        "title": "Weight loss, supplements and cosmetic ads: adults only",
+        "summary": "Meta only allows ads for weight loss or weight gain products and services, dietary and health supplements, and cosmetic products, procedures and surgery when they target people aged 18 or over.",
         "legalExplanation": "Meta's health and wellness standard treats these products as restricted goods. Delivery to under-18s is not allowed.",
         "remediationAction": "Set the audience minimum age to 18 or over in the campaign and confirm it before submitting.",
         "applicabilityConditions": [
-          "The ad promotes weight loss, dietary or cosmetic products, procedures or services."
+          "The ad promotes weight loss or weight gain products, procedures or services, dietary or health supplements, or cosmetic products, procedures or surgery."
         ],
-        "exceptions": [],
+        "exceptions": [
+          "Fitness and wellbeing services",
+          "General food, including protein products",
+          "Non-permanent cosmetics",
+          "Dental products such as teeth whitening"
+        ],
         "restrictionLevel": "RESTRICTED",
         "restrictedClaims": [],
         "substantiationRequirements": [],
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. CORRECTED Oct 30, 2026: Machine read of the official page from GT on Oct 30, 2026 (signed out). A policy admin must still verify every statement against the page. 18+ rule confirmed; scope widened and the page's exemptions added. No date stated on the page."
       },
       "citations": [
         {
@@ -170,7 +179,7 @@
         }
       ],
       "openQuestions": [
-        "Confirm which general wellness products are exempt (search summaries mention fitness services, general food and non-permanent cosmetics)."
+        "Answered Oct 30 (machine read): the page lists the exemptions now recorded under exceptions. Verifier confirms the list."
       ],
       "researchStatus": "REQUIRES_REVIEW"
     },
@@ -184,24 +193,30 @@
         "category": "BEFORE_AFTER"
       },
       "version": {
-        "title": "Weight loss imagery and body image",
-        "summary": "Meta ads must not make people feel bad about their bodies or suggest an ideal body. Weight loss ads must not show side-by-side before-and-after comparisons or close-ups of pinched fat.",
-        "legalExplanation": "Meta's health and wellness standard restricts imagery and messages that create negative self-image.",
-        "remediationAction": "Remove comparison and close-up body imagery; describe the service and its benefits without judging appearance.",
-        "applicabilityConditions": [],
-        "exceptions": [],
+        "title": "Body image and weight loss claims",
+        "summary": "Meta ads must not attack or shame a person's appearance, body parts or hygiene, and must not show close-ups of pinched fat. Weight loss or weight gain ads must not promise results within a set time without qualification, use clickbait framing, attribute results solely to a wearable device, or claim to cure the diseases Meta lists as incurable.",
+        "legalExplanation": "Meta's health and wellness standard restricts body-shaming imagery and unrealistic weight loss claims. Prescription weight loss products fall under Meta's separate Drugs policy.",
+        "remediationAction": "Remove shaming or close-up body imagery, timeframe promises, clickbait and wearable-only or cure claims; describe the service and its benefits without judging appearance.",
+        "applicabilityConditions": [
+          "The ad runs on Facebook or Instagram.",
+          "The ad promotes weight loss or weight gain, or cosmetic products or procedures, or shows images of bodies or body parts, or copy about body shape or appearance."
+        ],
+        "exceptions": [
+          "Before-and-after images for cosmetic procedures are allowed when the ad targets people aged 18 or over."
+        ],
         "restrictionLevel": "PROHIBITED",
         "restrictedClaims": [
-          "Side-by-side before-and-after weight loss images",
+          "Attacks on, or shaming of, a person's appearance, body parts or hygiene",
           "Close-up images of pinching fat",
-          "Copy suggesting a perfect body or appearance to aspire to",
-          "Copy aimed at creating negative self-perception"
+          "Results promised within a set time without qualification, or clickbait framing",
+          "Results attributed solely to a wearable device",
+          "Cure claims for conditions Meta lists as incurable"
         ],
         "substantiationRequirements": [],
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. CORRECTED Oct 30, 2026: Machine read of the official page from GT on Oct 30, 2026 (signed out). A policy admin must still verify every statement against the page. The draft was PARTLY INCORRECT: the before-and-after ban and 'ideal body' wording were removed; the page's own restrictions were added; cosmetic before-and-after allowed at 18+. No date stated on the page."
       },
       "citations": [
         {
@@ -215,7 +230,9 @@
         }
       ],
       "openQuestions": [
-        "Search summaries disagree on whether cosmetic procedure (not weight loss) before-and-after images are allowed for adult audiences. Read the official page and the cosmetic procedures page before adding a rule for that."
+        "REMOVED Oct 30 (not on the page): a ban on side-by-side weight loss before-and-after images, and the 'ideal body' wording. Re-add only with a source that states them.",
+        "Record the page's list of incurable diseases in the rule text or an exception note.",
+        "Prescription weight loss products are governed by Meta's Drugs policy: decide whether that needs a separate source and rule."
       ],
       "researchStatus": "REQUIRES_REVIEW"
     },
@@ -234,7 +251,9 @@
         "legalExplanation": "Meta's personal attributes standard covers direct and indirect assertions about health, among other attributes. Second-person phrasing (\"your acne\") is a common trigger in practice; that point comes from secondary guides, not Meta's text.",
         "remediationAction": "Describe the treatment and who it is for in general terms (\"treatment for acne\") instead of addressing the viewer's condition.",
         "applicabilityConditions": [],
-        "exceptions": [],
+        "exceptions": [
+          "Health public-service announcements, provided they do not assert or imply that a person has a condition."
+        ],
         "restrictionLevel": "PROHIBITED",
         "restrictedClaims": [
           "Direct or indirect statements that the viewer has a medical condition",
@@ -244,7 +263,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. CORRECTED Oct 30, 2026: Machine read of the official page from GT on Oct 30, 2026 (signed out). A policy admin must still verify every statement against the page. Rule confirmed; public-service exception added. No date stated on the page."
       },
       "citations": [
         {
@@ -271,7 +290,7 @@
       },
       "version": {
         "title": "Prescription drugs and online prescribing need Google certification",
-        "summary": "Google restricts ads for online prescribing, dispensing or selling prescription drugs, such as online pharmacies and telemedicine. Advertisers must be certified by Google, and prescription drug terms are not allowed in ad text, landing pages or keywords in most countries.",
+        "summary": "Google restricts ads for online prescribing, dispensing or selling prescription drugs, such as online pharmacies and telemedicine. Advertisers must apply for and hold Google certification, and prescription drug terms in ad text, landing pages or keywords are restricted and may be allowed depending on the location.",
         "legalExplanation": "Google's healthcare and medicines policy sets country-by-country rules and certification. Certified ads may show as 'Eligible (limited)'.",
         "remediationAction": "Remove prescription drug terms, or confirm the clinic holds Google certification for each targeted country before running the ad.",
         "applicabilityConditions": [
@@ -288,7 +307,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. CORRECTED Oct 30, 2026: Machine read of the official page from GT on Oct 30, 2026 (signed out). A policy admin must still verify every statement against the page. Mostly confirmed; 'not allowed in most countries' reworded to 'restricted; may be allowed depending on location'. The United States and United Arab Emirates rows are still unread (country selector). No date stated on the page."
       },
       "citations": [
         {
@@ -320,7 +339,10 @@
         "summary": "Google does not allow advertiser-built audiences (for example remarketing or customer lists) to target people based on health conditions, treatments or procedures.",
         "legalExplanation": "Google's personalized advertising policy treats health as a personal hardship category: ads should not target people in ways that exploit their difficulties.",
         "remediationAction": "Use contextual or Google's own predefined audiences; remove remarketing or customer-list targeting tied to treatments or conditions.",
-        "applicabilityConditions": [],
+        "applicabilityConditions": [
+          "The ad runs on Google Ads.",
+          "The campaign uses an advertiser-built audience (remarketing list, customer list or similar audience) defined by a health condition, treatment or procedure, including cosmetic surgery, injections and chronic-condition treatments."
+        ],
         "exceptions": [],
         "restrictionLevel": "RESTRICTED",
         "restrictedClaims": [],
@@ -328,7 +350,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. CORRECTED Oct 30, 2026: Machine read of the official page from GT on Oct 30, 2026 (signed out). A policy admin must still verify every statement against the page. Rule confirmed; applicability extended to cosmetic surgery, injections and chronic-condition treatments as the page lists them. No date stated on the page."
       },
       "citations": [
         {
@@ -370,7 +392,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. FLAG Oct 30, 2026: source INACCESSIBLE from GT (India); the United States row was never read."
       },
       "citations": [
         {
@@ -412,7 +434,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. FLAG Oct 30, 2026: source INACCESSIBLE from GT (India); canonical URL unconfirmed."
       },
       "citations": [
         {
@@ -457,7 +479,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. FLAG Oct 30, 2026: update notice, not the policy; INACCESSIBLE from GT (India)."
       },
       "citations": [
         {
@@ -502,7 +524,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. CORRECTED Oct 30, 2026: Machine read of the official page from GT on Oct 30, 2026 (signed out). A policy admin must still verify every statement against the page. The Federal Register notice states \"Effective July 26, 2023\"; the verifier records it as the official effective date after reading the page (dates are entered by the human, so the field stays empty here). Add the eCFR Part 255 page as a second citation after reading it in a normal browser."
       },
       "citations": [
         {
@@ -547,7 +569,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. FLAG Oct 30, 2026: source URL UNCONFIRMED (403/404 from GT); rule text written from law-firm summaries, every sentence unverified."
       },
       "citations": [
         {
@@ -590,7 +612,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "UAE REVIEW FLAG (Oct 28): MOHAP's own notice says approval of advertising and promotion of medical products moved to the Emirates Drug Establishment (EDE), reportedly from 29 December 2025. Check which body now approves which health ads (medical products vs healthcare services vs facilities), and whether emirate regulators (DHA, DOH) apply, before submitting. Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "UAE REVIEW FLAG (Oct 28): MOHAP's own notice says approval of advertising and promotion of medical products moved to the Emirates Drug Establishment (EDE), reportedly from 29 December 2025. Check which body now approves which health ads (medical products vs healthcare services vs facilities), and whether emirate regulators (DHA, DOH) apply, before submitting. Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. FLAG Oct 30, 2026: source INACCESSIBLE and probably OUTDATED (Emirates Drug Establishment); replace before entry."
       },
       "citations": [
         {
@@ -639,7 +661,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "UAE REVIEW FLAG (Oct 28): the cited National Media Council guide predates the UAE Media Council's Advertiser Permit (reported launch 30 July 2025) and its Advertiser Permit Guide 2025. Replace the citation with the current UAE Media Council source and confirm how the permit interacts with health authority (MOHAP / EDE / DHA / DOH) approval. Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting."
+        "reviewNote": "UAE REVIEW FLAG (Oct 28): the cited National Media Council guide predates the UAE Media Council's Advertiser Permit (reported launch 30 July 2025) and its Advertiser Permit Guide 2025. Replace the citation with the current UAE Media Council source and confirm how the permit interacts with health authority (MOHAP / EDE / DHA / DOH) approval. Research draft (Oct 27, 2026). Written from search results that pointed to this official page; the page itself could not be opened from the research environment. A policy admin must read the official page, correct this text and add dates the page states before submitting. FLAG Oct 30, 2026: source DEAD (404) and OUTDATED (UAE Media Council permit); replace before entry."
       },
       "citations": [
         {
@@ -660,5 +682,6 @@
       "researchStatus": "REQUIRES_REVIEW",
       "uaeResponsibilityFlag": true
     }
-  ]
+  ],
+  "correctionsOn": "2026-10-30"
 }
