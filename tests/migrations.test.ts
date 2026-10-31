@@ -188,14 +188,32 @@ describe("backup restore script", () => {
     expect(order).toContain("_prisma_migrations");
   });
 
-  it("restores parents before the rows that reference them", () => {
-    const before = (a: string, b: string) => expect(order.indexOf(a)).toBeLessThan(order.indexOf(b));
-    before("Evidence", "EvidenceAssessment");
-    before("ReviewCycle", "EvidenceAssessment");
-    before("User", "EvidenceAssessment");
-    before("PolicySource", "PolicySourceSnapshot");
-    before("PolicySourceSnapshot", "PolicySourceChangeProposal");
-    before("PolicyRuleVersion", "PolicySourceChangeProposal");
-    before("User", "PolicySourceChangeProposal");
+  it("restores every parent before the rows that reference it, for every relation in the schema", () => {
+    // Derived from the schema itself so a new foreign key cannot silently break
+    // the order. Self-references are allowed in either direction.
+    const schema = readFileSync(join(process.cwd(), "prisma", "schema.prisma"), "utf8");
+    const modelBodies = [...schema.matchAll(/^model\s+(\w+)\s*\{([\s\S]*?)^\}/gm)];
+    const names = new Set(modelBodies.map((m) => m[1]));
+    const edges: [child: string, parent: string][] = [];
+    for (const [, model, body] of modelBodies) {
+      for (const line of body.split("\n")) {
+        const rel = /^[ \t]*\w+[ \t]+(\w+)\??(\[\])?[ \t]+[^\n]*@relation\([^)]*fields:[ \t]*\[/.exec(line);
+        if (rel && names.has(rel[1]) && rel[1] !== model) edges.push([model, rel[1]]);
+      }
+    }
+    expect(edges.length).toBeGreaterThan(80);
+    expect(edges).toContainEqual(["Finding", "AIScanRun"]);
+    const wrong = edges.filter(([child, parent]) => order.indexOf(child) < order.indexOf(parent)).map(([c, p]) => `${c} before ${p}`);
+    expect(wrong).toEqual([]);
+  });
+
+  it("clears every table once before loading and verifies counts before committing", () => {
+    const truncates = restore.match(/TRUNCATE TABLE/g) ?? [];
+    expect(truncates).toHaveLength(1);
+    expect(restore).toMatch(/TRUNCATE TABLE \$\{quoted\.join\(", "\)\} CASCADE/);
+    // The single TRUNCATE comes before the insert loop, and the verification comes after it.
+    expect(restore.indexOf("TRUNCATE TABLE")).toBeLessThan(restore.indexOf("INSERT INTO"));
+    expect(restore.indexOf("INSERT INTO")).toBeLessThan(restore.indexOf("Restored counts differ from the backup"));
+    expect(restore).toMatch(/SELECT COUNT\(\*\)::int AS count FROM/);
   });
 });

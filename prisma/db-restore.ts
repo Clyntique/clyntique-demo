@@ -40,6 +40,10 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "ReviewCycle",
   "SubmissionRound",
   "ReviewDecision",
+  // AI scan runs (20261019190000) come before Finding: since P0 a Finding may
+  // reference the AIScanRun it came from (Finding.aiScanRunId).
+  "AIScanRun",
+  "AIScanRuleCheck",
   "Finding",
   "FindingEvent",
   "FindingResponse",
@@ -59,8 +63,6 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "Conversation",
   "Message",
   // Lifecycle records (20261019190000)
-  "AIScanRun",
-  "AIScanRuleCheck",
   "ExternalSubmission",
   "ExternalOutcome",
   "PolicyRuleEvent",
@@ -229,12 +231,17 @@ async function main() {
         // Temporarily disable triggers and FK checks for batch load
         await tx.$executeRawUnsafe(`SET session_replication_role = 'replica';`);
 
+        // Clear every table ONCE, up front, in a single statement. Truncating
+        // table by table just before loading it is wrong: TRUNCATE ... CASCADE
+        // also empties every table that references the one being cleared, so a
+        // parent cleared late (AIScanRun, referenced by Finding) silently wiped
+        // children that had already been loaded. One statement clears all of
+        // them together, and nothing is cleared after the first row is loaded.
+        const quoted = tablesToRestore.map((t) => `"${t.replace(/"/g, '""')}"`);
+        await tx.$executeRawUnsafe(`TRUNCATE TABLE ${quoted.join(", ")} CASCADE;`);
+
         for (const table of tablesToRestore) {
           const rows = tableData[table] ?? [];
-
-          // Clear the table first (also when the backup has no rows for it),
-          // so the recovery database matches the backup exactly.
-          await tx.$executeRawUnsafe(`TRUNCATE TABLE "${table.replace(/"/g, '""')}" CASCADE;`);
           if (rows.length === 0) continue;
 
           const sample = rows[0];
@@ -253,16 +260,34 @@ async function main() {
         }
 
         await tx.$executeRawUnsafe(`SET session_replication_role = 'origin';`);
+
+        // Verify before commit: every restored table must hold exactly the
+        // backup's row count. Any difference throws, which rolls back the
+        // whole restore, so a partial result can never be mistaken for success.
+        console.log(`\n--- Post-restore count verification ---`);
+        const mismatches: string[] = [];
+        let restoredTotal = 0;
+        for (const table of tablesToRestore) {
+          const [{ count }] = await tx.$queryRawUnsafe<{ count: bigint | number }[]>(`SELECT COUNT(*)::int AS count FROM "${table.replace(/"/g, '""')}"`);
+          const actual = Number(count);
+          const expected = manifest.tables[table] ?? 0;
+          restoredTotal += actual;
+          if (actual !== expected) mismatches.push(`${table}: expected ${expected}, found ${actual}`);
+        }
+        if (mismatches.length) {
+          throw new Error(`Restored counts differ from the backup, rolling back:\n  ${mismatches.join("\n  ")}`);
+        }
+        console.log(`  ${tablesToRestore.length} tables verified, ${restoredTotal} rows match the backup manifest.`);
       },
       { timeout: 180_000, maxWait: 30_000 }
     );
-    console.log(`\n[RESTORATION SUCCESSFUL] Database ${dbName} restored successfully.`);
+    console.log(`\n[RESTORATION SUCCESSFUL] Database ${dbName} restored and verified: ${totalRows} rows.`);
   } finally {
     await prisma.$disconnect();
   }
 }
 
 main().catch((err) => {
-  console.error("Restore failed:", err);
+  console.error(`\n[RESTORATION FAILED] ${(err as Error).message}`);
   process.exitCode = 1;
 });
