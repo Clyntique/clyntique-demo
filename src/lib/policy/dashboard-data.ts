@@ -464,6 +464,7 @@ export interface GlobalPolicyRuleDetail {
   authorityType: "REGULATION" | "PLATFORM_POLICY" | "INTERNAL_RISK";
   verificationStatus: "VERIFIED_ACTIVE" | "PENDING_VERIFICATION" | "UNVERIFIED_DRAFT";
   isUsableByAI: boolean;
+  isIllustrativeSample: boolean;
   summary: string;
   legalExplanation: string;
   remediationAction: string;
@@ -487,6 +488,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "PLATFORM_POLICY",
     verificationStatus: "VERIFIED_ACTIVE",
     isUsableByAI: true,
+    isIllustrativeSample: false,
     summary: "Ads promoting weight loss products, dietary supplements, and cosmetic procedures must be targeted exclusively to users aged 18 and older.",
     legalExplanation: "Meta strictly restricts content related to physical appearance and body modification to adult audiences to protect minors from unrealistic body standards.",
     remediationAction: "Update ad set targeting in Meta Ads Manager to restrict minimum age to 18+.",
@@ -515,6 +517,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "PLATFORM_POLICY",
     verificationStatus: "UNVERIFIED_DRAFT",
     isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "Ads must not depict side-by-side weight loss comparisons, pinched fat close-ups, or negative body image depictions.",
     legalExplanation: "Side-by-side weight loss images generate high negative feedback and violate Meta's personal health attribute and sensational content guidelines.",
     remediationAction: "Replace split before-and-after comparison imagery with lifestyle shots focusing on healthy habits without body measurements.",
@@ -544,6 +547,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "PLATFORM_POLICY",
     verificationStatus: "VERIFIED_ACTIVE",
     isUsableByAI: true,
+    isIllustrativeSample: false,
     summary: "Ad copy and creative must not assert or imply that the viewer has a specific medical condition, disability, or physical flaw (e.g. 'Struggling with acne?').",
     legalExplanation: "Meta prohibits predatory targeting based on sensitive personal health attributes under FTC and GDPR privacy compliance frameworks.",
     remediationAction: "Rephrase second-person direct assertions ('Do you have diabetes?') to product-focused or experiential statements ('Innovative management options').",
@@ -572,6 +576,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "PLATFORM_POLICY",
     verificationStatus: "VERIFIED_ACTIVE",
     isUsableByAI: true,
+    isIllustrativeSample: false,
     summary: "Prescription medicine terms and online pharmacy promotions require Google healthcare certification and legitimacy check.",
     legalExplanation: "Google prevents illegal prescription drug trafficking and off-label promotion across search and YouTube advertising channels.",
     remediationAction: "Obtain LegitScript or Google Healthcare Advertiser certificate before bidding on prescription brand names.",
@@ -598,8 +603,9 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     category: "Restricted procedures",
     authorityName: "TikTok Commercial Content Policy",
     authorityType: "PLATFORM_POLICY",
-    verificationStatus: "PENDING_VERIFICATION",
+    verificationStatus: "UNVERIFIED_DRAFT",
     isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "Cosmetic surgery advertising requires direct TikTok sales representative approval, 18+ age gating, and mandatory health warning captions.",
     legalExplanation: "TikTok restricts invasive aesthetic procedures to protect teenage users and requires verified medical credentials from licensed clinics.",
     remediationAction: "Include visible statutory disclaimer: 'Results vary. Seek consultation from a licensed medical specialist.' and restrict audience to 18+.",
@@ -611,10 +617,10 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
       },
     ],
     versionHistory: [
-      { versionNumber: 1, status: "PENDING_APPROVAL", date: "2026-10-27", author: "A. Patel (Platform Lead)", notes: "Verified by 1st admin; awaiting 2nd admin approval." },
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-27", author: "A. Patel (Platform Lead)", notes: "Research draft staged; illustrative prototype scope." },
     ],
     lastCheckedDate: "2026-10-27",
-    pendingUpdatesNote: "Awaiting final approver sign-off. Not active in AI engine.",
+    pendingUpdatesNote: "Illustrative sample: cosmetic procedure restrictions under review.",
   },
   {
     code: "RX-US-FTC-HP-01",
@@ -627,8 +633,9 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     category: "Substantiation",
     authorityName: "Federal Trade Commission (FTC)",
     authorityType: "REGULATION",
-    verificationStatus: "PENDING_VERIFICATION",
+    verificationStatus: "UNVERIFIED_DRAFT",
     isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "Health, efficacy, and therapeutic claims in advertising must be substantiated by competent and reliable scientific evidence prior to dissemination.",
     legalExplanation: "FTC Section 5 enforcement actions penalize deceptive health marketing when claims are not supported by randomized controlled clinical trials.",
     remediationAction: "Attach clinical study DOI or FDA clearance documentation to the creative evidence tab before publishing efficacy claims.",
@@ -640,7 +647,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
       },
     ],
     versionHistory: [
-      { versionNumber: 1, status: "PENDING_APPROVAL", date: "2026-10-27", author: "S. Miller (Legal Analyst)", notes: "Submitted for second-admin verification." },
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-27", author: "S. Miller (Legal Analyst)", notes: "Submitted for second-admin verification; illustrative prototype scope." },
     ],
     lastCheckedDate: "2026-10-27",
     pendingUpdatesNote: "Reviewing sample FTC trial benchmarks for non-Rx dietary supplements.",
@@ -658,6 +665,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "REGULATION",
     verificationStatus: "VERIFIED_ACTIVE",
     isUsableByAI: true,
+    isIllustrativeSample: false,
     summary: "Testimonials must reflect honest opinions and disclose material connections (paid sponsorship, free treatment, employment) prominently.",
     legalExplanation: "FTC 16 CFR § 255 requires clear and conspicuous disclosure that cannot be hidden below the fold or in buried hashtags.",
     remediationAction: "Include visible #Ad or 'Paid Partnership' badge in the first 3 lines of video captions and on-screen overlay.",
@@ -684,8 +692,9 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     category: "Substantiation & licensing",
     authorityName: "Advertising Standards Authority (ASA) / CAP",
     authorityType: "REGULATION",
-    verificationStatus: "VERIFIED_ACTIVE",
-    isUsableByAI: true,
+    verificationStatus: "UNVERIFIED_DRAFT",
+    isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "Objective claims must be backed by evidence, if relevant consisting of trials conducted on people. Medicinal or medical claims and claims for medical devices may be made only for a medicinal product or device that is appropriately licensed.",
     legalExplanation: "CAP Code Section 12 mandates stringent clinical substantiation for human health claims and strictly prohibits misleading medical claims.",
     remediationAction: "Ensure CE/UKCA marking and MHRA authorization are explicitly stated and referenced in compliance documentation.",
@@ -697,9 +706,10 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
       },
     ],
     versionHistory: [
-      { versionNumber: 1, status: "ACTIVE", date: "2026-10-21", author: "K. Vance (Policy Admin)", notes: "Dual-admin approved for active AI scanning." },
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-21", author: "Regulatory Research", notes: "Illustrative research candidate staged. Not active or verified in production." },
     ],
     lastCheckedDate: "2026-10-28",
+    pendingUpdatesNote: "Illustrative sample: UK statutory advertising codes (CAP Rule 12) under review for healthcare scope.",
   },
   {
     code: "RX-EU-MDR-01",
@@ -712,8 +722,9 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     category: "Substantiation",
     authorityName: "European Medicines Agency (EMA) / EU MDR",
     authorityType: "REGULATION",
-    verificationStatus: "VERIFIED_ACTIVE",
-    isUsableByAI: true,
+    verificationStatus: "UNVERIFIED_DRAFT",
+    isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "In the promotion and advertising of devices, it is prohibited to use text, names, trademarks, pictures and figurative or other signs that may mislead the user or patient regarding the device's intended purpose, safety and performance.",
     legalExplanation: "Regulation (EU) 2017/745 Article 7 strictly prohibits misleading claims, creating false impressions, or failing to inform the user of likely risks.",
     remediationAction: "Verify intended purpose aligns strictly with EU MDR technical documentation and include mandatory risk contraindications.",
@@ -725,9 +736,10 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
       },
     ],
     versionHistory: [
-      { versionNumber: 1, status: "ACTIVE", date: "2026-10-22", author: "S. Miller (Legal Analyst)", notes: "Dual-admin verified baseline rule." },
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-22", author: "Regulatory Research", notes: "Illustrative research candidate staged. Not active or verified in production." },
     ],
     lastCheckedDate: "2026-10-26",
+    pendingUpdatesNote: "Illustrative sample: EU MDR Article 7 medical device claims substantiation under review.",
   },
   {
     code: "RX-AE-MOHAP-01",
@@ -742,6 +754,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "REGULATION",
     verificationStatus: "UNVERIFIED_DRAFT",
     isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "All healthcare, clinic, and medical advertisements targeting the UAE must obtain prior authorization and display official permit numbers.",
     legalExplanation: "Federal Law No. 4 of 2015 and Cabinet Resolution No. 23 of 2020 mandate health media license issuance prior to distribution.",
     remediationAction: "Obtain advertising license from MOHAP or DHA (Dubai) and overlay the official approval code on creative end-cards.",
@@ -753,7 +766,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
       },
     ],
     versionHistory: [
-      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "Dr. L. Al-Mansoori (Regulatory Counsel)", notes: "Draft staged. Medical product advertising oversight transitioning to EDE." },
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "Regulatory Research", notes: "Draft staged. Illustrative prototype scope." },
     ],
     lastCheckedDate: "2026-10-28",
     pendingUpdatesNote: "Flagged: Emirates Drug Establishment (EDE) oversight mandate transition effective 2025/2026. Awaiting counsel verification.",
@@ -771,6 +784,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "REGULATION",
     verificationStatus: "UNVERIFIED_DRAFT",
     isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "Companies and influencers executing commercial advertisements in the UAE must hold an active UAE Media Council Advertiser Permit.",
     legalExplanation: "Federal Decree-Law No. 55 of 2023 on the Regulation of Media requires institutional advertiser registration.",
     remediationAction: "Verify that the publisher or promoting influencer holds a valid Media Council license number.",
@@ -782,7 +796,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
       },
     ],
     versionHistory: [
-      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "K. Vance (Policy Admin)", notes: "Research draft staged. Awaiting legal confirmation." },
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "Regulatory Research", notes: "Research draft staged. Illustrative prototype scope." },
     ],
     lastCheckedDate: "2026-10-28",
     pendingUpdatesNote: "Confirming advertiser permit requirements for foreign agencies promoting UAE clinics.",
@@ -800,6 +814,7 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
     authorityType: "PLATFORM_POLICY",
     verificationStatus: "UNVERIFIED_DRAFT",
     isUsableByAI: false,
+    isIllustrativeSample: true,
     summary: "Ads promoting pharmaceuticals, medical treatments, and supplements must comply with local laws, restrict delivery to 18+, and avoid sensationalized wellness claims.",
     legalExplanation: "Snap restricts health products to adult users and disallows content that promotes body shaming, dramatic physical transformations, or unapproved supplements.",
     remediationAction: "Apply 18+ age targeting in Snap Ads Manager and avoid dramatic physiological before-and-after claims.",
@@ -811,9 +826,9 @@ export const ALL_GLOBAL_POLICIES: GlobalPolicyRuleDetail[] = [
       },
     ],
     versionHistory: [
-      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "A. Patel (Platform Lead)", notes: "Research draft staged. Awaiting dual-admin approval." },
+      { versionNumber: 1, status: "DRAFT", date: "2026-10-28", author: "Regulatory Research", notes: "Research draft staged. Illustrative sample scope." },
     ],
     lastCheckedDate: "2026-10-28",
-    pendingUpdatesNote: "Draft staged for Snap Ads v4 policies. Awaiting second-admin verification before AI engine deployment.",
+    pendingUpdatesNote: "Draft staged for Snap Ads v4 policies. Illustrative prototype sample only.",
   },
 ];

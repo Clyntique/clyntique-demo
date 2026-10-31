@@ -38,8 +38,8 @@ export function ReviewTierCard({
         setTier(res.tier);
         setMessage(
           newTier === "HUMAN_REVIEW"
-            ? "Human review requested. A Senior Regulatory Specialist will evaluate this creative once submitted."
-            : "Switched to AI-Only Review. Fast automated screening will be run upon submission."
+            ? "Human review dual check requested for this creative (pilot quota / illustrative option)."
+            : "Switched to AI-Only Review. Automated policy scan will run upon submission."
         );
       } else {
         setMessage(res.error ?? "Failed to update review tier.");
@@ -57,7 +57,7 @@ export function ReviewTierCard({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-caption font-semibold uppercase tracking-wider text-muted">
-              Review Type & Request Status
+              Review Type &amp; Status
             </span>
             <span
               className={cn(
@@ -97,23 +97,25 @@ export function ReviewTierCard({
           {tier === "AI_ONLY" ? (
             <div className="flex items-center justify-between w-full">
               <span className="text-micro text-muted">
-                Need a defensible sign-off? Human review is an optional add-on.
+                Need dual-check sign-off? Human review is an optional add-on (pilot quota).
               </span>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => handleTierChange("HUMAN_REVIEW")}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-caption font-semibold text-white hover:bg-brand-700 transition-colors cursor-pointer shadow-xs"
-              >
-                <ShieldIcon className="size-3.5" />
-                <span>{saving ? "Updating…" : "Request Human Review (Add-on)"}</span>
-              </button>
+              {canEdit && (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => handleTierChange("HUMAN_REVIEW")}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-caption font-semibold text-white hover:bg-brand-700 transition-colors cursor-pointer shadow-xs"
+                >
+                  <ShieldIcon className="size-3.5" />
+                  <span>{saving ? "Updating…" : "Request Human Review (Add-on)"}</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-between w-full">
               <span className="text-micro text-positive-ink font-medium flex items-center gap-1">
                 <CheckIcon className="size-3.5" />
-                <span>Senior Regulatory Specialist review active (Included in pilot quota)</span>
+                <span>Senior Regulatory Specialist review requested (Pilot quota)</span>
               </span>
               {canEdit && (
                 <button

@@ -19,6 +19,7 @@ import {
 import {
   parseReviewTier,
   formatContextWithReviewTier,
+  stripReviewTier,
   getReviewTierLabel,
   getReviewTierDetails,
 } from "@/lib/plans/review-tier";
@@ -27,7 +28,7 @@ describe("AI-Only vs Human Review Plans Prototype", () => {
   it("defines AI-Only plan with rapid automated screening", () => {
     expect(AI_ONLY_PLAN.id).toBe("ai-only");
     expect(AI_ONLY_PLAN.name).toBe("AI-Only Review");
-    expect(AI_ONLY_PLAN.turnaround).toBe("< 60 seconds");
+    expect(AI_ONLY_PLAN.turnaround).toContain("Automated scan");
     expect(AI_ONLY_PLAN.monthlyPrice).toBe(199);
     expect(AI_ONLY_PLAN.annualPrice).toBe(159);
     expect(AI_ONLY_PLAN.disclaimer).toContain("illustrative");
@@ -42,10 +43,10 @@ describe("AI-Only vs Human Review Plans Prototype", () => {
     expect(humanFeature?.included).toBe(false);
   });
 
-  it("defines AI + Human Review plan with dual-check defense and 24h SLA", () => {
+  it("defines AI + Human Review plan with dual-check defense and non-binding target", () => {
     expect(AI_HUMAN_PLAN.id).toBe("ai-human");
     expect(AI_HUMAN_PLAN.name).toBe("AI + Human Review");
-    expect(AI_HUMAN_PLAN.turnaround).toContain("24-hour");
+    expect(AI_HUMAN_PLAN.turnaround).toContain("Standard review queue");
     expect(AI_HUMAN_PLAN.monthlyPrice).toBe(599);
     expect(AI_HUMAN_PLAN.popular).toBe(true);
     expect(AI_HUMAN_PLAN.disclaimer).toContain("illustrative");
@@ -61,7 +62,7 @@ describe("AI-Only vs Human Review Plans Prototype", () => {
     expect(HUMAN_REVIEW_ADDON.id).toBe("human-review-addon");
     expect(HUMAN_REVIEW_ADDON.price).toBe(49);
     expect(HUMAN_REVIEW_ADDON.unit).toBe("per creative review");
-    expect(HUMAN_REVIEW_ADDON.turnaround).toBe("24 hours");
+    expect(HUMAN_REVIEW_ADDON.turnaround).toContain("illustrative");
     expect(HUMAN_REVIEW_ADDON.benefits.length).toBeGreaterThanOrEqual(4);
     expect(HUMAN_REVIEW_ADDON.sampleUseCases.length).toBeGreaterThanOrEqual(3);
   });
@@ -196,17 +197,26 @@ describe("Review Tier Context Integration (Safe zero-migration persistence)", ()
     expect(parseReviewTier(upgradedToHuman)).toBe("HUMAN_REVIEW");
   });
 
-  it("provides user-facing labels and SLA descriptions", () => {
+  it("strips review tier tag cleanly for clean form editing", () => {
+    expect(stripReviewTier("Targeting aesthetic patients in Texas.\n\n[Review Tier: HUMAN_REVIEW]")).toBe("Targeting aesthetic patients in Texas.");
+    expect(stripReviewTier("[Review Tier: AI_ONLY]")).toBe("");
+    expect(stripReviewTier(null)).toBe("");
+  });
+
+  it("provides user-facing labels and illustrative turnaround descriptions without SLA claims", () => {
     expect(getReviewTierLabel("AI_ONLY")).toBe("AI-Only Review");
-    expect(getReviewTierLabel("HUMAN_REVIEW")).toBe("Human Review (Add-on)");
+    expect(getReviewTierLabel("HUMAN_REVIEW")).toContain("Human Review");
 
     const aiDetails = getReviewTierDetails("AI_ONLY");
-    expect(aiDetails.slaText).toContain("< 60 seconds");
+    expect(aiDetails.slaText).toContain("Automated scan");
+    expect(aiDetails.slaText).toContain("illustrative");
     expect(aiDetails.isPaidAddon).toBe(false);
 
     const humanDetails = getReviewTierDetails("HUMAN_REVIEW");
-    expect(humanDetails.slaText).toContain("24-hour");
+    expect(humanDetails.slaText).toContain("Standard queue");
+    expect(humanDetails.slaText).toContain("illustrative");
     expect(humanDetails.isPaidAddon).toBe(true);
+    expect(humanDetails.statusDescription).not.toContain("assigned to verify");
   });
 });
 
@@ -229,23 +239,21 @@ describe("Granular Global Policy Rules & Dual-Admin Grounding Boundary", () => {
     expect(jurisdictions.has("GLOBAL")).toBe(true);
   });
 
-  it("strictly enforces AI Engine usability flag based on dual verification status", () => {
-    for (const rule of ALL_GLOBAL_POLICIES) {
-      if (rule.verificationStatus === "VERIFIED_ACTIVE") {
-        expect(rule.isUsableByAI).toBe(true);
-      } else {
-        // Pending and Draft rules must NEVER be presented as usable by the AI policy engine
-        expect(rule.isUsableByAI).toBe(false);
-      }
+  it("strictly enforces that sample policies (Snapchat, UK, EU, UAE drafts) are never verified or active", () => {
+    const samplePolicies = ALL_GLOBAL_POLICIES.filter((r) => r.isIllustrativeSample);
+    expect(samplePolicies.length).toBeGreaterThanOrEqual(6);
+
+    for (const rule of samplePolicies) {
+      expect(rule.verificationStatus).toBe("UNVERIFIED_DRAFT");
+      expect(rule.isUsableByAI).toBe(false);
     }
 
-    const verifiedCount = ALL_GLOBAL_POLICIES.filter((r) => r.verificationStatus === "VERIFIED_ACTIVE").length;
-    const draftCount = ALL_GLOBAL_POLICIES.filter((r) => r.verificationStatus === "UNVERIFIED_DRAFT").length;
-    const pendingCount = ALL_GLOBAL_POLICIES.filter((r) => r.verificationStatus === "PENDING_VERIFICATION").length;
-
-    expect(verifiedCount).toBeGreaterThanOrEqual(5);
-    expect(draftCount).toBeGreaterThanOrEqual(3);
-    expect(pendingCount).toBeGreaterThanOrEqual(2);
+    const verifiedRules = ALL_GLOBAL_POLICIES.filter((r) => r.verificationStatus === "VERIFIED_ACTIVE");
+    expect(verifiedRules.length).toBe(4);
+    for (const rule of verifiedRules) {
+      expect(rule.isIllustrativeSample).toBe(false);
+      expect(rule.isUsableByAI).toBe(true);
+    }
   });
 
   it("contains valid source citations, direct links, and version audit trails for each rule", () => {
@@ -277,7 +285,7 @@ describe("Granular Global Policy Rules & Dual-Admin Grounding Boundary", () => {
 
     const ftcRule = ALL_GLOBAL_POLICIES.find((r) => r.code === "RX-US-FTC-HP-01");
     expect(ftcRule).toBeDefined();
-    expect(ftcRule?.verificationStatus).toBe("PENDING_VERIFICATION");
+    expect(ftcRule?.verificationStatus).toBe("UNVERIFIED_DRAFT");
     expect(ftcRule?.pendingUpdatesNote).toBeDefined();
   });
 });
@@ -298,10 +306,15 @@ describe("UI Integration: Review Tier & Global Policy Directory", () => {
     expect(submissionViewSrc).toContain("submission.context");
 
     const reviewCardSrc = readFileSync("src/components/submissions/review-tier-card.tsx", "utf8");
-    expect(reviewCardSrc).toContain("Review Type & Request Status");
+    expect(reviewCardSrc).toContain("Review Type &amp; Status");
     expect(reviewCardSrc).toContain("Switch to AI-only review");
     expect(reviewCardSrc).toContain("Request Human Review (Add-on)");
     expect(reviewCardSrc).toContain("updateReviewTierAction");
+
+    const actionSrc = readFileSync("src/app/dashboard/submissions/review-tier-action.ts", "utf8");
+    expect(actionSrc).toContain('user.role === "CLIENT"');
+    expect(actionSrc).toContain("Permission denied");
+    expect(actionSrc).toContain('creative.status !== "DRAFT" && creative.status !== "CHANGES_REQUESTED"');
   });
 
   it("renders Policy Rules Directory and missing coverage warning in GlobalPolicyDashboardView", () => {

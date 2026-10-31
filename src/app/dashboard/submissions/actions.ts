@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
-import { formatContextWithReviewTier, type ReviewTier } from "@/lib/plans/review-tier";
+import { formatContextWithReviewTier, parseReviewTier, type ReviewTier } from "@/lib/plans/review-tier";
 import {
   addEvidence,
   createDraft,
@@ -86,10 +86,23 @@ export async function updateSubmission(_prev: SubmissionFormState, formData: For
 
   const values = draftValues(formData);
   const targeting = formData.get("targeting") === "1";
-  const result = await updateDraft(user, text(formData, "creativeId"), {
+  const creativeId = text(formData, "creativeId");
+
+  let preservedContext = values.context;
+  try {
+    const existing = await prisma.creative.findUnique({ where: { id: creativeId }, select: { context: true } });
+    if (existing?.context) {
+      const currentTier = parseReviewTier(existing.context);
+      preservedContext = formatContextWithReviewTier(values.context, currentTier);
+    }
+  } catch {
+    // Non-blocking fallback to submitted context
+  }
+
+  const result = await updateDraft(user, creativeId, {
     name: values.name,
     description: values.description,
-    context: values.context,
+    context: preservedContext,
     format: values.format,
     ...(formData.has("industry") ? { industry: values.industry } : {}),
     ...(targeting ? { marketCodes: values.markets, platformCodes: values.platforms } : {}),

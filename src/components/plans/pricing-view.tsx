@@ -272,7 +272,7 @@ export function PricingView() {
               Frequently Asked Questions
             </h2>
             <p className="mt-2 text-small text-ink-soft">
-              Understanding Clyntique review mechanics, SLAs, and defensible audit records.
+              Understanding Clyntique review mechanics, turnaround targets, and defensible audit records.
             </p>
           </div>
 
@@ -442,7 +442,7 @@ function PlanCard({
 
         <div className="mt-2 flex items-center gap-1.5 text-caption font-medium text-brand-700">
           <ClockIcon className="size-4 shrink-0" />
-          <span>Turnaround SLA: {plan.turnaround}</span>
+          <span>Turnaround Target: {plan.turnaround}</span>
         </div>
 
         <div className="mt-6 pt-6 border-t border-line">

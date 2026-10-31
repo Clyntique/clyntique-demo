@@ -16,6 +16,7 @@ import {
   type PendingReviewItem,
   type GlobalPolicyRuleDetail,
 } from "@/lib/policy/dashboard-data";
+import type { PolicyRule } from "@/lib/policy/types";
 import {
   ShieldIcon,
   CheckIcon,
@@ -30,7 +31,13 @@ import {
 } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
-export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalone?: boolean }) {
+export function GlobalPolicyDashboardView({
+  isStandalone = false,
+  initialDbRules = [],
+}: {
+  isStandalone?: boolean;
+  initialDbRules?: PolicyRule[];
+}) {
   const [selectedIndustry, setSelectedIndustry] = useState<"ALL" | "HEALTHCARE" | "MEDICAL_AESTHETICS">("ALL");
   const [selectedMarket, setSelectedMarket] = useState<string>("ALL");
   const [selectedPlatform, setSelectedPlatform] = useState<string>("ALL");
@@ -53,8 +60,84 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
     });
   };
 
+  // Ground dashboard in actual database rules when available
+  const mappedDbRules: GlobalPolicyRuleDetail[] = (initialDbRules || []).map((r) => {
+    const isVerified = r.currentVersion.status === "ACTIVE" && r.currentVersion.verificationStatus === "VERIFIED";
+    const isPending = r.currentVersion.status === "PENDING_APPROVAL";
+    return {
+      code: r.code,
+      title: r.title,
+      platformCode: r.platformCode || "ALL",
+      platformName: r.platformCode
+        ? r.platformCode === "META"
+          ? "Meta (Facebook & Instagram)"
+          : r.platformCode === "GOOGLE"
+          ? "Google Ads"
+          : r.platformCode === "TIKTOK"
+          ? "TikTok Ads"
+          : r.platformCode === "SNAPCHAT"
+          ? "Snapchat Ads"
+          : r.platformCode
+        : "All Platforms (Statutory)",
+      jurisdictionCode: r.jurisdictionCode,
+      jurisdictionName:
+        r.jurisdictionCode === "US"
+          ? "United States"
+          : r.jurisdictionCode === "AE"
+          ? "United Arab Emirates"
+          : r.jurisdictionCode === "GB"
+          ? "United Kingdom"
+          : r.jurisdictionCode === "EU"
+          ? "European Union"
+          : "Global Platform Standard",
+      industry:
+        r.industry === "MEDICAL_AESTHETICS" || r.industry === "GENERAL"
+          ? r.industry
+          : "HEALTHCARE",
+      category: r.category,
+      authorityName:
+        r.currentVersion.sources[0]?.authorityName ||
+        (r.authorityType === "PLATFORM_POLICY" ? "Platform Standards" : "Regulatory Authority"),
+      authorityType: r.authorityType,
+      verificationStatus: isVerified ? "VERIFIED_ACTIVE" : isPending ? "PENDING_VERIFICATION" : "UNVERIFIED_DRAFT",
+      isUsableByAI: isVerified,
+      isIllustrativeSample: false,
+      summary: r.currentVersion.summary,
+      legalExplanation: r.currentVersion.legalExplanation,
+      remediationAction: r.currentVersion.remediationAction,
+      sourceLinks: (r.currentVersion.sources || []).map((s) => ({
+        title: s.sourceName || s.sectionTitle || "Official Policy Source",
+        url: s.directUrl || s.sourceOfficialUrl || "",
+        citation: s.sectionReference || "Statutory Mandate",
+      })),
+      versionHistory: (r.versions || []).map((v) => ({
+        versionNumber: v.versionNumber,
+        status: v.status,
+        date: v.effectiveFrom ? v.effectiveFrom.slice(0, 10) : "2026-10-20",
+        author: isStandalone ? "Clyntique Policy Reviewer" : (v.createdByName || "Policy Admin"),
+        notes: v.changeSummary || "Version recorded in policy library.",
+      })),
+      lastCheckedDate: r.updatedAt ? r.updatedAt.slice(0, 10) : "2026-10-28",
+    };
+  });
+
+  // Combine DB rules with sample policies, with DB rules taking precedence by code
+  const allRules: GlobalPolicyRuleDetail[] = [...mappedDbRules];
+  const existingCodes = new Set(mappedDbRules.map((r) => r.code));
+  for (const sample of ALL_GLOBAL_POLICIES) {
+    if (!existingCodes.has(sample.code)) {
+      allRules.push({
+        ...sample,
+        versionHistory: sample.versionHistory.map((v) => ({
+          ...v,
+          author: isStandalone ? "Clyntique Policy Reviewer" : v.author,
+        })),
+      });
+    }
+  }
+
   // Filter policies based on user selection
-  const filteredPolicies = ALL_GLOBAL_POLICIES.filter((rule) => {
+  const filteredPolicies = allRules.filter((rule) => {
     if (rulePlatform !== "ALL" && rule.platformCode !== rulePlatform) return false;
     if (ruleMarket !== "ALL" && rule.jurisdictionCode !== ruleMarket) return false;
     if (ruleIndustry !== "ALL" && rule.industry !== ruleIndustry) return false;
@@ -635,6 +718,11 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
                       <span className="font-mono text-micro font-bold text-ink bg-subtle px-2 py-0.5 rounded border border-line">
                         {rule.code}
                       </span>
+                      {rule.isIllustrativeSample && (
+                        <span className="rounded bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 text-micro font-semibold">
+                          Illustrative Sample (Prototype)
+                        </span>
+                      )}
                       <span className="rounded bg-brand-50 text-brand-700 px-2 py-0.5 text-micro font-medium">
                         {rule.platformName}
                       </span>
@@ -646,7 +734,7 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
                       </span>
                     </div>
 
-                    <RuleVerificationBadge status={rule.verificationStatus} />
+                    <RuleVerificationBadge status={rule.verificationStatus} isIllustrativeSample={rule.isIllustrativeSample} />
                   </div>
 
                   {/* Title & Authority */}
@@ -674,8 +762,15 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
                     </div>
                   )}
 
-                  {/* Warning Callout for Unverified Drafts */}
-                  {rule.verificationStatus === "UNVERIFIED_DRAFT" && (
+                  {/* Warning Callout for Unverified Drafts / Illustrative Sample */}
+                  {rule.isIllustrativeSample ? (
+                    <div className="mt-3 rounded-lg border border-slate-300 bg-slate-50 p-2.5 flex items-start gap-2 text-caption text-slate-700">
+                      <AlertIcon className="size-4 shrink-0 mt-0.5 text-slate-500" />
+                      <div>
+                        <strong>Illustrative Prototype Scope:</strong> This regulatory rule is staged for prototype review only and is neither verified nor active in Clyntique&apos;s AI Policy Engine or Production.
+                      </div>
+                    </div>
+                  ) : rule.verificationStatus === "UNVERIFIED_DRAFT" && (
                     <div className="mt-3 rounded-lg border border-critical-line bg-critical-soft/30 p-2.5 flex items-start gap-2 text-caption text-critical-ink">
                       <AlertIcon className="size-4 shrink-0 mt-0.5" />
                       <div>
@@ -807,13 +902,15 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
               Rules cannot be consumed by the AI Policy Engine until two separate policy admins verify and approve them.
             </p>
           </div>
-          <Link
-            href="/admin/policy-library"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-1.5 text-caption font-semibold text-ink hover:bg-subtle transition-colors"
-          >
-            <span>Review in Policy Library</span>
-            <ArrowRightIcon className="size-3.5" />
-          </Link>
+          {!isStandalone && (
+            <Link
+              href="/admin/policy-library"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-1.5 text-caption font-semibold text-ink hover:bg-subtle transition-colors"
+            >
+              <span>Review in Policy Library</span>
+              <ArrowRightIcon className="size-3.5" />
+            </Link>
+          )}
         </div>
 
         {/* Pending Items List */}
@@ -834,7 +931,7 @@ export function GlobalPolicyDashboardView({ isStandalone = false }: { isStandalo
                 <span><strong>Jurisdiction:</strong> {item.jurisdictionCode}</span>
                 <span><strong>Platform:</strong> {item.platformCode}</span>
                 <span><strong>Category:</strong> {item.category}</span>
-                <span><strong>Proposed by:</strong> {item.proposedBy}</span>
+                <span><strong>Proposed by:</strong> {isStandalone ? "Policy Specialist" : item.proposedBy}</span>
               </div>
 
               {item.openQuestions && item.openQuestions.length > 0 && (
@@ -1074,9 +1171,20 @@ function StageBadge({ stage }: { stage: PendingReviewItem["verificationStage"] }
 
 function RuleVerificationBadge({
   status,
+  isIllustrativeSample = false,
 }: {
   status: GlobalPolicyRuleDetail["verificationStatus"];
+  isIllustrativeSample?: boolean;
 }) {
+  if (isIllustrativeSample) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-micro font-bold text-slate-700 border border-slate-300">
+        <AlertIcon className="size-3" />
+        <span>Illustrative Sample · Unverified &amp; Non-Operational</span>
+      </span>
+    );
+  }
+
   switch (status) {
     case "VERIFIED_ACTIVE":
       return (

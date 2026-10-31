@@ -78,7 +78,7 @@ export function SubmitPanel({ creativeId, readiness }: { creativeId: string; rea
                 <span className="rounded bg-brand-100 text-brand-800 px-1.5 py-0.2 text-[10px] font-semibold">Recommended</span>
               </div>
               <p className="text-micro text-ink-soft mt-0.5">
-                Dual-check by Senior Regulatory Specialist · 24h SLA · Defensible PDF Record.
+                Dual-check by Senior Regulatory Specialist (Pilot quota · Illustrative option).
               </p>
             </div>
           </label>
@@ -93,13 +93,13 @@ export function SubmitPanel({ creativeId, readiness }: { creativeId: string; rea
             <div>
               <span className="text-small font-bold text-ink">AI-Only Review</span>
               <p className="text-micro text-ink-soft mt-0.5">
-                Instant automated screening against platform policies (&lt; 60s). Standard plan quota.
+                Automated screening against verified platform policies. Standard plan quota.
               </p>
             </div>
           </label>
         </div>
         <p className="mt-2 text-micro text-muted">
-          Human review is an optional add-on for high-stakes ads. Included in active pilot quota (no extra billing).
+          Human review is an optional add-on for high-stakes ads. Included in active pilot quota (no payments or purchases enabled).
         </p>
       </div>
 

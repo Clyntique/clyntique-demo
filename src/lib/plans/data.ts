@@ -57,7 +57,7 @@ export const AI_ONLY_PLAN: ReviewPlan = {
     "Designed for high-frequency campaign iterations and rapid concept testing against platform advertising policies.",
   monthlyPrice: 199,
   annualPrice: 159,
-  turnaround: "< 60 seconds",
+  turnaround: "Automated scan (illustrative estimate)",
   popular: false,
   targetAudience: "Growth marketers & performance agencies running high-volume creative variations",
   features: [
@@ -67,10 +67,10 @@ export const AI_ONLY_PLAN: ReviewPlan = {
     { text: "Substantiation & evidence requirements checklist", included: true },
     { text: "Unlimited creative draft scans", included: true },
     { text: "Preliminary compliance scan report download", included: true },
-    { text: "Senior Regulatory Specialist human sign-off", included: false, detail: "Available via on-demand add-on ($49/review)" },
+    { text: "Senior Regulatory Specialist human sign-off", included: false, detail: "Available via optional add-on" },
     { text: "Two-sided reviewer chat & customized remediation", included: false },
     { text: "Formal defense-ready Internal Review Record (PDF)", included: false },
-    { text: "24-hour SLA review guarantee", included: false },
+    { text: "Turnaround target (illustrative, non-guaranteed)", included: true, detail: "Subject to system availability" },
   ],
   ctaText: "Start AI-Only Plan",
   disclaimer: "Sample illustrative pricing · No billing or live payment processing connected",
@@ -85,7 +85,7 @@ export const AI_HUMAN_PLAN: ReviewPlan = {
     "The complete enterprise workflow for healthcare, medical aesthetics, and high-liability advertisers requiring verifiable defense.",
   monthlyPrice: 599,
   annualPrice: 479,
-  turnaround: "Guaranteed 24-hour SLA",
+  turnaround: "Standard review queue (illustrative target)",
   popular: true,
   targetAudience: "Regulated clinics, pharmaceutical brands, healthcare providers & agency compliance teams",
   features: [
@@ -97,7 +97,7 @@ export const AI_HUMAN_PLAN: ReviewPlan = {
     { text: "Print & PDF audit-ready export", included: true },
     { text: "Multi-jurisdiction review (US FTC/FDA & UAE MOHAP)", included: true },
     { text: "Up to 3 revisions included per submission round", included: true },
-    { text: "Guaranteed 24-hour turnaround SLA", included: true },
+    { text: "Standard review queue target (illustrative, non-guaranteed)", included: true },
     { text: "Dedicated account compliance manager", included: true },
   ],
   ctaText: "Start AI + Human Plan",
@@ -106,16 +106,16 @@ export const AI_HUMAN_PLAN: ReviewPlan = {
 
 export const HUMAN_REVIEW_ADDON: PlanAddon = {
   id: "human-review-addon",
-  name: "On-Demand Human Review Add-On",
+  name: "Optional Human Review Add-On (Concept Prototype)",
   tagline: "Escalate any single high-stakes creative to a human regulatory specialist",
   price: 49,
   unit: "per creative review",
-  turnaround: "24 hours",
+  turnaround: "Review queue target (illustrative)",
   badge: "Flexible Escalation",
   description:
-    "Add dedicated human review to any submission on the AI-Only plan, or purchase additional reviews for high-spend launch campaigns.",
+    "Concept prototype for optional client-requested human review dual-check. Turnaround targets and pricing are illustrative sample estimates only; no purchases, assignments, or SLA commitments are guaranteed.",
   benefits: [
-    "Full line-by-line inspection by a Senior Regulatory Specialist",
+    "Line-by-line evaluation by a Senior Regulatory Specialist (subject to queue availability)",
     "Evidence assessment: clinical studies, doctor credentials, and pricing disclosures",
     "Direct in-app remediation chat to unblock flagged claims quickly",
     "Formal Internal Review Record (Print/PDF) for client or legal archives",
@@ -134,15 +134,15 @@ export const COMPARISON_FEATURES: PlanComparisonFeature[] = [
   {
     name: "Automated AI Policy Engine Scan",
     category: "Review Execution",
-    aiOnly: "Instant (< 60s)",
-    aiHuman: "Included (< 60s pre-scan)",
+    aiOnly: "Instant automated scan",
+    aiHuman: "Included pre-scan",
     description: "Deep multimodal analysis against verified advertising policies.",
   },
   {
     name: "Senior Human Regulatory Reviewer",
     category: "Review Execution",
     aiOnly: false,
-    aiHuman: "Included (24h SLA)",
+    aiHuman: "Included (standard queue)",
     addonAvailable: true,
     description: "Line-by-line verification by experienced compliance professionals.",
   },
@@ -213,11 +213,11 @@ export const COMPARISON_FEATURES: PlanComparisonFeature[] = [
 
   // Turnaround & Support
   {
-    name: "Standard Turnaround Time",
+    name: "Turnaround Target (Illustrative)",
     category: "Turnaround & Support",
-    aiOnly: "< 60 seconds",
-    aiHuman: "24 hours (Guaranteed SLA)",
-    description: "Expected time from submission to complete review response.",
+    aiOnly: "Automated scan (illustrative)",
+    aiHuman: "Standard queue (illustrative)",
+    description: "Estimated target for demonstration. Clyntique does not guarantee specific SLAs or binding commitments.",
   },
   {
     name: "Revision Rounds Included",
@@ -227,12 +227,12 @@ export const COMPARISON_FEATURES: PlanComparisonFeature[] = [
     description: "Resubmission cycles supported under the standard plan quota.",
   },
   {
-    name: "On-Demand Human Review Add-On",
+    name: "Optional Human Review Add-On",
     category: "Turnaround & Support",
-    aiOnly: "$49 / review",
+    aiOnly: "Illustrative option",
     aiHuman: "Included in quota",
     addonAvailable: true,
-    description: "Option to buy additional single-review human escalations.",
+    description: "Option to request single-review human dual-check escalations.",
   },
 ];
 
@@ -240,12 +240,12 @@ export const PRICING_FAQS = [
   {
     question: "What is the difference between AI-Only and AI + Human Review?",
     answer:
-      "AI-Only Review runs your creative through Clyntique's AI Policy Engine in under a minute, flagging potential policy issues, missing disclosures, and required substantiation. AI + Human Review adds a Senior Regulatory Specialist who evaluates the creative in context, verifies attached scientific evidence, collaborates via direct reviewer chat, and issues a formal, defensible Internal Review Record with a 24-hour turnaround SLA.",
+      "AI-Only Review runs your creative through Clyntique's AI Policy Engine, flagging potential policy issues, missing disclosures, and required substantiation. AI + Human Review adds a Senior Regulatory Specialist who evaluates the creative in context, verifies attached scientific evidence, collaborates via direct reviewer chat, and issues a formal Internal Review Record with findings and remediation feedback.",
   },
   {
-    question: "When should I use the On-Demand Human Review Add-On?",
+    question: "When should I use the Optional Human Review Add-On?",
     answer:
-      "If you are on the AI-Only plan and encounter a complex claim, a high-budget hero campaign, or an ad flagged with 'Insufficient policy coverage — manual review required', you can escalate that specific creative to a human reviewer for an illustrative $49 without changing your monthly subscription.",
+      "If you are on the AI-Only plan and encounter a complex claim, a high-budget hero campaign, or an ad flagged with 'Insufficient policy coverage — manual review required', you can request human review for that specific creative without changing your monthly subscription tier.",
   },
   {
     question: "Does Clyntique guarantee official government clearance?",
@@ -253,13 +253,13 @@ export const PRICING_FAQS = [
       "No. Clyntique provides rigorous internal compliance verification and defensible documentation. It does not provide legal advice or replace statutory approvals required by government bodies (such as the UAE Ministry of Health or US FDA).",
   },
   {
-    question: "How does the 24-hour Human Review SLA work?",
+    question: "Are turnaround times and review assignments guaranteed?",
     answer:
-      "Once a creative is submitted with all required targeting and file assets, our human compliance team delivers an initial disposition (Approved, Changes Requested, or Clarification Needed) within 24 business hours.",
+      "No. All turnaround targets and queue figures shown across the prototype are non-binding sample estimates for product demonstration only. Clyntique does not offer guaranteed turnaround SLAs, immediate reviewer assignments, or commercial warranties at this pilot stage.",
   },
   {
     question: "Is this live billing?",
     answer:
-      "No. All pricing figures on this page are sample illustrative rates for our YC demo and pilot partner preview. No credit cards or payment processors are attached.",
+      "No. All pricing figures on this page are sample illustrative rates for our YC demo and pilot partner preview. No credit cards, payments, or purchases are processed.",
   },
 ];
