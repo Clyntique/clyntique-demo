@@ -43,6 +43,12 @@ export function MarketingNavbar() {
         {/* Desktop Actions */}
         <div className="hidden items-center gap-4 md:flex">
           <Link
+            href="/demo"
+            className="text-small font-medium text-ink hover:text-brand-600 px-3 py-2 transition-colors"
+          >
+            Explore Demo
+          </Link>
+          <Link
             href="/auth/login"
             className="text-small font-medium text-ink hover:text-brand-600 px-3 py-2 transition-colors"
           >
@@ -86,6 +92,13 @@ export function MarketingNavbar() {
               </a>
             ))}
             <div className="my-2 border-t border-line/80 pt-4 flex flex-col gap-3">
+              <Link
+                href="/demo"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center justify-center rounded-xl border border-line bg-surface py-2.5 text-small font-medium text-ink hover:bg-subtle transition-colors"
+              >
+                Explore Demo
+              </Link>
               <Link
                 href="/auth/login"
                 onClick={() => setMobileMenuOpen(false)}

@@ -220,9 +220,15 @@ export function HeroSection() {
               <span>Get Started</span>
               <ArrowRightIcon className="size-4.5 transition-transform group-hover:translate-x-1" />
             </Link>
+            <Link
+              href="/demo"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-7 py-3.5 text-base font-medium text-white backdrop-blur-md hover:bg-white/20 hover:border-white/50 hover:-translate-y-0.5 active:translate-y-0 active:bg-white/30 transition-all duration-200 cursor-pointer"
+            >
+              <span>Explore Demo</span>
+            </Link>
             <a
               href="#how-it-works"
-              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-white/30 bg-white/10 px-7 py-3.5 text-base font-medium text-white backdrop-blur-md hover:bg-white/20 hover:border-white/50 hover:-translate-y-0.5 active:translate-y-0 active:bg-white/30 transition-all duration-200 cursor-pointer"
+              className="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl px-5 py-3.5 text-base font-medium text-white/90 hover:text-white underline-offset-4 hover:underline transition-colors cursor-pointer"
             >
               <span>See How It Works</span>
             </a>
