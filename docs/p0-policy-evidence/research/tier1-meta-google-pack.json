@@ -1,0 +1,177 @@
+{
+  "_about": "Tier 1 Meta/Google healthcare policies for the pilot: three official sources and three DRAFT rules for human verification. Prepared November 1, 2026 from the corrected research pack (Oct 30 corrections) and the RX-META-PA-01 entry sheet (Nov 1 machine read of Meta's page). Imported by prisma/policy-tier1-import.ts as UNVERIFIED sources and DRAFT / UNVERIFIED rules only. Nothing here is verified; every statement must be checked against the official page by a policy administrator, and a different administrator must approve it, before the AI can use it. Not legal advice.",
+  "preparedOn": "2026-11-01",
+  "status": "UNVERIFIED",
+  "sources": [
+    {
+      "key": "meta-personal-attributes",
+      "name": "Meta Advertising Standards: Privacy violations and personal attributes",
+      "authorityName": "Meta Platforms",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
+      "sourceKind": "PLATFORM_POLICY_PAGE",
+      "publishedAt": null,
+      "accessNote": "Public page on Meta's Transparency Center, no sign-in. Machine read Nov 1, 2026 (signed out): HTTP 200, no redirect. The page has a change log; the verifier records its latest dated entry as the publication date. Not yet verified by a human."
+    },
+    {
+      "key": "google-health-personalized",
+      "name": "Google Ads policy: Health in personalized advertising",
+      "authorityName": "Google",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://support.google.com/adspolicy/answer/16701855",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "publishedAt": null,
+      "accessNote": "Public help article, no sign-in. Machine read Nov 1, 2026 (signed out): HTTP 200, no redirect, no date stated. The verifier confirms answer 16701855 opens Google's current page on health in personalized advertising. Not yet verified by a human."
+    },
+    {
+      "key": "google-healthcare-medicines",
+      "name": "Google Ads policy: Healthcare and medicines",
+      "authorityName": "Google",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://support.google.com/adspolicy/answer/176031",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "publishedAt": null,
+      "accessNote": "Public help article, no sign-in. Machine read Nov 1, 2026 (signed out): HTTP 200, no redirect, no date stated. Requirements vary by country: the country rows sit behind the page's location selector, so the verifier selects United States by hand and reads that row (United Arab Emirates only if a pilot clinic advertises there). Not yet verified by a human."
+    }
+  ],
+  "rules": [
+    {
+      "code": "RX-META-PA-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "META",
+        "industry": "GENERAL",
+        "category": "PERSONAL_HEALTH_ATTRIBUTES"
+      },
+      "version": {
+        "title": "Do not assert or imply a person's health condition",
+        "summary": "Meta ads must not say or suggest that the viewer has a physical or mental health condition, or that the advertiser knows medical information about them or their family.",
+        "legalExplanation": "Meta's Privacy Violations and Personal Attributes standard prohibits ads that assert or imply personal attributes, including knowledge of medical information about a user or their family. Meta's own guidance allows \"you/your\" language only when it does not reference a personal attribute, so wording such as \"Do you have diabetes?\" is not allowed while \"New diabetes treatment available\" is.",
+        "remediationAction": "Describe the treatment and who it is for in general terms (\"treatment for acne\", \"diabetes care available\") instead of addressing the viewer's own condition, history or family.",
+        "applicabilityConditions": [
+          "The ad runs on Facebook, Instagram or another Meta placement.",
+          "The copy, image or landing-page headline refers to the viewer's own health: a condition, diagnosis, symptom, treatment history, weight, or that of their family."
+        ],
+        "exceptions": [
+          "Public-service announcements that inform the public about health issues, provided they do not assert or imply that a person or their family has a health condition."
+        ],
+        "restrictionLevel": "PROHIBITED",
+        "restrictedClaims": [
+          "Direct or indirect statements that the viewer has a medical condition (\"Do you have diabetes?\")",
+          "Copy implying the advertiser knows the viewer's or their family's health information",
+          "\"You/your\" wording that references a health attribute"
+        ],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "IMPORTED DRAFT, UNVERIFIED (Nov 1, 2026). Text written from a machine read of Meta's page on Nov 1, 2026; a policy administrator must check every line against the page before submitting. Verifier questions: (1) record the latest dated change-log entry and the date read; (2) confirm the health examples and the public-service exception wording; (3) decide whether the age example (\"Ready to upgrade your skin to look younger?\") belongs in this rule or a separate one; (4) this rule is health-only although the page covers other personal attributes; (5) note the page shows one cancer example under two headings with different verdicts. Evidence: none required. Counsel: not yet consulted."
+      },
+      "citations": [
+        {
+          "sourceKey": "meta-personal-attributes",
+          "sectionReference": "Privacy Violations and Personal Attributes: Additional guidelines for ads; Physical or mental health and disability",
+          "sectionTitle": "Privacy Violations and Personal Attributes",
+          "directUrl": "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
+          "excerpt": "Imply knowledge of Medical information of a user or user's family",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-GOOG-PA-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "GOOGLE",
+        "industry": "GENERAL",
+        "category": "TARGETING_RESTRICTION"
+      },
+      "version": {
+        "title": "Health is a sensitive category for personalized ads",
+        "summary": "Google does not allow advertiser-built audiences (for example remarketing or customer lists) to target people based on health conditions, treatments or procedures.",
+        "legalExplanation": "Google's personalized advertising policy treats health as a personal hardship category: ads should not target people in ways that exploit their difficulties.",
+        "remediationAction": "Use contextual or Google's own predefined audiences; remove remarketing or customer-list targeting tied to treatments or conditions.",
+        "applicabilityConditions": [
+          "The ad runs on Google Ads.",
+          "The campaign uses an advertiser-built audience (remarketing list, customer list or similar audience) defined by a health condition, treatment, procedure or health interest, including cosmetic surgery, injections and chronic-condition treatments."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "IMPORTED DRAFT, UNVERIFIED (Nov 1, 2026). Text from the Oct 30 corrected research pack (machine read of the page on Oct 30; page reachable Nov 1, no date stated); a policy administrator must check every line against the page before submitting. Verifier questions: (1) confirm answer 16701855 is Google's current page on health in personalized advertising and not a redirect; (2) confirm the page lists cosmetic surgery, injections and chronic-condition treatments; (3) record any stated date and the date read. Evidence: none required (targeting rule; the fix is in audience setup). Counsel: not yet consulted."
+      },
+      "citations": [
+        {
+          "sourceKey": "google-health-personalized",
+          "sectionReference": "Health in personalized advertising",
+          "sectionTitle": "Health in personalized advertising",
+          "directUrl": "https://support.google.com/adspolicy/answer/16701855",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-GOOG-HM-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "GOOGLE",
+        "industry": "HEALTHCARE",
+        "category": "PRESCRIPTION_MEDICINE"
+      },
+      "version": {
+        "title": "Prescription drugs and online prescribing need Google certification",
+        "summary": "Google restricts ads for online prescribing, dispensing or selling prescription drugs, such as online pharmacies and telemedicine. Advertisers must apply for and hold Google certification, and prescription drug terms in ad text, landing pages or keywords are restricted and may be allowed depending on the location.",
+        "legalExplanation": "Google's healthcare and medicines policy sets country-by-country rules and certification. Certified ads may show as 'Eligible (limited)'.",
+        "remediationAction": "Remove prescription drug terms, or confirm the clinic holds Google certification for each targeted country before running the ad.",
+        "applicabilityConditions": [
+          "The ad runs on Google Ads (Search, Display, YouTube).",
+          "The ad text, keywords or landing page mentions a prescription medicine, prescribing, dispensing or an online pharmacy, for example injectables or weight-loss medicines, in a country Google lists."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Prescription drug names or terms in ad text, keywords or landing pages without certification"
+        ],
+        "substantiationRequirements": [
+          "Google certification for the advertiser's domain in each targeted country"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "IMPORTED DRAFT, UNVERIFIED (Nov 1, 2026). Text from the Oct 30 corrected research pack (machine read of the page on Oct 30; page reachable Nov 1, no date stated); a policy administrator must check every line against the page before submitting. Verifier questions: (1) select United States in the page's location selector and read that row (United Arab Emirates only if a pilot clinic advertises there); (2) confirm certification is required and that prescription terms are restricted in ad text, landing pages and keywords; (3) whether prescription-only aesthetic injectables are covered is an open question, not a statement from the page; (4) record any stated date and the date read. Evidence: Google certification for the advertiser's domain in each targeted country. Counsel: not yet consulted."
+      },
+      "citations": [
+        {
+          "sourceKey": "google-healthcare-medicines",
+          "sectionReference": "Healthcare and medicines: prescription drugs and online pharmacies",
+          "sectionTitle": "Healthcare and medicines",
+          "directUrl": "https://support.google.com/adspolicy/answer/176031",
+          "excerpt": "",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [
+        "Confirm the current United States (and, if needed, United Arab Emirates) country rows and whether prescription-only aesthetic injectables are covered."
+      ],
+      "researchStatus": "REQUIRES_REVIEW"
+    }
+  ]
+}
