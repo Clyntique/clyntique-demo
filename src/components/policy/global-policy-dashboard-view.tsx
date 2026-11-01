@@ -60,8 +60,15 @@ export function GlobalPolicyDashboardView({
     });
   };
 
-  // Ground dashboard in actual database rules when available
-  const mappedDbRules: GlobalPolicyRuleDetail[] = (initialDbRules || []).map((r) => {
+  // Ground dashboard in actual database rules when available.
+  // On public standalone dashboard, only display verified active rules to guarantee unpublished drafts stay confidential.
+  const eligibleDbRules = isStandalone
+    ? (initialDbRules || []).filter(
+        (r) => r.currentVersion.status === "ACTIVE" && r.currentVersion.verificationStatus === "VERIFIED"
+      )
+    : initialDbRules || [];
+
+  const mappedDbRules: GlobalPolicyRuleDetail[] = eligibleDbRules.map((r) => {
     const isVerified = r.currentVersion.status === "ACTIVE" && r.currentVersion.verificationStatus === "VERIFIED";
     const isPending = r.currentVersion.status === "PENDING_APPROVAL";
     return {
@@ -887,22 +894,22 @@ export function GlobalPolicyDashboardView({
         )}
       </div>
 
-      {/* Dual-Admin Verification Pipeline */}
-      <div className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-line mb-5">
-          <div>
-            <div className="inline-flex items-center gap-1.5 rounded-md bg-attention-soft px-2 py-0.5 text-micro font-semibold text-attention-ink mb-1">
-              <ClockIcon className="size-3" />
-              <span>Two-Person Trail Enforcement</span>
+      {/* Dual-Admin Verification Pipeline (Internal Team Review Queue only) */}
+      {!isStandalone && (
+        <div className="rounded-2xl border border-line bg-surface p-6 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-line mb-5">
+            <div>
+              <div className="inline-flex items-center gap-1.5 rounded-md bg-attention-soft px-2 py-0.5 text-micro font-semibold text-attention-ink mb-1">
+                <ClockIcon className="size-3" />
+                <span>Two-Person Trail Enforcement</span>
+              </div>
+              <h2 className="text-card-title font-bold text-ink">
+                Pending Human Verification Queue
+              </h2>
+              <p className="text-caption text-ink-soft mt-0.5">
+                Rules cannot be consumed by the AI Policy Engine until two separate policy admins verify and approve them.
+              </p>
             </div>
-            <h2 className="text-card-title font-bold text-ink">
-              Pending Human Verification Queue
-            </h2>
-            <p className="text-caption text-ink-soft mt-0.5">
-              Rules cannot be consumed by the AI Policy Engine until two separate policy admins verify and approve them.
-            </p>
-          </div>
-          {!isStandalone && (
             <Link
               href="/admin/policy-library"
               className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-1.5 text-caption font-semibold text-ink hover:bg-subtle transition-colors"
@@ -910,46 +917,46 @@ export function GlobalPolicyDashboardView({
               <span>Review in Policy Library</span>
               <ArrowRightIcon className="size-3.5" />
             </Link>
-          )}
-        </div>
+          </div>
 
-        {/* Pending Items List */}
-        <div className="divide-y divide-line">
-          {PENDING_REVIEW_RULES.map((item) => (
-            <div key={item.id} className="py-4 first:pt-0 last:pb-0">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-micro font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
-                    {item.ruleCode}
-                  </span>
-                  <h3 className="text-small font-bold text-ink">{item.title}</h3>
+          {/* Pending Items List */}
+          <div className="divide-y divide-line">
+            {PENDING_REVIEW_RULES.map((item) => (
+              <div key={item.id} className="py-4 first:pt-0 last:pb-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-micro font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                      {item.ruleCode}
+                    </span>
+                    <h3 className="text-small font-bold text-ink">{item.title}</h3>
+                  </div>
+                  <StageBadge stage={item.verificationStage} />
                 </div>
-                <StageBadge stage={item.verificationStage} />
-              </div>
 
-              <div className="mt-2 text-caption text-ink-soft flex flex-wrap gap-x-4 gap-y-1">
-                <span><strong>Jurisdiction:</strong> {item.jurisdictionCode}</span>
-                <span><strong>Platform:</strong> {item.platformCode}</span>
-                <span><strong>Category:</strong> {item.category}</span>
-                <span><strong>Proposed by:</strong> {isStandalone ? "Policy Specialist" : item.proposedBy}</span>
-              </div>
-
-              {item.openQuestions && item.openQuestions.length > 0 && (
-                <div className="mt-3 rounded-lg bg-subtle p-3 text-caption text-ink">
-                  <span className="font-semibold text-attention-ink block mb-1">
-                    Open Research & Verification Questions:
-                  </span>
-                  <ul className="list-disc list-inside space-y-1 text-micro text-ink-soft">
-                    {item.openQuestions.map((q, i) => (
-                      <li key={i}>{q}</li>
-                    ))}
-                  </ul>
+                <div className="mt-2 text-caption text-ink-soft flex flex-wrap gap-x-4 gap-y-1">
+                  <span><strong>Jurisdiction:</strong> {item.jurisdictionCode}</span>
+                  <span><strong>Platform:</strong> {item.platformCode}</span>
+                  <span><strong>Category:</strong> {item.category}</span>
+                  <span><strong>Proposed by:</strong> {item.proposedBy}</span>
                 </div>
-              )}
-            </div>
-          ))}
+
+                {item.openQuestions && item.openQuestions.length > 0 && (
+                  <div className="mt-3 rounded-lg bg-subtle p-3 text-caption text-ink">
+                    <span className="font-semibold text-attention-ink block mb-1">
+                      Open Research & Verification Questions:
+                    </span>
+                    <ul className="list-disc list-inside space-y-1 text-micro text-ink-soft">
+                      {item.openQuestions.map((q, i) => (
+                        <li key={i}>{q}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Regulatory Update Feed & Tracked Authorities */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

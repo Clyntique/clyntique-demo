@@ -325,4 +325,11 @@ describe("UI Integration: Review Tier & Global Policy Directory", () => {
     expect(dashSrc).toContain("Draft Rule — Non-Operational");
     expect(dashSrc).toContain("Immutable Version Audit Trail");
   });
+
+  it("enforces strict privacy and confidentiality on public standalone policy dashboard", () => {
+    const dashSrc = readFileSync("src/components/policy/global-policy-dashboard-view.tsx", "utf8");
+    expect(dashSrc).toContain("eligibleDbRules");
+    expect(dashSrc).toContain("!isStandalone && (");
+    expect(dashSrc).toContain('isStandalone ? "Clyntique Policy Reviewer" : (v.createdByName || "Policy Admin")');
+  });
 });
