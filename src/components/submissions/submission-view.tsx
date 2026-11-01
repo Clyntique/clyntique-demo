@@ -31,6 +31,7 @@ import { AddFindingForm, CompleteReviewForm, RequestChangesForm, StartReviewForm
 import { EvidenceList } from "./review-history";
 import { SubmissionForm } from "./submission-form";
 import { SubmitPanel } from "./submit-panel";
+import { ReviewTierCard } from "./review-tier-card";
 import { AICompliancePanel } from "./ai-compliance-panel";
 import { citableRulesForSubmission } from "@/lib/ai/service";
 
@@ -328,6 +329,14 @@ export async function SubmissionView({
 
         {/* Compliance Inspector: next action, then the tabs */}
         <aside aria-label="Review" className="flex min-w-0 flex-col gap-5 xl:col-start-2 xl:row-span-2 xl:row-start-1">
+          <ReviewTierCard
+            creativeId={submission.id}
+            context={submission.context}
+            status={submission.status}
+            isClient={role === "CLIENT"}
+            canEdit={editable}
+          />
+
           <section aria-label="Next step" className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 shadow-xs">
             <div className="flex items-center justify-between border-b border-line pb-2.5">
               <span className="text-eyebrow">

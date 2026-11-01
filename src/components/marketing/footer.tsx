@@ -25,24 +25,34 @@ export function MarketingFooter() {
             </h4>
             <ul className="flex flex-col gap-2.5 text-small text-muted">
               <li>
-                <a href="#how-it-works" className="hover:text-brand-600 transition-colors">
+                <Link href="/pricing" className="hover:text-brand-600 transition-colors">
+                  Pricing & Review Plans
+                </Link>
+              </li>
+              <li>
+                <Link href="/policy-dashboard" className="hover:text-brand-600 transition-colors">
+                  Global Policy Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link href="/#how-it-works" className="hover:text-brand-600 transition-colors">
                   How It Works
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#workflow" className="hover:text-brand-600 transition-colors">
+                <Link href="/#workflow" className="hover:text-brand-600 transition-colors">
                   Product Workflow
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#features" className="hover:text-brand-600 transition-colors">
+                <Link href="/#features" className="hover:text-brand-600 transition-colors">
                   Enterprise Features
-                </a>
+                </Link>
               </li>
               <li>
-                <a href="#policy-ai" className="hover:text-brand-600 transition-colors">
+                <Link href="/#policy-ai" className="hover:text-brand-600 transition-colors">
                   AI Policy Library
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

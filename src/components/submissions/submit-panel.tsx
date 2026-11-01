@@ -59,6 +59,50 @@ export function SubmitPanel({ creativeId, readiness }: { creativeId: string; rea
           );
         })}
       </ul>
+      <div className="rounded-lg border border-line bg-subtle/50 p-3">
+        <span className="block text-caption font-semibold text-ink mb-1.5">
+          Review Preference:
+        </span>
+        <div className="grid grid-cols-1 gap-2">
+          <label className="flex items-start gap-2.5 rounded-md border border-line bg-surface p-2.5 text-left cursor-pointer hover:border-brand-500 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50/50">
+            <input
+              type="radio"
+              name="reviewTier"
+              value="HUMAN_REVIEW"
+              defaultChecked
+              className="mt-0.5 size-4 accent-brand-600"
+            />
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-small font-bold text-ink">Human Review (Add-on)</span>
+                <span className="rounded bg-brand-100 text-brand-800 px-1.5 py-0.2 text-[10px] font-semibold">Recommended</span>
+              </div>
+              <p className="text-micro text-ink-soft mt-0.5">
+                Dual-check by Senior Regulatory Specialist (Pilot quota · Illustrative option).
+              </p>
+            </div>
+          </label>
+
+          <label className="flex items-start gap-2.5 rounded-md border border-line bg-surface p-2.5 text-left cursor-pointer hover:border-brand-500 has-[:checked]:border-brand-600 has-[:checked]:bg-brand-50/50">
+            <input
+              type="radio"
+              name="reviewTier"
+              value="AI_ONLY"
+              className="mt-0.5 size-4 accent-brand-600"
+            />
+            <div>
+              <span className="text-small font-bold text-ink">AI-Only Review</span>
+              <p className="text-micro text-ink-soft mt-0.5">
+                Automated screening against verified platform policies. Standard plan quota.
+              </p>
+            </div>
+          </label>
+        </div>
+        <p className="mt-2 text-micro text-muted">
+          Human review is an optional add-on for high-stakes ads. Included in active pilot quota (no payments or purchases enabled).
+        </p>
+      </div>
+
       <FormError message={state?.error} />
       {state?.ok && (
         <p role="status" className="rounded-md bg-positive-soft px-3 py-2 text-small text-positive-ink">

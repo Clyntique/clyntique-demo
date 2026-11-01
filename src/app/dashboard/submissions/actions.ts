@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/dal";
+import { prisma } from "@/lib/prisma";
+import { formatContextWithReviewTier, parseReviewTier, type ReviewTier } from "@/lib/plans/review-tier";
 import {
   addEvidence,
   createDraft,
@@ -84,10 +86,23 @@ export async function updateSubmission(_prev: SubmissionFormState, formData: For
 
   const values = draftValues(formData);
   const targeting = formData.get("targeting") === "1";
-  const result = await updateDraft(user, text(formData, "creativeId"), {
+  const creativeId = text(formData, "creativeId");
+
+  let preservedContext = values.context;
+  try {
+    const existing = await prisma.creative.findUnique({ where: { id: creativeId }, select: { context: true } });
+    if (existing?.context) {
+      const currentTier = parseReviewTier(existing.context);
+      preservedContext = formatContextWithReviewTier(values.context, currentTier);
+    }
+  } catch {
+    // Non-blocking fallback to submitted context
+  }
+
+  const result = await updateDraft(user, creativeId, {
     name: values.name,
     description: values.description,
-    context: values.context,
+    context: preservedContext,
     format: values.format,
     ...(formData.has("industry") ? { industry: values.industry } : {}),
     ...(targeting ? { marketCodes: values.markets, platformCodes: values.platforms } : {}),
@@ -103,7 +118,23 @@ export async function submitSubmission(_prev: SubmissionFormState, formData: For
   const user = await getCurrentUser();
   if (!user) return { error: SIGN_IN };
 
-  const result = await submitForReview(user, text(formData, "creativeId"));
+  const creativeId = text(formData, "creativeId");
+  const reviewTier = text(formData, "reviewTier");
+  if (reviewTier === "AI_ONLY" || reviewTier === "HUMAN_REVIEW") {
+    try {
+      const c = await prisma.creative.findUnique({ where: { id: creativeId }, select: { context: true } });
+      if (c) {
+        await prisma.creative.update({
+          where: { id: creativeId },
+          data: { context: formatContextWithReviewTier(c.context, reviewTier as ReviewTier) },
+        });
+      }
+    } catch {
+      // Non-blocking preference update
+    }
+  }
+
+  const result = await submitForReview(user, creativeId);
   if (!result.ok) return { error: result.error };
 
   revalidateWorkspaces();
