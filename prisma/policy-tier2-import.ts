@@ -22,13 +22,14 @@
 import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { planResearchImport, type ImportPlan, type ResearchPack } from "../src/lib/policy/research-import";
 import { databaseNameOf } from "./seed-plan";
 
-const PRODUCTION_DATABASE = "cyntique_demo";
-const PACK = resolve(__dirname, "../docs/p0-policy-evidence/research/tier2-healthcare-expansion-pack.json");
+export const PRODUCTION_DATABASE = "cyntique_demo";
+export const DEFAULT_PACK_PATH = resolve(__dirname, "../docs/p0-policy-evidence/research/tier2-healthcare-expansion-pack.json");
 
 function arg(argv: string[], name: string) {
   const i = argv.indexOf(name);
@@ -49,7 +50,7 @@ function show(label: string, value: unknown) {
   console.log(`      ${label}: ${text}`);
 }
 
-function printPlan(plan: ImportPlan, dbName: string, apply: boolean, createVersions: boolean) {
+export function printPlan(plan: ImportPlan, dbName: string, apply: boolean, createVersions: boolean) {
   const newSources = plan.sources.filter((s) => !s.existingId);
   const reused = plan.sources.filter((s) => s.existingId);
   console.log(`Database: ${dbName}${apply ? "" : " (dry run, nothing written)"}`);
@@ -115,6 +116,352 @@ function printPlan(plan: ImportPlan, dbName: string, apply: boolean, createVersi
   for (const e of plan.errors) console.error(`  error: ${e}`);
 }
 
+interface ExistingRuleRecord {
+  id: string;
+  code: string;
+  currentVersionNumber: number;
+}
+
+export interface Tier2ImportOptions {
+  author: string;
+  apply: boolean;
+  createVersions: boolean;
+  dbName: string;
+  testRollback?: boolean;
+  packPath?: string;
+  silent?: boolean;
+}
+
+export interface Tier2ImportResult {
+  dbName: string;
+  applied: boolean;
+  plan: ImportPlan;
+  newSourcesCount: number;
+  newRulesCount: number;
+  newVersionsCount: number;
+  eventsCount: number;
+}
+
+export async function runTier2Import(prisma: PrismaClient, options: Tier2ImportOptions): Promise<Tier2ImportResult> {
+  const { author, apply, createVersions, dbName, testRollback = false, packPath = DEFAULT_PACK_PATH, silent = false } = options;
+
+  const pack = JSON.parse(readFileSync(packPath, "utf8")) as ResearchPack;
+
+  const user = await prisma.user.findUnique({
+    where: { email: author },
+    select: { id: true, role: true, isPolicyAdmin: true },
+  });
+  if (!user || user.role !== "TEAM" || !user.isPolicyAdmin) {
+    throw new Error(`'${author}' is not a TEAM policy admin in "${dbName}".`);
+  }
+
+  const [markets, platforms, sources, rules] = await Promise.all([
+    prisma.market.findMany({ select: { code: true } }),
+    prisma.adPlatform.findMany({ select: { code: true } }),
+    prisma.policySource.findMany({ select: { id: true, officialUrl: true, updatedAt: true } }),
+    prisma.policyRule.findMany({ select: { id: true, code: true, currentVersionNumber: true } }),
+  ]);
+
+  const plan = planResearchImport(pack, {
+    jurisdictions: markets.map((m: { code: string }) => m.code),
+    platforms: platforms.map((p: { code: string }) => p.code),
+    existingSourceUrls: new Map(sources.map((s: { officialUrl: string; id: string }) => [s.officialUrl, s.id])),
+    existingRuleCodes: new Set(rules.map((r: { code: string }) => r.code)),
+  });
+
+  if (!silent) printPlan(plan, dbName, apply, createVersions);
+  if (plan.errors.length) throw new Error("The pack has errors; nothing was written.");
+
+  const newSources = plan.sources.filter((s) => !s.existingId);
+  const existingRulesMap = new Map<string, ExistingRuleRecord>(
+    (rules as ExistingRuleRecord[]).map((r) => [r.code, r]),
+  );
+
+  if (!apply) {
+    return {
+      dbName,
+      applied: false,
+      plan,
+      newSourcesCount: 0,
+      newRulesCount: 0,
+      newVersionsCount: 0,
+      eventsCount: 0,
+    };
+  }
+
+  if (newSources.length === 0 && plan.rules.length === 0 && !createVersions) {
+    if (!silent) console.log("Nothing to create: every source and rule in the pack is already stored, and --create-versions was not set. No change.");
+    return {
+      dbName,
+      applied: false,
+      plan,
+      newSourcesCount: 0,
+      newRulesCount: 0,
+      newVersionsCount: 0,
+      eventsCount: 0,
+    };
+  }
+
+  const before = {
+    sources: await prisma.policySource.count(),
+    rules: await prisma.policyRule.count(),
+    versions: await prisma.policyRuleVersion.count(),
+    events: await prisma.policyRuleEvent.count(),
+  };
+  const touched = new Map(sources.map((s: { id: string; updatedAt: Date }) => [s.id, s.updatedAt.getTime()]));
+
+  let newVersionsCreated = 0;
+  let eventsCreated = 0;
+
+  await prisma.$transaction(
+    async (tx) => {
+      const ids = new Map(plan.sources.filter((s) => s.existingId).map((s) => [s.key, s.existingId as string]));
+
+      // 1. Create new sources as UNVERIFIED
+      for (const s of newSources) {
+        const row = await tx.policySource.create({
+          data: { ...s.data, verificationStatus: "UNVERIFIED" },
+        });
+        await tx.policyRuleEvent.create({
+          data: {
+            sourceId: row.id,
+            kind: "SOURCE_CREATED",
+            actorId: user.id,
+            note: `${row.name} imported from the Tier 2 expansion pack as UNVERIFIED; a policy admin must verify it against the official page.`,
+          },
+        });
+        ids.set(s.key, row.id);
+        eventsCreated++;
+      }
+
+      // 2. Create new rules as DRAFT / UNVERIFIED (v1)
+      for (const r of plan.rules) {
+        const c = r.content;
+        const rule = await tx.policyRule.create({
+          data: { code: r.code, title: c.title, ...r.scope, currentVersionNumber: 1 },
+        });
+        const version = await tx.policyRuleVersion.create({
+          data: {
+            ruleId: rule.id,
+            versionNumber: 1,
+            title: c.title,
+            summary: c.summary,
+            legalExplanation: c.legalExplanation,
+            remediationAction: c.remediationAction,
+            applicabilityConditions: c.applicabilityConditions,
+            exceptions: c.exceptions,
+            restrictionLevel: c.restrictionLevel,
+            restrictedClaims: c.restrictedClaims,
+            substantiationRequirements: c.substantiationRequirements,
+            officialEffectiveDate: c.officialEffectiveDate,
+            effectiveTo: c.effectiveTo,
+            reviewNote: c.reviewNote,
+            status: "DRAFT",
+            verificationStatus: "UNVERIFIED",
+            changeSummary: "v1 imported from Tier 2 expansion pack as draft for human verification.",
+            createdById: user.id,
+          },
+        });
+        for (const { sourceKey, ...cite } of r.citations) {
+          await tx.policyRuleVersionSource.create({
+            data: { versionId: version.id, ...cite, sourceId: ids.get(sourceKey)! },
+          });
+        }
+        await tx.policyRuleEvent.create({
+          data: {
+            ruleId: rule.id,
+            versionId: version.id,
+            kind: "RULE_CREATED",
+            actorId: user.id,
+            note: "v1 imported from Tier 2 expansion pack as DRAFT / UNVERIFIED; not active until verified and approved by two different admins.",
+          },
+        });
+        newVersionsCreated++;
+        eventsCreated++;
+      }
+
+      // 3. Evolve existing rules using established versioning model (propose v2, preserve v1 as DEPRECATED)
+      if (createVersions) {
+        for (const code of ["RX-META-PA-01", "RX-GOOG-PA-01"]) {
+          const ruleInPack = pack.rules.find((r) => r.code === code);
+          const dbRule = existingRulesMap.get(code);
+          if (!ruleInPack || !dbRule) continue;
+
+          // Idempotency: only evolve from v1 to v2 if currentVersionNumber is 1
+          if (dbRule.currentVersionNumber >= 2) continue;
+
+          // Find current v1 draft in DB
+          const existingVersion = await tx.policyRuleVersion.findFirst({
+            where: { ruleId: dbRule.id, versionNumber: 1 },
+          });
+
+          if (!existingVersion || existingVersion.status !== "DRAFT" || existingVersion.verificationStatus === "VERIFIED") {
+            continue;
+          }
+
+          // Step A: Mark v1 as DEPRECATED (preserves history, prevents accidental verification or approval)
+          await tx.policyRuleVersion.update({
+            where: { id: existingVersion.id },
+            data: {
+              status: "DEPRECATED",
+              reviewNote: `v1 research draft superseded by v2 draft per Yash review feedback. Retained as immutable historical record.\n\n${existingVersion.reviewNote || ""}`.slice(0, 1000),
+            },
+          });
+
+          // Step B: Create v2 as DRAFT / UNVERIFIED
+          const c = ruleInPack.version;
+          const nextVersionNumber = 2;
+          const v2 = await tx.policyRuleVersion.create({
+            data: {
+              ruleId: dbRule.id,
+              versionNumber: nextVersionNumber,
+              title: String(c.title),
+              summary: String(c.summary),
+              legalExplanation: String(c.legalExplanation),
+              remediationAction: String(c.remediationAction),
+              applicabilityConditions: c.applicabilityConditions as string[],
+              exceptions: c.exceptions as string[],
+              restrictionLevel: c.restrictionLevel as "PROHIBITED" | "RESTRICTED" | "CONDITIONAL" | "DISCLOSURE_REQUIRED",
+              restrictedClaims: c.restrictedClaims as string[],
+              substantiationRequirements: c.substantiationRequirements as string[],
+              status: "DRAFT",
+              verificationStatus: "UNVERIFIED",
+              changeSummary: `v${nextVersionNumber} draft proposed incorporating review feedback; v${existingVersion.versionNumber} preserved as DEPRECATED history.`,
+              createdById: user.id,
+              reviewNote: String(c.reviewNote),
+            },
+          });
+
+          // Step C: Link citations to v2
+          for (const cite of ruleInPack.citations) {
+            const srcId = ids.get(cite.sourceKey);
+            if (srcId) {
+              await tx.policyRuleVersionSource.create({
+                data: {
+                  versionId: v2.id,
+                  sourceId: srcId,
+                  sectionReference: String(cite.sectionReference),
+                  sectionTitle: String(cite.sectionTitle),
+                  directUrl: String(cite.directUrl),
+                  excerpt: String(cite.excerpt || ""),
+                },
+              });
+            }
+          }
+
+          // Step D: Advance rule pointer to v2
+          await tx.policyRule.update({
+            where: { id: dbRule.id },
+            data: { title: String(c.title), currentVersionNumber: nextVersionNumber, updatedAt: new Date() },
+          });
+
+          // Step E: Record VERSION_PROPOSED event
+          await tx.policyRuleEvent.create({
+            data: {
+              ruleId: dbRule.id,
+              versionId: v2.id,
+              kind: "VERSION_PROPOSED",
+              actorId: user.id,
+              note: `v${nextVersionNumber} proposed as DRAFT / UNVERIFIED per review feedback; v${existingVersion.versionNumber} retained as DEPRECATED history.`,
+            },
+          });
+
+          newVersionsCreated++;
+          eventsCreated++;
+        }
+
+        // Step 4: Supersede composite rule RX-GOOG-HM-01, mark DEPRECATED and log RULE_RETIRED
+        const hmRule = existingRulesMap.get("RX-GOOG-HM-01");
+        if (hmRule) {
+          const hmVersion = await tx.policyRuleVersion.findFirst({
+            where: { ruleId: hmRule.id, versionNumber: 1 },
+          });
+          // Idempotency: only supersede if v1 is still in DRAFT
+          if (hmVersion && hmVersion.status === "DRAFT") {
+            const supersessionNotice =
+              "SUPERSEDED RULE — INACTIVE (Nov 1, 2026): Superseded by split rules RX-GOOG-PDS-01 (Prescription Drug Services) and RX-GOOG-RDT-01 (Restricted Drug Terms). Retained in DEPRECATED state for historical audit preservation. Cannot be verified or approved.";
+            await tx.policyRuleVersion.update({
+              where: { id: hmVersion.id },
+              data: {
+                status: "DEPRECATED",
+                reviewNote: supersessionNotice,
+              },
+            });
+            await tx.policyRuleEvent.create({
+              data: {
+                ruleId: hmRule.id,
+                versionId: hmVersion.id,
+                kind: "RULE_RETIRED",
+                actorId: user.id,
+                note: "Rule superseded by RX-GOOG-PDS-01 and RX-GOOG-RDT-01; marked DEPRECATED to lock from verification/approval while preserving audit history.",
+              },
+            });
+            eventsCreated++;
+          }
+        }
+      }
+
+      // Exact transactional count check
+      const expected = {
+        sources: before.sources + newSources.length,
+        rules: before.rules + plan.rules.length,
+        versions: before.versions + newVersionsCreated,
+        events: before.events + eventsCreated,
+      };
+      const after = {
+        sources: await tx.policySource.count(),
+        rules: await tx.policyRule.count(),
+        versions: await tx.policyRuleVersion.count(),
+        events: await tx.policyRuleEvent.count(),
+      };
+
+      const bad = (Object.keys(expected) as Array<keyof typeof expected>).filter((k) => expected[k] !== after[k]);
+      if (process.env.TIER2_IMPORT_TEST_ROLLBACK === "1" || testRollback) bad.push("sources");
+      if (bad.length) {
+        throw new Error(
+          `Post-write check failed for ${bad.join(", ")} (expected ${JSON.stringify(expected)}, got ${JSON.stringify(
+            after,
+          )}); rolled back.`,
+        );
+      }
+
+      const stillActive = await tx.policyRuleVersion.count({
+        where: {
+          OR: [{ status: "ACTIVE" }, { verificationStatus: "VERIFIED" }],
+          rule: { code: { in: pack.rules.map((r) => r.code) } },
+        },
+      });
+      if (stillActive) throw new Error("An imported or updated version is active or verified; rolled back.");
+
+      const existingNow = await tx.policySource.findMany({
+        where: { id: { in: [...touched.keys()] } },
+        select: { id: true, updatedAt: true },
+      });
+      if (existingNow.some((s: { id: string; updatedAt: Date }) => touched.get(s.id) !== s.updatedAt.getTime())) {
+        throw new Error("A pre-existing source changed during the import; rolled back.");
+      }
+    },
+    { timeout: 120_000, maxWait: 30_000 },
+  );
+
+  if (!silent) {
+    console.log(
+      `Written and verified: ${newSources.length} new source(s), ${plan.rules.length} new rule(s), ${newVersionsCreated} new version(s) created.`,
+    );
+    console.log("Every item remains DRAFT / UNVERIFIED. Independent verification by Admin A and independent approval by Admin B required.");
+  }
+
+  return {
+    dbName,
+    applied: true,
+    plan,
+    newSourcesCount: newSources.length,
+    newRulesCount: plan.rules.length,
+    newVersionsCount: newVersionsCreated,
+    eventsCount: eventsCreated,
+  };
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const apply = argv.includes("--apply");
@@ -143,292 +490,23 @@ async function main() {
     throw new Error(`To write, set IMPORT_CONFIRM_DATABASE=${dbName}. Nothing was changed.`);
   }
 
-  const pack = JSON.parse(readFileSync(PACK, "utf8")) as ResearchPack;
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   try {
-    const user = await prisma.user.findUnique({
-      where: { email: author },
-      select: { id: true, role: true, isPolicyAdmin: true },
+    await runTier2Import(prisma, {
+      author,
+      apply,
+      createVersions,
+      dbName: dbName as string,
     });
-    if (!user || user.role !== "TEAM" || !user.isPolicyAdmin) {
-      throw new Error(`'${author}' is not a TEAM policy admin in "${dbName}".`);
-    }
-
-    const [markets, platforms, sources, rules] = await Promise.all([
-      prisma.market.findMany({ select: { code: true } }),
-      prisma.adPlatform.findMany({ select: { code: true } }),
-      prisma.policySource.findMany({ select: { id: true, officialUrl: true, updatedAt: true } }),
-      prisma.policyRule.findMany({ select: { id: true, code: true, currentVersionNumber: true } }),
-    ]);
-
-    const plan = planResearchImport(pack, {
-      jurisdictions: markets.map((m) => m.code),
-      platforms: platforms.map((p) => p.code),
-      existingSourceUrls: new Map(sources.map((s) => [s.officialUrl, s.id])),
-      existingRuleCodes: new Set(rules.map((r) => r.code)),
-    });
-
-    printPlan(plan, dbName as string, apply, createVersions);
-    if (plan.errors.length) throw new Error("The pack has errors; nothing was written.");
-
-    const newSources = plan.sources.filter((s) => !s.existingId);
-    const existingRulesMap = new Map(rules.map((r) => [r.code, r]));
-
-    if (!apply) return;
-
-    if (newSources.length === 0 && plan.rules.length === 0 && !createVersions) {
-      console.log("Nothing to create: every source and rule in the pack is already stored, and --create-versions was not set. No change.");
-      return;
-    }
-
-    const before = {
-      sources: await prisma.policySource.count(),
-      rules: await prisma.policyRule.count(),
-      versions: await prisma.policyRuleVersion.count(),
-      events: await prisma.policyRuleEvent.count(),
-    };
-    const touched = new Map(sources.map((s) => [s.id, s.updatedAt.getTime()]));
-
-    let newVersionsCreated = 0;
-    let eventsCreated = 0;
-
-    await prisma.$transaction(
-      async (tx) => {
-        const ids = new Map(plan.sources.filter((s) => s.existingId).map((s) => [s.key, s.existingId as string]));
-
-        // 1. Create new sources as UNVERIFIED
-        for (const s of newSources) {
-          const row = await tx.policySource.create({
-            data: { ...s.data, verificationStatus: "UNVERIFIED" },
-          });
-          await tx.policyRuleEvent.create({
-            data: {
-              sourceId: row.id,
-              kind: "SOURCE_CREATED",
-              actorId: user.id,
-              note: `${row.name} imported from the Tier 2 expansion pack as UNVERIFIED; a policy admin must verify it against the official page.`,
-            },
-          });
-          ids.set(s.key, row.id);
-          eventsCreated++;
-        }
-
-        // 2. Create new rules as DRAFT / UNVERIFIED (v1)
-        for (const r of plan.rules) {
-          const c = r.content;
-          const rule = await tx.policyRule.create({
-            data: { code: r.code, title: c.title, ...r.scope, currentVersionNumber: 1 },
-          });
-          const version = await tx.policyRuleVersion.create({
-            data: {
-              ruleId: rule.id,
-              versionNumber: 1,
-              title: c.title,
-              summary: c.summary,
-              legalExplanation: c.legalExplanation,
-              remediationAction: c.remediationAction,
-              applicabilityConditions: c.applicabilityConditions,
-              exceptions: c.exceptions,
-              restrictionLevel: c.restrictionLevel,
-              restrictedClaims: c.restrictedClaims,
-              substantiationRequirements: c.substantiationRequirements,
-              officialEffectiveDate: c.officialEffectiveDate,
-              effectiveTo: c.effectiveTo,
-              reviewNote: c.reviewNote,
-              status: "DRAFT",
-              verificationStatus: "UNVERIFIED",
-              changeSummary: "v1 imported from Tier 2 expansion pack as draft for human verification.",
-              createdById: user.id,
-            },
-          });
-          for (const { sourceKey, ...cite } of r.citations) {
-            await tx.policyRuleVersionSource.create({
-              data: { versionId: version.id, ...cite, sourceId: ids.get(sourceKey)! },
-            });
-          }
-          await tx.policyRuleEvent.create({
-            data: {
-              ruleId: rule.id,
-              versionId: version.id,
-              kind: "RULE_CREATED",
-              actorId: user.id,
-              note: "v1 imported from Tier 2 expansion pack as DRAFT / UNVERIFIED; not active until verified and approved by two different admins.",
-            },
-          });
-          newVersionsCreated++;
-          eventsCreated++;
-        }
-
-        // 3. Evolve existing rules using established versioning model (propose v2, preserve v1 as DEPRECATED)
-        if (createVersions) {
-          for (const code of plan.skippedRules) {
-            const ruleInPack = pack.rules.find((r) => r.code === code);
-            const dbRule = existingRulesMap.get(code);
-            if (!ruleInPack || !dbRule) continue;
-
-            // Find current v1 draft in DB
-            const existingVersion = await tx.policyRuleVersion.findFirst({
-              where: { ruleId: dbRule.id, versionNumber: dbRule.currentVersionNumber },
-            });
-
-            if (!existingVersion || existingVersion.status !== "DRAFT" || existingVersion.verificationStatus === "VERIFIED") {
-              continue;
-            }
-
-            // Step A: Mark v1 as DEPRECATED (preserves history, prevents accidental verification or approval)
-            await tx.policyRuleVersion.update({
-              where: { id: existingVersion.id },
-              data: {
-                status: "DEPRECATED",
-                reviewNote: `v1 research draft superseded by v2 draft per Yash review feedback. Retained as immutable historical record.\n\n${existingVersion.reviewNote || ""}`.slice(0, 1000),
-              },
-            });
-
-            // Step B: Create v2 as DRAFT / UNVERIFIED
-            const c = ruleInPack.version;
-            const nextVersionNumber = existingVersion.versionNumber + 1;
-            const v2 = await tx.policyRuleVersion.create({
-              data: {
-                ruleId: dbRule.id,
-                versionNumber: nextVersionNumber,
-                title: String(c.title),
-                summary: String(c.summary),
-                legalExplanation: String(c.legalExplanation),
-                remediationAction: String(c.remediationAction),
-                applicabilityConditions: c.applicabilityConditions as string[],
-                exceptions: c.exceptions as string[],
-                restrictionLevel: c.restrictionLevel as "PROHIBITED" | "RESTRICTED" | "CONDITIONAL" | "DISCLOSURE_REQUIRED",
-                restrictedClaims: c.restrictedClaims as string[],
-                substantiationRequirements: c.substantiationRequirements as string[],
-                status: "DRAFT",
-                verificationStatus: "UNVERIFIED",
-                changeSummary: `v${nextVersionNumber} draft proposed incorporating review feedback; v${existingVersion.versionNumber} preserved as DEPRECATED history.`,
-                createdById: user.id,
-                reviewNote: String(c.reviewNote),
-              },
-            });
-
-            // Step C: Link citations to v2
-            for (const cite of ruleInPack.citations) {
-              const srcId = ids.get(cite.sourceKey);
-              if (srcId) {
-                await tx.policyRuleVersionSource.create({
-                  data: {
-                    versionId: v2.id,
-                    sourceId: srcId,
-                    sectionReference: String(cite.sectionReference),
-                    sectionTitle: String(cite.sectionTitle),
-                    directUrl: String(cite.directUrl),
-                    excerpt: String(cite.excerpt || ""),
-                  },
-                });
-              }
-            }
-
-            // Step D: Advance rule pointer to v2
-            await tx.policyRule.update({
-              where: { id: dbRule.id },
-              data: { title: String(c.title), currentVersionNumber: nextVersionNumber, updatedAt: new Date() },
-            });
-
-            // Step E: Record VERSION_PROPOSED event
-            await tx.policyRuleEvent.create({
-              data: {
-                ruleId: dbRule.id,
-                versionId: v2.id,
-                kind: "VERSION_PROPOSED",
-                actorId: user.id,
-                note: `v${nextVersionNumber} proposed as DRAFT / UNVERIFIED per review feedback; v${existingVersion.versionNumber} retained as DEPRECATED history.`,
-              },
-            });
-
-            newVersionsCreated++;
-            eventsCreated++;
-          }
-
-          // Step 4: Supersede composite rule RX-GOOG-HM-01, mark DEPRECATED and log RULE_RETIRED
-          const hmRule = existingRulesMap.get("RX-GOOG-HM-01");
-          if (hmRule) {
-            const hmVersion = await tx.policyRuleVersion.findFirst({
-              where: { ruleId: hmRule.id, versionNumber: hmRule.currentVersionNumber },
-            });
-            if (hmVersion && hmVersion.status === "DRAFT") {
-              const supersessionNotice =
-                "SUPERSEDED RULE — INACTIVE (Nov 1, 2026): Superseded by split rules RX-GOOG-PDS-01 (Prescription Drug Services) and RX-GOOG-RDT-01 (Restricted Drug Terms). Retained in DEPRECATED state for historical audit preservation. Cannot be verified or approved.";
-              await tx.policyRuleVersion.update({
-                where: { id: hmVersion.id },
-                data: {
-                  status: "DEPRECATED",
-                  reviewNote: supersessionNotice,
-                },
-              });
-              await tx.policyRuleEvent.create({
-                data: {
-                  ruleId: hmRule.id,
-                  versionId: hmVersion.id,
-                  kind: "RULE_RETIRED",
-                  actorId: user.id,
-                  note: "Rule superseded by RX-GOOG-PDS-01 and RX-GOOG-RDT-01; marked DEPRECATED to lock from verification/approval while preserving audit history.",
-                },
-              });
-              eventsCreated++;
-            }
-          }
-        }
-
-        // Exact transactional count check
-        const expected = {
-          sources: before.sources + newSources.length,
-          rules: before.rules + plan.rules.length,
-          versions: before.versions + newVersionsCreated,
-          events: before.events + eventsCreated,
-        };
-        const after = {
-          sources: await tx.policySource.count(),
-          rules: await tx.policyRule.count(),
-          versions: await tx.policyRuleVersion.count(),
-          events: await tx.policyRuleEvent.count(),
-        };
-
-        const bad = (Object.keys(expected) as Array<keyof typeof expected>).filter((k) => expected[k] !== after[k]);
-        if (process.env.TIER2_IMPORT_TEST_ROLLBACK === "1") bad.push("sources");
-        if (bad.length) {
-          throw new Error(
-            `Post-write check failed for ${bad.join(", ")} (expected ${JSON.stringify(expected)}, got ${JSON.stringify(
-              after,
-            )}); rolled back.`,
-          );
-        }
-
-        const stillActive = await tx.policyRuleVersion.count({
-          where: {
-            OR: [{ status: "ACTIVE" }, { verificationStatus: "VERIFIED" }],
-            rule: { code: { in: pack.rules.map((r) => r.code) } },
-          },
-        });
-        if (stillActive) throw new Error("An imported or updated version is active or verified; rolled back.");
-
-        const existingNow = await tx.policySource.findMany({
-          where: { id: { in: [...touched.keys()] } },
-          select: { id: true, updatedAt: true },
-        });
-        if (existingNow.some((s) => touched.get(s.id) !== s.updatedAt.getTime())) {
-          throw new Error("A pre-existing source changed during the import; rolled back.");
-        }
-      },
-      { timeout: 120_000, maxWait: 30_000 },
-    );
-
-    console.log(
-      `Written and verified: ${newSources.length} new source(s), ${plan.rules.length} new rule(s), ${newVersionsCreated} new version(s) created.`,
-    );
-    console.log("Every item remains DRAFT / UNVERIFIED. Independent verification by Admin A and independent approval by Admin B required.");
   } finally {
     await prisma.$disconnect();
   }
 }
 
-main().catch((err) => {
-  console.error(`[IMPORT FAILED] ${err instanceof Error ? err.message : err}`);
-  process.exitCode = 1;
-});
+// Execute when invoked directly
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+  main().catch((err) => {
+    console.error(`[IMPORT FAILED] ${err instanceof Error ? err.message : err}`);
+    process.exitCode = 1;
+  });
+}
