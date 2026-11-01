@@ -115,7 +115,7 @@ describe("Tier 2 Healthcare Advertising Policy Pack", () => {
     const pds = pack.rules.find((r) => r.code === "RX-GOOG-PDS-01")!;
     expect(pds.scope.category).toBe("CREDENTIALS_LICENSING");
     expect(pds.scope.industry).toBe("HEALTHCARE");
-    expect(pds.version.title).toContain("prescription services require Google certification");
+    expect(pds.version.title).toContain("prescription drug services and telemedicine prescribing");
     expect(String(pds.version.legalExplanation)).toContain("LegitScript");
     expect(String(pds.version.legalExplanation)).toContain("United States");
     expect(String(pds.version.legalExplanation)).toContain("UAE");
@@ -127,12 +127,12 @@ describe("Tier 2 Healthcare Advertising Policy Pack", () => {
     expect(rdt.scope.industry).toBe("HEALTHCARE");
     expect(rdt.version.title).toContain("Restrictions on prescription drug brand names");
     expect(String(rdt.version.legalExplanation)).toContain("direct-to-consumer");
-    expect(String(rdt.version.legalExplanation)).toContain("United Arab Emirates");
+    expect(String(rdt.version.legalExplanation)).toContain("United States");
     const rdtExceptions = rdt.version.exceptions as string[];
     expect(rdtExceptions[0]).toContain("Certified pharmaceutical manufacturers");
   });
 
-  it("provides comprehensive TikTok healthcare advertising coverage", () => {
+  it("provides nuanced TikTok healthcare advertising coverage without unsupported blanket claims", () => {
     const mc = pack.rules.find((r) => r.code === "RX-TIKTOK-MC-01")!;
     expect(mc.scope.platformCode).toBe("TIKTOK");
     expect(mc.scope.category).toBe("EFFICACY_CLAIM");
@@ -144,19 +144,21 @@ describe("Tier 2 Healthcare Advertising Policy Pack", () => {
     expect(hp.scope.platformCode).toBe("TIKTOK");
     expect(hp.scope.category).toBe("PRESCRIPTION_MEDICINE");
     expect(hp.version.restrictionLevel).toBe("RESTRICTED");
-    expect(String(hp.version.summary)).toContain("18 and older");
-    expect(String(hp.version.legalExplanation)).toContain("MOHAP");
-    expect(String(hp.version.substantiationRequirements)).toContain("18+ age restriction");
+    expect(String(hp.version.summary)).toContain("Industry Entry rules that vary by country");
+    expect(String(hp.version.legalExplanation)).toContain("market-by-market matrix");
+    expect(String(hp.version.reviewNote)).toContain("Verifier questions:");
   });
 
-  it("provides distinct US FTC statutory regulatory rules for substantiation and endorsements", () => {
+  it("accurately reflects FTC CARSE substantiation standard and endorsement rules", () => {
     const cs = pack.rules.find((r) => r.code === "RX-US-FTC-CS-01")!;
     expect(cs.scope.authorityType).toBe("REGULATION");
     expect(cs.scope.jurisdictionCode).toBe("US");
     expect(cs.scope.platformCode).toBeNull();
     expect(cs.scope.category).toBe("SUBSTANTIATION");
+    expect(String(cs.version.summary)).toContain("context-dependent and determined by the Pfizer factors");
     expect(String(cs.version.legalExplanation)).toContain("competent and reliable scientific evidence");
-    expect(String(cs.version.legalExplanation)).toContain("randomized, double-blind, placebo-controlled human clinical trials");
+    expect(String(cs.version.legalExplanation)).toContain("Pfizer factors");
+    expect(String(cs.version.legalExplanation)).toContain("does not impose a rigid blanket requirement");
 
     const te = pack.rules.find((r) => r.code === "RX-US-FTC-TE-01")!;
     expect(te.scope.authorityType).toBe("REGULATION");
@@ -183,23 +185,24 @@ describe("Tier 2 Healthcare Advertising Policy Pack", () => {
     expect(plan.rules).toHaveLength(7);
   });
 
-  it("enforces transactional count invariants and rollback safety triggers", () => {
+  it("enforces transactional count invariants and rollback safety triggers under the established versioning model", () => {
     const before = { sources: 3, rules: 3, versions: 3, events: 9 };
     const newSources = [{ key: "s1" }, { key: "s2" }, { key: "s3" }, { key: "s4" }];
-    const plannedRules = [{}, {}, {}, {}, {}, {}];
-    const updatedDraftCount = 3;
+    const plannedRules = [{}, {}, {}, {}, {}, {}]; // 6 new canonical rules
+    const newVersionsCreated = 6 + 2; // 6 new v1 drafts + 2 proposed v2 drafts
+    const eventsCreated = 4 + 6 + 2 + 1; // 4 sources + 6 rules + 2 version proposed + 1 rule retired
 
     const expected = {
       sources: before.sources + newSources.length,
       rules: before.rules + plannedRules.length,
-      versions: before.versions + plannedRules.length,
-      events: before.events + newSources.length + plannedRules.length + updatedDraftCount,
+      versions: before.versions + newVersionsCreated,
+      events: before.events + eventsCreated,
     };
 
     expect(expected).toEqual({
       sources: 7,
       rules: 9,
-      versions: 9,
+      versions: 11,
       events: 22,
     });
 

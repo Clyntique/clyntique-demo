@@ -1,18 +1,24 @@
-// Guarded, idempotent import and draft update of the Tier 2 healthcare
+// Guarded, idempotent import and version evolution of the Tier 2 healthcare
 // advertising policies (docs/p0-policy-evidence/research/tier2-healthcare-expansion-pack.json).
 //
 // Refines Tier 1 policies per Yash review feedback (Meta personal health attributes,
 // Google health personalization, Google prescription drug services/terms split),
 // and adds TikTok and US FTC regulatory coverage.
 //
-// All imported and updated records remain UNVERIFIED sources and DRAFT / UNVERIFIED
-// rule versions. Never activates policy coverage or bypasses the two-admin approval workflow.
+// Established Versioning Model:
+// - Does NOT overwrite pre-existing v1 draft records.
+// - Existing v1 drafts for RX-META-PA-01 and RX-GOOG-PA-01 are preserved as immutable DEPRECATED history.
+// - New v2 DRAFT / UNVERIFIED versions are proposed, retaining prior citations and audit trails.
+// - Pre-existing composite rule RX-GOOG-HM-01 is superseded, retired, and marked DEPRECATED
+//   (locking it from accidental verification or approval, replaced by RX-GOOG-PDS-01 and RX-GOOG-RDT-01).
+// - All new records are created as UNVERIFIED sources and DRAFT / UNVERIFIED rule versions.
+// - Never activates policy coverage or bypasses the two-admin approval workflow.
 //
 // Dry run by default: prints planned actions and writes nothing:
 //   npx tsx prisma/policy-tier2-import.ts --author <policy-admin-email>
 //
 // To write (requires explicit approval, production flag, and confirmation):
-//   IMPORT_CONFIRM_DATABASE=<database name> npx tsx prisma/policy-tier2-import.ts --author <email> --production-approved --apply [--update-drafts]
+//   IMPORT_CONFIRM_DATABASE=<database name> npx tsx prisma/policy-tier2-import.ts --author <email> --production-approved --apply [--create-versions]
 import "dotenv/config";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -43,7 +49,7 @@ function show(label: string, value: unknown) {
   console.log(`      ${label}: ${text}`);
 }
 
-function printPlan(plan: ImportPlan, dbName: string, apply: boolean, updateDrafts: boolean) {
+function printPlan(plan: ImportPlan, dbName: string, apply: boolean, createVersions: boolean) {
   const newSources = plan.sources.filter((s) => !s.existingId);
   const reused = plan.sources.filter((s) => s.existingId);
   console.log(`Database: ${dbName}${apply ? "" : " (dry run, nothing written)"}`);
@@ -59,7 +65,7 @@ function printPlan(plan: ImportPlan, dbName: string, apply: boolean, updateDraft
   }
 
   console.log(
-    `Rules: ${plan.rules.length} to create as DRAFT / UNVERIFIED; ${plan.skippedRules.length} already stored${
+    `Rules: ${plan.rules.length} new canonical rules to create as DRAFT / UNVERIFIED (v1); ${plan.skippedRules.length} pre-existing rules to evolve to v2${
       plan.skippedRules.length ? ` (${plan.skippedRules.join(", ")})` : ""
     }.`,
   );
@@ -78,15 +84,32 @@ function printPlan(plan: ImportPlan, dbName: string, apply: boolean, updateDraft
     console.log(`    + PolicyRuleEvent RULE_CREATED (actor: the --author admin)`);
   }
 
-  if (plan.skippedRules.length) {
-    console.log(
-      `\nExisting Rules Strategy: ${
-        updateDrafts
-          ? "Update existing DRAFT versions in place per Yash review feedback, logging VERSION_EDITED events."
-          : "Leave existing rules unchanged (pass --update-drafts to update existing unverified drafts in place)."
-      }`,
-    );
+  console.log("\nEstablished Policy Versioning Strategy:");
+  if (createVersions) {
+    console.log("  1. RX-META-PA-01: Propose v2 DRAFT / UNVERIFIED version with refined clinic copy guidance.");
+    console.log("     - v1 draft preserved as immutable historical record (status: DEPRECATED).");
+    console.log("     - PolicyRule currentVersionNumber advanced to 2.");
+    console.log("     - PolicyRuleEvent VERSION_PROPOSED logged.");
+    console.log("  2. RX-GOOG-PA-01: Propose v2 DRAFT / UNVERIFIED version clarifying audience restrictions vs contextual search.");
+    console.log("     - v1 draft preserved as immutable historical record (status: DEPRECATED).");
+    console.log("     - PolicyRule currentVersionNumber advanced to 2.");
+    console.log("     - PolicyRuleEvent VERSION_PROPOSED logged.");
+    console.log("  3. RX-GOOG-HM-01: Supersede composite rule; mark v1 as DEPRECATED with supersession lock.");
+    console.log("     - Cannot be verified or approved alongside replacements.");
+    console.log("     - Audit trail preserved; replaced by RX-GOOG-PDS-01 and RX-GOOG-RDT-01.");
+    console.log("     - PolicyRuleEvent RULE_RETIRED logged.");
+  } else {
+    console.log("  (Pre-existing rules left untouched. Pass --create-versions or --update-drafts to propose v2 drafts).");
   }
+
+  console.log("\nPlanned Post-Apply State Totals:");
+  console.log(`  - Total PolicySources: ${reused.length + newSources.length} (${reused.length} existing + ${newSources.length} new)`);
+  console.log(`  - Total PolicyRules: 9 (3 existing + 6 new)`);
+  console.log(
+    `  - Total PolicyRuleVersions: ${createVersions ? "11 (3 deprecated historical v1 + 6 new v1 drafts + 2 new v2 drafts)" : "9 (3 existing v1 + 6 new v1)"}`,
+  );
+  console.log(`  - Active Draft Review Targets: ${createVersions ? "8 (6 new v1 + 2 revised v2)" : "9 (3 existing v1 + 6 new v1)"}`);
+  console.log(`  - Deprecated Inactive Versions: ${createVersions ? "3 (v1 of META-PA-01, v1 of GOOG-PA-01, v1 of GOOG-HM-01)" : "0"}`);
 
   for (const w of plan.warnings) console.log(`  warning: ${w}`);
   for (const e of plan.errors) console.error(`  error: ${e}`);
@@ -96,11 +119,11 @@ async function main() {
   const argv = process.argv.slice(2);
   const apply = argv.includes("--apply");
   const approved = argv.includes("--production-approved");
-  const updateDrafts = argv.includes("--update-drafts");
+  const createVersions = argv.includes("--create-versions") || argv.includes("--update-drafts");
   const author = arg(argv, "--author")?.toLowerCase();
   if (!author) {
     throw new Error(
-      "Usage: npx tsx prisma/policy-tier2-import.ts --author <policy-admin-email> [--production-approved --apply] [--update-drafts]",
+      "Usage: npx tsx prisma/policy-tier2-import.ts --author <policy-admin-email> [--production-approved --apply] [--create-versions]",
     );
   }
 
@@ -145,7 +168,7 @@ async function main() {
       existingRuleCodes: new Set(rules.map((r) => r.code)),
     });
 
-    printPlan(plan, dbName as string, apply, updateDrafts);
+    printPlan(plan, dbName as string, apply, createVersions);
     if (plan.errors.length) throw new Error("The pack has errors; nothing was written.");
 
     const newSources = plan.sources.filter((s) => !s.existingId);
@@ -153,8 +176,8 @@ async function main() {
 
     if (!apply) return;
 
-    if (newSources.length === 0 && plan.rules.length === 0 && !updateDrafts) {
-      console.log("Nothing to create: every source and rule in the pack is already stored, and --update-drafts was not set. No change.");
+    if (newSources.length === 0 && plan.rules.length === 0 && !createVersions) {
+      console.log("Nothing to create: every source and rule in the pack is already stored, and --create-versions was not set. No change.");
       return;
     }
 
@@ -162,12 +185,12 @@ async function main() {
       sources: await prisma.policySource.count(),
       rules: await prisma.policyRule.count(),
       versions: await prisma.policyRuleVersion.count(),
-      citations: await prisma.policyRuleVersionSource.count(),
       events: await prisma.policyRuleEvent.count(),
     };
     const touched = new Map(sources.map((s) => [s.id, s.updatedAt.getTime()]));
 
-    let updatedDraftCount = 0;
+    let newVersionsCreated = 0;
+    let eventsCreated = 0;
 
     await prisma.$transaction(
       async (tx) => {
@@ -187,9 +210,10 @@ async function main() {
             },
           });
           ids.set(s.key, row.id);
+          eventsCreated++;
         }
 
-        // 2. Create new rules as DRAFT / UNVERIFIED
+        // 2. Create new rules as DRAFT / UNVERIFIED (v1)
         for (const r of plan.rules) {
           const c = r.content;
           const rule = await tx.policyRule.create({
@@ -213,7 +237,7 @@ async function main() {
               reviewNote: c.reviewNote,
               status: "DRAFT",
               verificationStatus: "UNVERIFIED",
-              changeSummary: "Imported from Tier 2 healthcare expansion pack as draft for human verification.",
+              changeSummary: "v1 imported from Tier 2 expansion pack as draft for human verification.",
               createdById: user.id,
             },
           });
@@ -231,29 +255,42 @@ async function main() {
               note: "v1 imported from Tier 2 expansion pack as DRAFT / UNVERIFIED; not active until verified and approved by two different admins.",
             },
           });
+          newVersionsCreated++;
+          eventsCreated++;
         }
 
-        // 3. Update existing draft rules in place if --update-drafts is set
-        if (updateDrafts) {
+        // 3. Evolve existing rules using established versioning model (propose v2, preserve v1 as DEPRECATED)
+        if (createVersions) {
           for (const code of plan.skippedRules) {
             const ruleInPack = pack.rules.find((r) => r.code === code);
             const dbRule = existingRulesMap.get(code);
             if (!ruleInPack || !dbRule) continue;
 
-            // Find current draft version in DB
+            // Find current v1 draft in DB
             const existingVersion = await tx.policyRuleVersion.findFirst({
               where: { ruleId: dbRule.id, versionNumber: dbRule.currentVersionNumber },
             });
 
             if (!existingVersion || existingVersion.status !== "DRAFT" || existingVersion.verificationStatus === "VERIFIED") {
-              // Only unverified drafts can be updated
               continue;
             }
 
-            const c = ruleInPack.version;
+            // Step A: Mark v1 as DEPRECATED (preserves history, prevents accidental verification or approval)
             await tx.policyRuleVersion.update({
               where: { id: existingVersion.id },
               data: {
+                status: "DEPRECATED",
+                reviewNote: `v1 research draft superseded by v2 draft per Yash review feedback. Retained as immutable historical record.\n\n${existingVersion.reviewNote || ""}`.slice(0, 1000),
+              },
+            });
+
+            // Step B: Create v2 as DRAFT / UNVERIFIED
+            const c = ruleInPack.version;
+            const nextVersionNumber = existingVersion.versionNumber + 1;
+            const v2 = await tx.policyRuleVersion.create({
+              data: {
+                ruleId: dbRule.id,
+                versionNumber: nextVersionNumber,
                 title: String(c.title),
                 summary: String(c.summary),
                 legalExplanation: String(c.legalExplanation),
@@ -263,18 +300,21 @@ async function main() {
                 restrictionLevel: c.restrictionLevel as "PROHIBITED" | "RESTRICTED" | "CONDITIONAL" | "DISCLOSURE_REQUIRED",
                 restrictedClaims: c.restrictedClaims as string[],
                 substantiationRequirements: c.substantiationRequirements as string[],
+                status: "DRAFT",
+                verificationStatus: "UNVERIFIED",
+                changeSummary: `v${nextVersionNumber} draft proposed incorporating review feedback; v${existingVersion.versionNumber} preserved as DEPRECATED history.`,
+                createdById: user.id,
                 reviewNote: String(c.reviewNote),
               },
             });
 
-            // Replace citations with refined citations
-            await tx.policyRuleVersionSource.deleteMany({ where: { versionId: existingVersion.id } });
+            // Step C: Link citations to v2
             for (const cite of ruleInPack.citations) {
               const srcId = ids.get(cite.sourceKey);
               if (srcId) {
                 await tx.policyRuleVersionSource.create({
                   data: {
-                    versionId: existingVersion.id,
+                    versionId: v2.id,
                     sourceId: srcId,
                     sectionReference: String(cite.sectionReference),
                     sectionTitle: String(cite.sectionTitle),
@@ -285,59 +325,63 @@ async function main() {
               }
             }
 
+            // Step D: Advance rule pointer to v2
             await tx.policyRule.update({
               where: { id: dbRule.id },
-              data: { title: String(c.title), updatedAt: new Date() },
+              data: { title: String(c.title), currentVersionNumber: nextVersionNumber, updatedAt: new Date() },
             });
 
+            // Step E: Record VERSION_PROPOSED event
             await tx.policyRuleEvent.create({
               data: {
                 ruleId: dbRule.id,
-                versionId: existingVersion.id,
-                kind: "VERSION_EDITED",
+                versionId: v2.id,
+                kind: "VERSION_PROPOSED",
                 actorId: user.id,
-                note: `v${existingVersion.versionNumber} draft refined per Yash review feedback (clearer clinic guidance, clarified audience restrictions).`,
+                note: `v${nextVersionNumber} proposed as DRAFT / UNVERIFIED per review feedback; v${existingVersion.versionNumber} retained as DEPRECATED history.`,
               },
             });
 
-            updatedDraftCount++;
+            newVersionsCreated++;
+            eventsCreated++;
           }
 
-          // If RX-GOOG-HM-01 exists, annotate it as superseded by split
+          // Step 4: Supersede composite rule RX-GOOG-HM-01, mark DEPRECATED and log RULE_RETIRED
           const hmRule = existingRulesMap.get("RX-GOOG-HM-01");
           if (hmRule) {
             const hmVersion = await tx.policyRuleVersion.findFirst({
               where: { ruleId: hmRule.id, versionNumber: hmRule.currentVersionNumber },
             });
             if (hmVersion && hmVersion.status === "DRAFT") {
-              const supersessionNote =
-                "SUPERSEDED BY SPLIT: Pending review to supersede with RX-GOOG-PDS-01 (Prescription Drug Services) and RX-GOOG-RDT-01 (Restricted Drug Terms). Retained in draft state for historical audit preservation.";
+              const supersessionNotice =
+                "SUPERSEDED RULE — INACTIVE (Nov 1, 2026): Superseded by split rules RX-GOOG-PDS-01 (Prescription Drug Services) and RX-GOOG-RDT-01 (Restricted Drug Terms). Retained in DEPRECATED state for historical audit preservation. Cannot be verified or approved.";
               await tx.policyRuleVersion.update({
                 where: { id: hmVersion.id },
                 data: {
-                  reviewNote: `${supersessionNote}\n\n${hmVersion.reviewNote || ""}`.slice(0, 1000),
+                  status: "DEPRECATED",
+                  reviewNote: supersessionNotice,
                 },
               });
               await tx.policyRuleEvent.create({
                 data: {
                   ruleId: hmRule.id,
                   versionId: hmVersion.id,
-                  kind: "VERSION_EDITED",
+                  kind: "RULE_RETIRED",
                   actorId: user.id,
-                  note: "Annotated draft with pending supersession notice (split into RX-GOOG-PDS-01 and RX-GOOG-RDT-01).",
+                  note: "Rule superseded by RX-GOOG-PDS-01 and RX-GOOG-RDT-01; marked DEPRECATED to lock from verification/approval while preserving audit history.",
                 },
               });
-              updatedDraftCount++;
+              eventsCreated++;
             }
           }
         }
 
-        // Verify inside the transaction; any mismatch rolls everything back
+        // Exact transactional count check
         const expected = {
           sources: before.sources + newSources.length,
           rules: before.rules + plan.rules.length,
-          versions: before.versions + plan.rules.length,
-          events: before.events + newSources.length + plan.rules.length + updatedDraftCount,
+          versions: before.versions + newVersionsCreated,
+          events: before.events + eventsCreated,
         };
         const after = {
           sources: await tx.policySource.count(),
@@ -362,7 +406,7 @@ async function main() {
             rule: { code: { in: pack.rules.map((r) => r.code) } },
           },
         });
-        if (stillActive) throw new Error("An imported or updated version is not DRAFT / UNVERIFIED; rolled back.");
+        if (stillActive) throw new Error("An imported or updated version is active or verified; rolled back.");
 
         const existingNow = await tx.policySource.findMany({
           where: { id: { in: [...touched.keys()] } },
@@ -376,7 +420,7 @@ async function main() {
     );
 
     console.log(
-      `Written and verified: ${newSources.length} new source(s), ${plan.rules.length} new rule(s), ${updatedDraftCount} draft(s) updated in place.`,
+      `Written and verified: ${newSources.length} new source(s), ${plan.rules.length} new rule(s), ${newVersionsCreated} new version(s) created.`,
     );
     console.log("Every item remains DRAFT / UNVERIFIED. Independent verification by Admin A and independent approval by Admin B required.");
   } finally {

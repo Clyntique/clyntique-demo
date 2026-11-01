@@ -183,16 +183,16 @@
         "category": "CREDENTIALS_LICENSING"
       },
       "version": {
-        "title": "Online pharmacy and telemedicine prescription services require Google certification",
-        "summary": "Google restricts advertising for services that prescribe, dispense, sell, or deliver prescription drugs online. Online pharmacies, digital dispensaries, and telemedicine providers facilitating online prescription issuance must obtain Google Healthcare and Medicines certification and comply with location-specific regulatory accreditation (such as LegitScript in the United States). In-person medical clinics and physicians providing general consultations without online drug fulfillment do not require this pharmacy certification.",
-        "legalExplanation": "Google's Healthcare and Medicines policy regulates entities involved in the commercial supply chain of prescription pharmaceuticals. Advertisers operating online prescription drug services, digital pharmacies, or telemedicine platforms that issue or fulfill prescriptions must apply for and hold Google Healthcare Certification for each targeted country. In the United States, third-party accreditation (such as LegitScript certification) is mandatory before Google approves certification. In the UAE, online pharmacy and telemedicine operations require licensing from the Ministry of Health and Prevention (MOHAP) or local health authority (DHA/DOH) and Google approval. Crucially, standard physical clinics, outpatient practices, and diagnostic centers that do not dispense pharmaceuticals online or promote mail-order prescription fulfillment are not classified as online pharmacies and do not require online pharmacy certification.",
-        "remediationAction": "If offering online prescription fulfillment or telemedicine prescribing, complete Google Healthcare and Medicines certification (and LegitScript accreditation for the US) before running campaigns. If operating a traditional clinic, ensure ads, landing pages, and campaign metadata focus on in-person consultations and medical services rather than online drug sales or prescribing.",
+        "title": "Google certification requirements for prescription drug services and telemedicine prescribing",
+        "summary": "Google restricts advertising for services that prescribe, dispense, sell, or facilitate the online fulfillment of prescription drugs. Online pharmacies, digital dispensaries, and telemedicine providers issuing prescription medications must obtain Google Healthcare and Medicines certification and meet jurisdiction-specific accreditation standards (such as LegitScript in the United States). Ordinary physical healthcare clinics providing standard in-person medical consultations without online prescription fulfillment are not subject to pharmacy certification, but any clinic offering remote consultations with prescription services must obtain required telemedicine certifications.",
+        "legalExplanation": "Google's Healthcare and Medicines policy regulates entities involved in the commercial supply chain and remote prescribing of prescription pharmaceuticals. Advertisers operating online prescription drug services, digital pharmacies, or telemedicine platforms that prescribe or dispense medications remotely must apply for and hold Google Healthcare Certification for each targeted country. In the United States, third-party accreditation (such as LegitScript certification for pharmacies or telemedicine) is required before Google grants certification. In the UAE, online pharmacy and telemedicine operations require licensing from the relevant health authority (MOHAP, DHA, or DOH) and Google approval. Standard physical clinics, outpatient practices, and diagnostic centers that provide strictly in-person examinations without remote drug fulfillment or mail-order prescribing are not classified as online pharmacies; however, this exemption applies only to services that do not engage in online prescription dispensing.",
+        "remediationAction": "If the clinic or provider provides telemedicine consultations that issue, fulfill, or deliver prescriptions online, verify whether Google Healthcare Certification and third-party accreditation (such as LegitScript in the US) are required prior to launching ads. If operating an in-person clinical practice, ensure ad copy and landing pages clearly reflect physical consultation services rather than remote prescription dispensing.",
         "applicabilityConditions": [
           "Ad runs on Google Ads network.",
           "Advertiser offers, promotes, or facilitates online prescription drug sales, mail-order dispensing, online pharmacy services, or telemedicine prescription issuance."
         ],
         "exceptions": [
-          "Traditional physical medical practices, outpatient clinics, and hospitals advertising clinical consultations, examinations, and healthcare services that do not sell or dispense prescription drugs online."
+          "Traditional physical medical practices, outpatient clinics, and diagnostic centers providing strictly in-person examinations without remote drug fulfillment, mail-order prescribing, or digital pharmacy services."
         ],
         "restrictionLevel": "RESTRICTED",
         "restrictedClaims": [
@@ -205,7 +205,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Split from RX-GOOG-HM-01 per Yash review feedback to isolate service provider certification from restricted drug terms. Verifier questions: (1) confirm LegitScript requirements for US telemedicine; (2) verify UAE MOHAP/Google pharmacy certification terms; (3) confirm physical clinic exclusion. Not legal advice."
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Split from RX-GOOG-HM-01 per review feedback to isolate service provider certification from restricted drug terms. Verifier questions: (1) confirm LegitScript requirements for US telemedicine clinics prescribing remotely; (2) verify UAE health authority documentation requirements for digital health; (3) confirm in-person clinic boundaries. Not legal advice."
       },
       "citations": [
         {
@@ -231,16 +231,16 @@
         "category": "PRESCRIPTION_MEDICINE"
       },
       "version": {
-        "title": "Restrictions on prescription drug brand names and terms in Google Ads",
-        "summary": "Google restricts the use of prescription drug brand names, active pharmaceutical ingredients, and prescription terms in ad copy, headlines, targeted keywords, and landing pages. Direct-to-consumer advertising of prescription drug names is prohibited in most countries (including the UAE) and strictly limited in the United States to certified pharmaceutical manufacturers and authorized entities. Non-manufacturer clinics and aesthetic practices must use generic procedural descriptions instead of prescription drug brands.",
-        "legalExplanation": "Google's Healthcare and Medicines policy enforces strict linguistic and content restrictions regarding prescription drug terms. In most jurisdictions globally (including the United Arab Emirates), direct-to-consumer promotion of prescription medicines is prohibited by national law and Google policy; ads mentioning prescription brand names will be disapproved. In the United States, direct-to-consumer advertising is permitted only for certified pharmaceutical manufacturers and authorized parties. For medical clinics, aesthetic centers, and wellness providers, including prescription drug brand names (e.g. neurotoxins, GLP-1 agonists, dermatological prescription formulas) in ad headlines, description copy, or targeted search keywords triggers automated policy enforcement ('Eligible (limited)' status or disapproval), even if the clinic employs licensed physicians.",
-        "remediationAction": "Remove prescription drug brand names and active pharmaceutical ingredients from ad copy, headlines, and keyword lists. Replace with generic procedural, specialty, or condition descriptions ('cosmetic wrinkle-smoothing treatment' instead of branded neurotoxins; 'medical weight-management program' instead of branded GLP-1s). Ensure landing pages emphasize physician consultation and clinical evaluation.",
+        "title": "Restrictions on prescription drug brand names, active ingredients, and direct-to-consumer terms in Google Ads",
+        "summary": "Google restricts the use of prescription drug brand names, active pharmaceutical ingredients, and related terms in ad copy, headlines, keywords, and landing pages. Direct-to-Consumer (DTC) advertising of prescription brand names is prohibited in most countries (including the UAE) and strictly limited in the United States, Canada, and New Zealand to certified manufacturers and authorized entities under jurisdiction-specific rules. Ordinary healthcare clinics cannot use prescription drug brand names in consumer-facing ad text or headlines, and must describe services using generic clinical or procedural terms.",
+        "legalExplanation": "Google's Healthcare and Medicines policy enforces strict content and keyword restrictions regarding prescription drug terms, separate from service provider licensing. In most jurisdictions globally (including the UAE), direct-to-consumer promotion of prescription medicines to the public is prohibited by local law and Google policy; ads mentioning prescription brand names will be disapproved. In the United States, direct-to-consumer advertising is permitted only for certified pharmaceutical manufacturers and authorized parties. In Canada, ads may mention prescription brand names only in price-or-name-only formats without claims or indications. For ordinary medical clinics, aesthetic centers, and outpatient providers, mentioning prescription pharmaceutical brand names (e.g. neurotoxins, GLP-1 agonists, prescription dermatologicals) in ad copy, headlines, or targeted keywords triggers policy disapproval or limited delivery, even if the clinic is fully licensed and staffed by certified physicians.",
+        "remediationAction": "Remove prescription drug brand names and active pharmaceutical ingredients from ad headlines, descriptions, and keyword lists. Replace with generic procedural, specialty, or condition descriptions ('cosmetic wrinkle-smoothing treatment' instead of branded neurotoxins; 'clinical weight-management program' instead of branded GLP-1s). Ensure landing pages emphasize medical consultation and clinical evaluation rather than direct drug promotion.",
         "applicabilityConditions": [
           "Ad runs on Google Ads (Search, Display, YouTube, or Shopping).",
           "Ad text, headline, targeted keyword list, or landing page contains prescription drug brand names, active pharmaceutical ingredients, or references to prescription-only medications."
         ],
         "exceptions": [
-          "Certified pharmaceutical manufacturers holding valid Google prescription drug advertising certification in jurisdictions permitting direct-to-consumer advertising (such as the United States)."
+          "Certified pharmaceutical manufacturers holding valid Google prescription drug advertising certification in jurisdictions where direct-to-consumer advertising is legally permitted (such as the United States)."
         ],
         "restrictionLevel": "RESTRICTED",
         "restrictedClaims": [
@@ -254,7 +254,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Split from RX-GOOG-HM-01 per Yash review feedback to isolate prescription drug terms from provider licensing. Verifier questions: (1) review US policy for clinic landing-page mentions vs ad copy mentions; (2) confirm UAE absolute prohibition on DTC prescription terms. Not legal advice."
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Split from RX-GOOG-HM-01 per review feedback to isolate prescription drug terms from provider licensing. Verifier questions: (1) review US policy for clinic landing-page mentions vs ad copy headlines/text; (2) confirm UAE statutory prohibition on DTC prescription terms; (3) verify Canada price/name exception boundaries. Not legal advice."
       },
       "citations": [
         {
@@ -280,10 +280,10 @@
         "category": "EFFICACY_CLAIM"
       },
       "version": {
-        "title": "Prohibition on exaggerated medical claims, guaranteed cures, and misleading before/afters",
-        "summary": "TikTok prohibits advertisements that make exaggerated, false, or misleading medical claims, promise guaranteed health outcomes or instant cures for incurable diseases, or use distorted before-and-after imagery. Health and cosmetic advertisements must not promote rapid or unhealthy weight loss, body-shaming, or absolute performance guarantees without verifiable scientific substantiation.",
-        "legalExplanation": "TikTok's Advertising Policies on Misleading and False Content and Exaggerated Claims strictly prohibit ads that promise unrealistic results or make absolute claims regarding health, wellness, and medical efficacy. Disallowed content includes claiming a product cures chronic or incurable conditions (such as cancer, diabetes, or severe arthritis), guaranteeing specific health results ('100% cure', 'relieves pain in 10 seconds'), and utilizing before-and-after comparisons that convey a distorted, unrealistic, or unachievable outcome (e.g. showing severe wrinkles or skin conditions disappearing instantly). Under TikTok's Weight Management and Body Image standards, ads promoting rapid, extreme, or unsafe weight loss, appetite-suppressing supplements, or content promoting negative body self-image are strictly prohibited.",
-        "remediationAction": "Remove all absolute promises, guaranteed timelines, and exaggerated efficacy assertions from copy and video scripts. Eliminate dramatic or manipulated before-and-after visual comparisons. Frame health services around realistic, evidence-based care, professional consultations, and individualized outcomes.",
+        "title": "TikTok restrictions on misleading medical claims, absolute cure guarantees, and before/after comparisons",
+        "summary": "TikTok prohibits advertisements that make false, exaggerated, or misleading medical claims, promise guaranteed health outcomes, or feature manipulated or unrepresentative before-and-after imagery. Mandatory 18+ age restrictions specifically apply to weight management, dieting, and fasting creatives. Advertisers must avoid absolute treatment promises, rapid relief guarantees, or body-shaming depictions.",
+        "legalExplanation": "TikTok's Advertising Policies on Misleading and False Content and Exaggerated Claims prohibit ads that promise unrealistic results or make absolute claims regarding health, wellness, and medical efficacy. Disallowed content includes claiming a product cures incurable medical conditions (e.g. cancer, diabetes), guaranteeing specific outcomes ('100% cure', 'relieves pain instantly'), and utilizing before-and-after comparisons that convey a distorted or unachievable result. Under TikTok's Weight Management policies, ads promoting weight management, fasting, or body sculpting must be targeted to users aged 18 and older, and cannot promote rapid or unhealthy weight reduction or negative body self-image. General healthcare services may be subject to different regional requirements, which must be verified per market.",
+        "remediationAction": "Remove absolute promises, guaranteed timelines, and exaggerated efficacy assertions from copy and video scripts. Eliminate dramatic or manipulated before-and-after visual comparisons. For weight management or body contouring campaigns, apply 18+ audience targeting. Frame health services around professional consultations, clinical safety, and individualized care.",
         "applicabilityConditions": [
           "Ad runs on TikTok (In-Feed Ads, TopView, Spark Ads, or branded formats).",
           "Creative copy, voiceover, video imagery, or landing page features medical claims, health treatment outcomes, before-and-after visual comparisons, or weight management assertions."
@@ -302,7 +302,7 @@
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from TikTok Advertising Policies (Misleading and False Content & Exaggerated Claims). Verifier questions: (1) verify TikTok help article 10002871 and misleading content section; (2) confirm before-and-after restrictions for aesthetic clinics; (3) confirm weight management guidelines. Not legal advice."
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from TikTok Advertising Policies (Misleading Content & Weight Management). Verifier questions: (1) verify TikTok help article 10002871 misleading content sections; (2) confirm before-and-after tolerances for non-surgical aesthetic clinics; (3) confirm market-specific weight management age-gating rules. Not legal advice."
       },
       "citations": [
         {
@@ -328,10 +328,10 @@
         "category": "PRESCRIPTION_MEDICINE"
       },
       "version": {
-        "title": "TikTok healthcare and pharmaceuticals industry entry and age-gating requirements",
-        "summary": "TikTok restricts healthcare, medical, and pharmaceutical advertising through strict Industry Entry rules. Prescription medicines are generally prohibited from self-serve advertising. Permitted healthcare categories (including over-the-counter medicines, medical devices, and clinic services) require valid regulatory documentation and must be age-gated to users 18 and older. Regional rules apply: US requires verified regulatory standing/LegitScript, while UAE mandates an official MOHAP advertising license.",
-        "legalExplanation": "Under TikTok's Industry Entry standards for Healthcare and Pharmaceuticals, advertising health-related products and services is subject to category qualification and market-by-market restrictions. Prescription medicines are prohibited from standard advertising across most regions. Over-the-counter (OTC) medicines, medical equipment, and healthcare clinics are conditionally permitted provided the advertiser submits official proof of regulatory licensing, clinic registration, or third-party certification (e.g. LegitScript for digital healthcare in the US). In the United Arab Emirates, healthcare advertising is strictly regulated and requires an approved advertising permit from the Ministry of Health and Prevention (MOHAP). Furthermore, all permitted healthcare and medical advertising campaigns on TikTok must be targeted exclusively to audiences aged 18 and older (18+).",
-        "remediationAction": "Configure campaign audience settings to target users aged 18 and older. Prepare and upload the required clinic operating license, physician credentials, and local advertising permits (e.g. MOHAP permit for UAE, LegitScript/state license for US) to TikTok Ads Manager Industry Entry verification before campaign launch. Remove any promotion of prescription-only pharmaceuticals.",
+        "title": "TikTok healthcare and pharmaceuticals industry entry and market-specific qualification requirements",
+        "summary": "TikTok regulates healthcare and pharmaceutical advertising through category-specific Industry Entry rules that vary by country. Prescription medicines are generally prohibited from standard self-serve advertising. Permitted categories (such as over-the-counter medicines, medical devices, and clinic services) require verified regulatory documentation, with age-gating (18+) required for specific restricted categories like weight management or cosmetic procedures. In regulated markets like the UAE, local health authority approvals and advertising documentation are required prior to onboarding, subject to regional verification.",
+        "legalExplanation": "Under TikTok's Industry Entry standards for Healthcare and Pharmaceuticals (Help Article 10003058), advertising health-related products and services is governed by a detailed market-by-market matrix. Promotion of prescription-only medicines is prohibited on standard self-serve ad accounts in most jurisdictions, though managed accounts or disease awareness campaigns may be subject to specific exceptions in select markets. Permitted health categories—including over-the-counter (OTC) medicines, medical devices, and outpatient clinics—require submission of official business and regulatory documentation. Age targeting restrictions vary: while weight management and certain cosmetic procedures require mandatory 18+ targeting, general health services follow market-specific rules. In the UAE, healthcare advertising requires appropriate regulatory authorizations (such as MOHAP, DHA, or DOH facility licensing and advertising permits), but specific TikTok MENA regional onboarding requirements must be confirmed against the live country table.",
+        "remediationAction": "Check TikTok's country-specific industry entry table for the targeted market before campaign setup. Prepare valid clinic facility licenses and practitioner credentials. Where promoting weight management, cosmetic procedures, or restricted health categories, ensure 18+ age targeting is configured. Remove direct promotion of prescription-only drugs from standard ad accounts.",
         "applicabilityConditions": [
           "Ad runs on TikTok Ads Manager targeting any market.",
           "Advertiser operates within the Healthcare, Medical, Pharmaceutical, Dental, or Medical Aesthetics industries."
@@ -339,19 +339,19 @@
         "exceptions": [],
         "restrictionLevel": "RESTRICTED",
         "restrictedClaims": [
-          "Promotion of prescription-only medicines on standard ad accounts",
-          "Serving healthcare, medical device, or clinical ads to audiences under 18 years old",
-          "Running healthcare campaigns in licensed markets (e.g. UAE) without verified MOHAP/regulatory permit"
+          "Promotion of prescription-only medicines on standard self-serve ad accounts without authorized platform approval",
+          "Serving restricted health categories (such as weight management or cosmetic surgery) to audiences under 18 years old",
+          "Running healthcare advertising in regulated markets without submitting required local health authority documentation"
         ],
         "substantiationRequirements": [
           "Valid healthcare facility operating license or physician credential from the jurisdiction of operation",
-          "Local advertising authorization permit (e.g. MOHAP health advertisement permit in the UAE)",
-          "Campaign targeting verification confirming 18+ age restriction is applied"
+          "Market-specific advertising authorization or regulatory documentation where required by local health authorities (e.g. UAE)",
+          "Audience targeting documentation verifying appropriate age gating for restricted categories (e.g. 18+ for weight management)"
         ],
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from TikTok Industry Entry: Healthcare and Pharmaceuticals (article 10003058). Verifier questions: (1) check country table for US vs UAE in Ads Help Article 10003058; (2) confirm whether OTC self-serve requires managed account in US; (3) verify 18+ gating requirement. Not legal advice."
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from TikTok Industry Entry: Healthcare and Pharmaceuticals (article 10003058). Verifier questions: (1) check exact country entry matrix for US vs UAE in Help Article 10003058; (2) confirm whether OTC self-serve vs managed account rules differ by country; (3) verify specific age-gating requirements by subcategory; (4) confirm UAE documentation accepted by TikTok (MOHAP vs DHA/DOH). Not legal advice."
       },
       "citations": [
         {
@@ -377,10 +377,10 @@
         "category": "SUBSTANTIATION"
       },
       "version": {
-        "title": "FTC competent and reliable scientific evidence requirements for health claims",
-        "summary": "Under Section 5 of the FTC Act and the FTC Health Products Compliance Guidance, all objective health, wellness, and medical efficacy claims must be substantiated by competent and reliable scientific evidence before dissemination. For health benefit, disease treatment, prevention, or symptom reduction claims, randomized, controlled human clinical trials (RCTs) conducted by qualified researchers are generally required. Animal studies, in vitro data, consumer testimonials, and unverified clinical impressions are legally insufficient.",
-        "legalExplanation": "The Federal Trade Commission enforces strict substantiation standards under Sections 5 and 12 of the FTC Act (15 U.S.C. §§ 45, 52). Under the FTC's Health Products Compliance Guidance (December 2022), advertisers must possess a 'reasonable basis' consisting of competent and reliable scientific evidence (CARSE) before making any objective claim about the health benefits, safety, or efficacy of a product or service. Both express claims ('clinically proven to lower blood pressure') and implied claims ('boost your immune defense against illness') must be supported. For claims regarding the prevention, treatment, or cure of diseases or serious health conditions, the FTC generally mandates high-quality, randomized, double-blind, placebo-controlled human clinical trials (RCTs) with statistically significant, clinically meaningful results. The FTC explicitly rejects consumer testimonials, anecdotal clinic reports, animal testing, or non-peer-reviewed observational studies as substitutes for well-controlled human trials.",
-        "remediationAction": "Review all headline and body copy claims to ensure every stated or implied health benefit is backed by competent and reliable scientific evidence (human clinical trials). Remove claims that exceed what the underlying clinical studies establish. Qualify preliminary research with clear and prominent disclosures regarding study limitations, or remove efficacy assertions.",
+        "title": "FTC competent and reliable scientific evidence standard for healthcare and wellness claims",
+        "summary": "Under Section 5 of the FTC Act and the FTC Health Products Compliance Guidance, all objective health, wellness, and medical efficacy claims must be substantiated by competent and reliable scientific evidence (CARSE) prior to dissemination. The required level and type of evidence are context-dependent and determined by the Pfizer factors (including claim type, product nature, and consensus of qualified experts in the field). While disease treatment, cure, or serious prevention claims generally require well-controlled clinical testing, the FTC does not mandate randomized, double-blind, placebo-controlled RCTs for all health claims across the board.",
+        "legalExplanation": "The Federal Trade Commission enforces substantiation standards under Sections 5 and 12 of the FTC Act (15 U.S.C. §§ 45, 52). Under the FTC's Health Products Compliance Guidance (December 2022), advertisers must possess a 'reasonable basis' consisting of competent and reliable scientific evidence (CARSE) before making any objective claim regarding health benefits, safety, or efficacy. CARSE is defined as tests, analyses, research, or studies conducted and evaluated in an objective manner by qualified persons, using procedures generally accepted in the profession to yield accurate and reliable results. Under established FTC doctrine (the Pfizer factors), there is no single fixed formula for substantiation; the requisite amount and type of evidence depend on the claim, the product, the consequences of a false claim, and what experts in the relevant scientific discipline consider reasonable. While claims regarding serious diseases or clinical cures typically require well-controlled human clinical trials, the FTC does not impose a rigid blanket requirement that every objective health claim must have randomized, double-blind, placebo-controlled RCTs. Uncontrolled consumer surveys, animal studies alone, or unverified clinician impressions do not substitute for human testing where human evidence is scientifically necessary.",
+        "remediationAction": "Review all healthcare and wellness claims against the underlying scientific substantiation in possession prior to campaign launch. Ensure claims do not exceed the scope or strength of what qualified scientific experts in the field consider established. Clearly qualify any preliminary research or disclose study limitations if claims are not supported by definitive human clinical consensus.",
         "applicabilityConditions": [
           "Ad targets consumers in the United States across any medium (digital, social, search, print, broadcast, or landing page).",
           "Creative makes express or implied claims regarding health benefits, disease prevention, medical treatment, pain reduction, anti-aging efficacy, or therapeutic outcomes."
@@ -389,17 +389,17 @@
         "restrictionLevel": "RESTRICTED",
         "restrictedClaims": [
           "Health, therapeutic, or medical efficacy claims made without prior possession of competent and reliable scientific evidence",
-          "Claiming clinical proof or scientific validation when studies lack randomized human clinical controls",
-          "Extrapolating animal or in vitro laboratory data to establish proven human health benefits",
-          "Using patient testimonials to substantiate objective medical efficacy claims"
+          "Express or implied claims of clinical proof or established health benefits that exceed the scientific consensus of supporting studies",
+          "Extrapolating preliminary in vitro or animal findings to claim proven human health benefits when human clinical data is required by experts",
+          "Relying on subjective consumer testimonials or anecdotal clinician reports to substantiate objective health claims"
         ],
         "substantiationRequirements": [
-          "Competent and reliable scientific evidence, consisting of well-designed, randomized controlled human clinical trials (RCTs) evaluating the specific claim and dosage/procedure"
+          "Competent and reliable scientific evidence evaluated by qualified experts, with study design, methodology, sample size, and duration appropriate for the specific claim and product"
         ],
         "officialEffectiveDate": null,
         "effectiveFrom": null,
         "effectiveTo": null,
-        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from FTC Health Products Compliance Guidance (Dec 2022). Statutory regulation, distinct from platform policy. Verifier questions: (1) confirm CARSE standard citation; (2) review guidance on express vs implied health claims; (3) verify disclaimer standards. Not legal advice."
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from FTC Health Products Compliance Guidance (Dec 2022). Statutory regulation, distinct from platform policy. Verifier questions: (1) verify Pfizer factors application to clinic and wellness services; (2) verify when human clinical trials vs other recognized scientific methodologies satisfy CARSE; (3) confirm standards for qualifying preliminary health research. Not legal advice."
       },
       "citations": [
         {
@@ -407,7 +407,7 @@
           "sectionReference": "Health Products Compliance Guidance: Section II. Substantiating Health Claims; Competent and Reliable Scientific Evidence",
           "sectionTitle": "Health Products Compliance Guidance",
           "directUrl": "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
-          "excerpt": "Advertisers must have a reasonable basis for all health-related claims, generally defined as competent and reliable scientific evidence consisting of randomized controlled human clinical trials.",
+          "excerpt": "Advertisers must have a reasonable basis for all health-related claims, defined as competent and reliable scientific evidence based on the expertise of qualified professionals in the relevant field.",
           "sourceUpdatedAt": null,
           "retrievedAt": null
         }
