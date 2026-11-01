@@ -35,7 +35,7 @@ function createRehearsalDatabase() {
         id: "src_meta",
         name: "Meta Personal Attributes",
         officialUrl: "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
-        verificationStatus: "UNVERIFIED",
+        verificationStatus: "REQUIRES_REVIEW",
         updatedAt: new Date("2026-10-27T00:00:00Z"),
       },
       {
@@ -408,6 +408,10 @@ describe("Tier 2 Healthcare Policy Rehearsal on Isolated Database", () => {
     expect(rdtV1.status).toBe("DRAFT");
     expect(rdtV1.verificationStatus).toBe("UNVERIFIED");
 
+    // Check that pre-existing Meta source preserved its exact REQUIRES_REVIEW verification status
+    const metaSource = store.sources.find((s) => s.id === "src_meta")!;
+    expect(metaSource.verificationStatus).toBe("REQUIRES_REVIEW");
+
     // Verify that ZERO reviewable drafts become VERIFIED or ACTIVE
     const reviewableDrafts = store.versions.filter((v) => v.status === "DRAFT");
     expect(reviewableDrafts).toHaveLength(8); // 6 new v1 + 2 revised v2
@@ -415,6 +419,22 @@ describe("Tier 2 Healthcare Policy Rehearsal on Isolated Database", () => {
       expect(v.status).toBe("DRAFT");
       expect(v.verificationStatus).toBe("UNVERIFIED");
     }
+
+    // Verify exact eight reviewable policy codes, including RX-US-FTC-TE-01
+    const reviewableRuleCodes = reviewableDrafts.map((v) => {
+      const rule = store.rules.find((r) => r.id === v.ruleId)!;
+      return rule.code;
+    }).sort();
+    expect(reviewableRuleCodes).toEqual([
+      "RX-GOOG-PA-01",
+      "RX-GOOG-PDS-01",
+      "RX-GOOG-RDT-01",
+      "RX-META-PA-01",
+      "RX-TIKTOK-HP-01",
+      "RX-TIKTOK-MC-01",
+      "RX-US-FTC-CS-01",
+      "RX-US-FTC-TE-01",
+    ]);
 
     const activeOrVerified = store.versions.filter((v) => v.status === "ACTIVE" || v.verificationStatus === "VERIFIED");
     expect(activeOrVerified).toHaveLength(0);
