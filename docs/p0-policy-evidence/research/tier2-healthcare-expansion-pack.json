@@ -1,0 +1,467 @@
+{
+  "_about": "Tier 2 healthcare advertising policies for Clyntique: refined Tier 1 policies based on Yash review feedback (Meta personal health attributes, Google health personalization, Google prescription drug services and restricted drug terms split), plus TikTok healthcare advertising coverage and US FTC regulatory standards. Prepared November 1, 2026. All sources UNVERIFIED and all rule versions DRAFT / UNVERIFIED. Nothing here is approved or active; requires independent verification by Admin A (team@clyntique.demo) and independent approval by Admin B (deepanshisingh1995@gmail.com). Not legal advice.",
+  "preparedOn": "2026-11-01",
+  "status": "UNVERIFIED",
+  "sources": [
+    {
+      "key": "meta-personal-attributes",
+      "name": "Meta Advertising Standards: Privacy violations and personal attributes",
+      "authorityName": "Meta Platforms",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
+      "sourceKind": "PLATFORM_POLICY_PAGE",
+      "publishedAt": null,
+      "accessNote": "Public page on Meta's Transparency Center, no sign-in required. Machine read Nov 1, 2026 (HTTP 200). Meta maintains a change log on this page; latest dated entry to be confirmed by verifier. Reused from Tier 1."
+    },
+    {
+      "key": "google-health-personalized",
+      "name": "Google Ads policy: Health in personalized advertising",
+      "authorityName": "Google",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://support.google.com/adspolicy/answer/16701855",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "publishedAt": null,
+      "accessNote": "Public help article on Google Ads Help Center (answer 16701855), no sign-in required. Machine read Nov 1, 2026 (HTTP 200). Covers sensitive personal hardships and audience targeting restrictions. Reused from Tier 1."
+    },
+    {
+      "key": "google-healthcare-medicines",
+      "name": "Google Ads policy: Healthcare and medicines",
+      "authorityName": "Google",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://support.google.com/adspolicy/answer/176031",
+      "sourceKind": "PLATFORM_HELP_ARTICLE",
+      "publishedAt": null,
+      "accessNote": "Public help article on Google Ads Help Center (answer 176031), no sign-in required. Machine read Nov 1, 2026 (HTTP 200). Governs prescription drug services, online pharmacies, and restricted pharmaceutical terms across country tables. Reused from Tier 1."
+    },
+    {
+      "key": "tiktok-advertising-policies",
+      "name": "TikTok Advertising Policies: Misleading and false content and exaggerated claims",
+      "authorityName": "TikTok",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://ads.tiktok.com/help/article/tiktok-advertising-policies",
+      "sourceKind": "PLATFORM_POLICY_PAGE",
+      "publishedAt": null,
+      "accessNote": "Public policy page on TikTok Ads Business Help Center, no sign-in required. Machine read Nov 1, 2026 (HTTP 200). Governs misleading content, exaggerated medical claims, guaranteed outcomes, and before-and-after comparisons."
+    },
+    {
+      "key": "tiktok-healthcare-pharmaceuticals",
+      "name": "TikTok Advertising Policies: Healthcare and Pharmaceuticals Industry Entry",
+      "authorityName": "TikTok",
+      "authorityType": "PLATFORM_POLICY",
+      "jurisdictionCode": "GLOBAL",
+      "officialUrl": "https://ads.tiktok.com/help/article/healthcare-and-pharmaceuticals-10003058",
+      "sourceKind": "PLATFORM_POLICY_PAGE",
+      "publishedAt": null,
+      "accessNote": "Public policy article on TikTok Ads Help Center (article 10003058), no sign-in required. Machine read Nov 1, 2026 (HTTP 200). Establishes industry qualification, documentation, mandatory 18+ age targeting, and regional market rules."
+    },
+    {
+      "key": "us-ftc-health-products-guidance",
+      "name": "FTC Health Products Compliance Guidance",
+      "authorityName": "Federal Trade Commission",
+      "authorityType": "REGULATION",
+      "jurisdictionCode": "US",
+      "officialUrl": "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
+      "sourceKind": "REGULATOR_GUIDANCE",
+      "publishedAt": null,
+      "accessNote": "Official FTC business guidance published December 2022, accessible without sign-in. Machine read Nov 1, 2026 (HTTP 200). Details competent and reliable scientific evidence (CARSE) requirements for all health-related advertising claims."
+    },
+    {
+      "key": "us-ftc-endorsement-guides",
+      "name": "FTC Guides Concerning the Use of Endorsements and Testimonials in Advertising",
+      "authorityName": "Federal Trade Commission",
+      "authorityType": "REGULATION",
+      "jurisdictionCode": "US",
+      "officialUrl": "https://www.ftc.gov/legal-library/browse/rules/endorsement-guides",
+      "sourceKind": "STATUTE_OR_REGULATION",
+      "publishedAt": null,
+      "accessNote": "Official FTC administrative guides under 16 CFR Part 255 (updated July 2023), accessible without sign-in. Machine read Nov 1, 2026 (HTTP 200). Governs consumer testimonials, typicality disclosures (§ 255.2), and material connections (§ 255.5)."
+    }
+  ],
+  "rules": [
+    {
+      "code": "RX-META-PA-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "META",
+        "industry": "GENERAL",
+        "category": "PERSONAL_HEALTH_ATTRIBUTES"
+      },
+      "version": {
+        "title": "Do not assert or imply personal health attributes or medical conditions",
+        "summary": "Meta prohibits ads that assert or imply, directly or through leading questions, that a person has a specific physical or mental health condition, medical diagnosis, or disability, or that the advertiser knows private health details about the viewer or their family. Advertising must focus on describing clinical services, treatments, and general health topics neutrally without targeting or probing the individual viewer's condition.",
+        "legalExplanation": "Meta's Privacy Violations and Personal Attributes advertising standard prohibits asserting or implying personal attributes, including physical or mental health conditions, medical history, and disabilities. The policy explicitly forbids framing that addresses the viewer's health with second-person probing ('Do you have diabetes?', 'Are you suffering from anxiety?'). However, ads that describe health services, medical procedures, or educational health content in the third person ('Treatments available for chronic diabetes', 'Confidential anxiety therapy services') are permitted, provided they do not imply knowledge of the user's personal health status.",
+        "remediationAction": "Rephrase copy from second-person diagnostic inquiries ('Are you struggling with acne?') to objective service descriptions ('Clinical dermatology treatments for acne management'). Describe who the service is for and what care is provided in general terms without addressing the viewer's individual medical history.",
+        "applicabilityConditions": [
+          "Ad runs on Facebook, Instagram, Messenger, or Meta Audience Network.",
+          "Ad text, headline, creative imagery, or landing page directly asserts, implies, or asks questions about the viewer's or their family's health condition, medical diagnosis, treatment history, mental health, or physical disability."
+        ],
+        "exceptions": [
+          "Public service announcements (PSAs) and public health communications from recognized health authorities that educate the public without asserting or implying that an individual viewer or family member has a health condition."
+        ],
+        "restrictionLevel": "PROHIBITED",
+        "restrictedClaims": [
+          "Direct or indirect questions asserting the viewer has a medical diagnosis or condition ('Do you have diabetes?', 'Struggling with depression?')",
+          "Copy suggesting or implying the advertiser knows the viewer's or their family member's private health information",
+          "Second-person 'you/your' wording tied directly to a physical or mental health attribute, disability, or medical symptom"
+        ],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Revised from Yash review feedback to provide clear guidance for clinic advertisers and eliminate unsupported restrictions. Verifier questions: (1) verify Meta's latest change log date; (2) confirm clinic guidance examples align with Meta's current enforcement examples; (3) confirm PSA exception wording. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "meta-personal-attributes",
+          "sectionReference": "Privacy Violations and Personal Attributes: Additional guidelines for ads; Physical or mental health and disability",
+          "sectionTitle": "Privacy Violations and Personal Attributes",
+          "directUrl": "https://transparency.meta.com/policies/ad-standards/objectionable-content/privacy-violations-personal-attributes/",
+          "excerpt": "Ads must not assert or imply personal attributes. This includes direct or indirect assertions or implications about a person's physical or mental health.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-GOOG-PA-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "GOOGLE",
+        "industry": "GENERAL",
+        "category": "TARGETING_RESTRICTION"
+      },
+      "version": {
+        "title": "Restrictions on health-related audience targeting in personalized ads",
+        "summary": "Google restricts personalized advertising for health-related personal hardships and sensitive conditions. Advertisers cannot use advertiser-curated audiences (such as website remarketing lists, Customer Match patient lists, or health-query custom segments) to target users based on physical or mental health conditions, treatments, or procedures. Standard contextual search keyword targeting and Google's predefined non-sensitive audiences remain permitted.",
+        "legalExplanation": "Under Google's Health in Personalized Advertising policy, health is designated a sensitive interest category to protect user privacy. Advertisers are prohibited from building and utilizing first-party or advertiser-managed audiences (including Customer Match email/phone lists, remarketing pixel lists, and custom segments built from sensitive health search queries or URLs) to target people based on medical conditions, prescription treatments, invasive procedures, or cosmetic surgeries. However, Google does NOT prohibit all health advertising: standard contextual keyword targeting on Google Search (e.g. matching queries like 'dermatology clinic Dallas' or 'physical therapy appointment') and Google's predefined, sanitized in-market/affinity audiences are permitted.",
+        "remediationAction": "Remove remarketing tags, Customer Match patient lists, and health-specific custom segments from campaign audience targeting. Switch audience configuration to contextual search keywords, location radius, and language targeting.",
+        "applicabilityConditions": [
+          "Ad runs on Google Ads (Search, Display, YouTube, Gmail, or Discover).",
+          "Campaign utilizes audience targeting features (remarketing, Customer Match, custom segments, or user-based lists) linked to sensitive health conditions, medical treatments, clinical procedures, or cosmetic surgery."
+        ],
+        "exceptions": [
+          "Contextual search advertising where ads match keywords actively entered by users without audience list retargeting.",
+          "Broad predefined Google audience segments (Affinity, In-Market) where Google has excluded sensitive personal health hardship signals."
+        ],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [],
+        "substantiationRequirements": [],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Revised from Yash review feedback to clarify restrictions on advertiser-curated audiences vs permitted contextual search and Google predefined audiences. Verifier questions: (1) verify answer 16701855 text on Custom Segments; (2) confirm cosmetic surgery and chronic care scope. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "google-health-personalized",
+          "sectionReference": "Health in personalized advertising: Personal hardships",
+          "sectionTitle": "Health in personalized advertising",
+          "directUrl": "https://support.google.com/adspolicy/answer/16701855",
+          "excerpt": "Google restricts the use of personalized advertising for health-related content, including physical or mental health conditions, treatments, and procedures.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-GOOG-PDS-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "GOOGLE",
+        "industry": "HEALTHCARE",
+        "category": "CREDENTIALS_LICENSING"
+      },
+      "version": {
+        "title": "Online pharmacy and telemedicine prescription services require Google certification",
+        "summary": "Google restricts advertising for services that prescribe, dispense, sell, or deliver prescription drugs online. Online pharmacies, digital dispensaries, and telemedicine providers facilitating online prescription issuance must obtain Google Healthcare and Medicines certification and comply with location-specific regulatory accreditation (such as LegitScript in the United States). In-person medical clinics and physicians providing general consultations without online drug fulfillment do not require this pharmacy certification.",
+        "legalExplanation": "Google's Healthcare and Medicines policy regulates entities involved in the commercial supply chain of prescription pharmaceuticals. Advertisers operating online prescription drug services, digital pharmacies, or telemedicine platforms that issue or fulfill prescriptions must apply for and hold Google Healthcare Certification for each targeted country. In the United States, third-party accreditation (such as LegitScript certification) is mandatory before Google approves certification. In the UAE, online pharmacy and telemedicine operations require licensing from the Ministry of Health and Prevention (MOHAP) or local health authority (DHA/DOH) and Google approval. Crucially, standard physical clinics, outpatient practices, and diagnostic centers that do not dispense pharmaceuticals online or promote mail-order prescription fulfillment are not classified as online pharmacies and do not require online pharmacy certification.",
+        "remediationAction": "If offering online prescription fulfillment or telemedicine prescribing, complete Google Healthcare and Medicines certification (and LegitScript accreditation for the US) before running campaigns. If operating a traditional clinic, ensure ads, landing pages, and campaign metadata focus on in-person consultations and medical services rather than online drug sales or prescribing.",
+        "applicabilityConditions": [
+          "Ad runs on Google Ads network.",
+          "Advertiser offers, promotes, or facilitates online prescription drug sales, mail-order dispensing, online pharmacy services, or telemedicine prescription issuance."
+        ],
+        "exceptions": [
+          "Traditional physical medical practices, outpatient clinics, and hospitals advertising clinical consultations, examinations, and healthcare services that do not sell or dispense prescription drugs online."
+        ],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Promoting online prescription drug fulfillment, ordering, or mail delivery without verified Google Healthcare Certification"
+        ],
+        "substantiationRequirements": [
+          "Google Healthcare and Medicines Certification for the advertiser's registered domain in each targeted country",
+          "LegitScript or recognized national pharmacy/telemedicine accreditation where required by local country policy (e.g., United States)"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Split from RX-GOOG-HM-01 per Yash review feedback to isolate service provider certification from restricted drug terms. Verifier questions: (1) confirm LegitScript requirements for US telemedicine; (2) verify UAE MOHAP/Google pharmacy certification terms; (3) confirm physical clinic exclusion. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "google-healthcare-medicines",
+          "sectionReference": "Healthcare and medicines: Prescription drug services and online pharmacies",
+          "sectionTitle": "Healthcare and medicines",
+          "directUrl": "https://support.google.com/adspolicy/answer/176031",
+          "excerpt": "Google restricts the promotion of prescription drug services. Advertisers must be certified by Google and may only target approved countries.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-GOOG-RDT-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "GOOGLE",
+        "industry": "HEALTHCARE",
+        "category": "PRESCRIPTION_MEDICINE"
+      },
+      "version": {
+        "title": "Restrictions on prescription drug brand names and terms in Google Ads",
+        "summary": "Google restricts the use of prescription drug brand names, active pharmaceutical ingredients, and prescription terms in ad copy, headlines, targeted keywords, and landing pages. Direct-to-consumer advertising of prescription drug names is prohibited in most countries (including the UAE) and strictly limited in the United States to certified pharmaceutical manufacturers and authorized entities. Non-manufacturer clinics and aesthetic practices must use generic procedural descriptions instead of prescription drug brands.",
+        "legalExplanation": "Google's Healthcare and Medicines policy enforces strict linguistic and content restrictions regarding prescription drug terms. In most jurisdictions globally (including the United Arab Emirates), direct-to-consumer promotion of prescription medicines is prohibited by national law and Google policy; ads mentioning prescription brand names will be disapproved. In the United States, direct-to-consumer advertising is permitted only for certified pharmaceutical manufacturers and authorized parties. For medical clinics, aesthetic centers, and wellness providers, including prescription drug brand names (e.g. neurotoxins, GLP-1 agonists, dermatological prescription formulas) in ad headlines, description copy, or targeted search keywords triggers automated policy enforcement ('Eligible (limited)' status or disapproval), even if the clinic employs licensed physicians.",
+        "remediationAction": "Remove prescription drug brand names and active pharmaceutical ingredients from ad copy, headlines, and keyword lists. Replace with generic procedural, specialty, or condition descriptions ('cosmetic wrinkle-smoothing treatment' instead of branded neurotoxins; 'medical weight-management program' instead of branded GLP-1s). Ensure landing pages emphasize physician consultation and clinical evaluation.",
+        "applicabilityConditions": [
+          "Ad runs on Google Ads (Search, Display, YouTube, or Shopping).",
+          "Ad text, headline, targeted keyword list, or landing page contains prescription drug brand names, active pharmaceutical ingredients, or references to prescription-only medications."
+        ],
+        "exceptions": [
+          "Certified pharmaceutical manufacturers holding valid Google prescription drug advertising certification in jurisdictions permitting direct-to-consumer advertising (such as the United States)."
+        ],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Prescription drug brand names or active pharmaceutical ingredients in ad headlines, ad copy, or display URLs without manufacturer certification",
+          "Bidding on prescription drug terms as search keywords in countries prohibiting direct-to-consumer prescription drug marketing (including the UAE)",
+          "Landing pages promoting direct consumer purchase of prescription-only medicines"
+        ],
+        "substantiationRequirements": [
+          "Google Healthcare Certification authorizing prescription drug term promotion for the specific targeted jurisdiction (manufacturers only)"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Split from RX-GOOG-HM-01 per Yash review feedback to isolate prescription drug terms from provider licensing. Verifier questions: (1) review US policy for clinic landing-page mentions vs ad copy mentions; (2) confirm UAE absolute prohibition on DTC prescription terms. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "google-healthcare-medicines",
+          "sectionReference": "Healthcare and medicines: Prescription drug terms and country restrictions",
+          "sectionTitle": "Healthcare and medicines",
+          "directUrl": "https://support.google.com/adspolicy/answer/176031",
+          "excerpt": "Google restricts the use of prescription drug terms in ad text, keywords, and landing pages depending on the country targeted and advertiser certification.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-TIKTOK-MC-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "TIKTOK",
+        "industry": "HEALTHCARE",
+        "category": "EFFICACY_CLAIM"
+      },
+      "version": {
+        "title": "Prohibition on exaggerated medical claims, guaranteed cures, and misleading before/afters",
+        "summary": "TikTok prohibits advertisements that make exaggerated, false, or misleading medical claims, promise guaranteed health outcomes or instant cures for incurable diseases, or use distorted before-and-after imagery. Health and cosmetic advertisements must not promote rapid or unhealthy weight loss, body-shaming, or absolute performance guarantees without verifiable scientific substantiation.",
+        "legalExplanation": "TikTok's Advertising Policies on Misleading and False Content and Exaggerated Claims strictly prohibit ads that promise unrealistic results or make absolute claims regarding health, wellness, and medical efficacy. Disallowed content includes claiming a product cures chronic or incurable conditions (such as cancer, diabetes, or severe arthritis), guaranteeing specific health results ('100% cure', 'relieves pain in 10 seconds'), and utilizing before-and-after comparisons that convey a distorted, unrealistic, or unachievable outcome (e.g. showing severe wrinkles or skin conditions disappearing instantly). Under TikTok's Weight Management and Body Image standards, ads promoting rapid, extreme, or unsafe weight loss, appetite-suppressing supplements, or content promoting negative body self-image are strictly prohibited.",
+        "remediationAction": "Remove all absolute promises, guaranteed timelines, and exaggerated efficacy assertions from copy and video scripts. Eliminate dramatic or manipulated before-and-after visual comparisons. Frame health services around realistic, evidence-based care, professional consultations, and individualized outcomes.",
+        "applicabilityConditions": [
+          "Ad runs on TikTok (In-Feed Ads, TopView, Spark Ads, or branded formats).",
+          "Creative copy, voiceover, video imagery, or landing page features medical claims, health treatment outcomes, before-and-after visual comparisons, or weight management assertions."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "PROHIBITED",
+        "restrictedClaims": [
+          "Guaranteed medical cures, 100% success claims, or absolute promises of health restoration",
+          "Claims of instant or rapid relief ('cures in 24 hours', 'instant weight loss')",
+          "Curing or preventing medically incurable chronic diseases",
+          "Manipulated, dramatic, or unrepresentative before-and-after visual comparisons"
+        ],
+        "substantiationRequirements": [
+          "Competent scientific documentation verifying any objective clinical efficacy statement made in the advertisement"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from TikTok Advertising Policies (Misleading and False Content & Exaggerated Claims). Verifier questions: (1) verify TikTok help article 10002871 and misleading content section; (2) confirm before-and-after restrictions for aesthetic clinics; (3) confirm weight management guidelines. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "tiktok-advertising-policies",
+          "sectionReference": "Advertising Policies: Misleading and false content; Exaggerated Claims",
+          "sectionTitle": "TikTok Advertising Policies",
+          "directUrl": "https://ads.tiktok.com/help/article/tiktok-advertising-policies",
+          "excerpt": "Ads must not contain exaggerated performance, promises of unrealistic results, or false expressions regarding health and medical outcomes.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-TIKTOK-HP-01",
+      "scope": {
+        "authorityType": "PLATFORM_POLICY",
+        "jurisdictionCode": "GLOBAL",
+        "platformCode": "TIKTOK",
+        "industry": "HEALTHCARE",
+        "category": "PRESCRIPTION_MEDICINE"
+      },
+      "version": {
+        "title": "TikTok healthcare and pharmaceuticals industry entry and age-gating requirements",
+        "summary": "TikTok restricts healthcare, medical, and pharmaceutical advertising through strict Industry Entry rules. Prescription medicines are generally prohibited from self-serve advertising. Permitted healthcare categories (including over-the-counter medicines, medical devices, and clinic services) require valid regulatory documentation and must be age-gated to users 18 and older. Regional rules apply: US requires verified regulatory standing/LegitScript, while UAE mandates an official MOHAP advertising license.",
+        "legalExplanation": "Under TikTok's Industry Entry standards for Healthcare and Pharmaceuticals, advertising health-related products and services is subject to category qualification and market-by-market restrictions. Prescription medicines are prohibited from standard advertising across most regions. Over-the-counter (OTC) medicines, medical equipment, and healthcare clinics are conditionally permitted provided the advertiser submits official proof of regulatory licensing, clinic registration, or third-party certification (e.g. LegitScript for digital healthcare in the US). In the United Arab Emirates, healthcare advertising is strictly regulated and requires an approved advertising permit from the Ministry of Health and Prevention (MOHAP). Furthermore, all permitted healthcare and medical advertising campaigns on TikTok must be targeted exclusively to audiences aged 18 and older (18+).",
+        "remediationAction": "Configure campaign audience settings to target users aged 18 and older. Prepare and upload the required clinic operating license, physician credentials, and local advertising permits (e.g. MOHAP permit for UAE, LegitScript/state license for US) to TikTok Ads Manager Industry Entry verification before campaign launch. Remove any promotion of prescription-only pharmaceuticals.",
+        "applicabilityConditions": [
+          "Ad runs on TikTok Ads Manager targeting any market.",
+          "Advertiser operates within the Healthcare, Medical, Pharmaceutical, Dental, or Medical Aesthetics industries."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Promotion of prescription-only medicines on standard ad accounts",
+          "Serving healthcare, medical device, or clinical ads to audiences under 18 years old",
+          "Running healthcare campaigns in licensed markets (e.g. UAE) without verified MOHAP/regulatory permit"
+        ],
+        "substantiationRequirements": [
+          "Valid healthcare facility operating license or physician credential from the jurisdiction of operation",
+          "Local advertising authorization permit (e.g. MOHAP health advertisement permit in the UAE)",
+          "Campaign targeting verification confirming 18+ age restriction is applied"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from TikTok Industry Entry: Healthcare and Pharmaceuticals (article 10003058). Verifier questions: (1) check country table for US vs UAE in Ads Help Article 10003058; (2) confirm whether OTC self-serve requires managed account in US; (3) verify 18+ gating requirement. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "tiktok-healthcare-pharmaceuticals",
+          "sectionReference": "Healthcare and Pharmaceuticals: Industry Entry Requirements and Age Restrictions",
+          "sectionTitle": "Healthcare and Pharmaceuticals",
+          "directUrl": "https://ads.tiktok.com/help/article/healthcare-and-pharmaceuticals-10003058",
+          "excerpt": "Healthcare and pharmaceutical advertising must comply with local laws and is subject to industry entry certification and strict 18+ age targeting.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-US-FTC-CS-01",
+      "scope": {
+        "authorityType": "REGULATION",
+        "jurisdictionCode": "US",
+        "platformCode": null,
+        "industry": "HEALTHCARE",
+        "category": "SUBSTANTIATION"
+      },
+      "version": {
+        "title": "FTC competent and reliable scientific evidence requirements for health claims",
+        "summary": "Under Section 5 of the FTC Act and the FTC Health Products Compliance Guidance, all objective health, wellness, and medical efficacy claims must be substantiated by competent and reliable scientific evidence before dissemination. For health benefit, disease treatment, prevention, or symptom reduction claims, randomized, controlled human clinical trials (RCTs) conducted by qualified researchers are generally required. Animal studies, in vitro data, consumer testimonials, and unverified clinical impressions are legally insufficient.",
+        "legalExplanation": "The Federal Trade Commission enforces strict substantiation standards under Sections 5 and 12 of the FTC Act (15 U.S.C. §§ 45, 52). Under the FTC's Health Products Compliance Guidance (December 2022), advertisers must possess a 'reasonable basis' consisting of competent and reliable scientific evidence (CARSE) before making any objective claim about the health benefits, safety, or efficacy of a product or service. Both express claims ('clinically proven to lower blood pressure') and implied claims ('boost your immune defense against illness') must be supported. For claims regarding the prevention, treatment, or cure of diseases or serious health conditions, the FTC generally mandates high-quality, randomized, double-blind, placebo-controlled human clinical trials (RCTs) with statistically significant, clinically meaningful results. The FTC explicitly rejects consumer testimonials, anecdotal clinic reports, animal testing, or non-peer-reviewed observational studies as substitutes for well-controlled human trials.",
+        "remediationAction": "Review all headline and body copy claims to ensure every stated or implied health benefit is backed by competent and reliable scientific evidence (human clinical trials). Remove claims that exceed what the underlying clinical studies establish. Qualify preliminary research with clear and prominent disclosures regarding study limitations, or remove efficacy assertions.",
+        "applicabilityConditions": [
+          "Ad targets consumers in the United States across any medium (digital, social, search, print, broadcast, or landing page).",
+          "Creative makes express or implied claims regarding health benefits, disease prevention, medical treatment, pain reduction, anti-aging efficacy, or therapeutic outcomes."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "RESTRICTED",
+        "restrictedClaims": [
+          "Health, therapeutic, or medical efficacy claims made without prior possession of competent and reliable scientific evidence",
+          "Claiming clinical proof or scientific validation when studies lack randomized human clinical controls",
+          "Extrapolating animal or in vitro laboratory data to establish proven human health benefits",
+          "Using patient testimonials to substantiate objective medical efficacy claims"
+        ],
+        "substantiationRequirements": [
+          "Competent and reliable scientific evidence, consisting of well-designed, randomized controlled human clinical trials (RCTs) evaluating the specific claim and dosage/procedure"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from FTC Health Products Compliance Guidance (Dec 2022). Statutory regulation, distinct from platform policy. Verifier questions: (1) confirm CARSE standard citation; (2) review guidance on express vs implied health claims; (3) verify disclaimer standards. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "us-ftc-health-products-guidance",
+          "sectionReference": "Health Products Compliance Guidance: Section II. Substantiating Health Claims; Competent and Reliable Scientific Evidence",
+          "sectionTitle": "Health Products Compliance Guidance",
+          "directUrl": "https://www.ftc.gov/business-guidance/resources/health-products-compliance-guidance",
+          "excerpt": "Advertisers must have a reasonable basis for all health-related claims, generally defined as competent and reliable scientific evidence consisting of randomized controlled human clinical trials.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    },
+    {
+      "code": "RX-US-FTC-TE-01",
+      "scope": {
+        "authorityType": "REGULATION",
+        "jurisdictionCode": "US",
+        "platformCode": null,
+        "industry": "HEALTHCARE",
+        "category": "TESTIMONIAL_ENDORSEMENT"
+      },
+      "version": {
+        "title": "FTC requirements for healthcare testimonials, typicality disclosures, and material connections",
+        "summary": "Under FTC Endorsement Guides (16 CFR Part 255), consumer testimonials depicting health or medical outcomes must reflect honest experiences and representative results. If an endorser's experience is not generally achievable, the advertiser must clearly and conspicuously disclose the generally expected performance; disclaimers like 'results may vary' are legally insufficient. Furthermore, any material connection between an endorser and the advertiser (such as payment, free treatment, discounts, or employment) must be clearly and conspicuously disclosed.",
+        "legalExplanation": "Under 16 CFR Part 255 (Guides Concerning the Use of Endorsements and Testimonials in Advertising), consumer and expert endorsements in health advertising are strictly regulated. Pursuant to 16 CFR § 255.2, an advertisement utilizing a consumer testimonial (e.g. extraordinary patient weight loss, rapid skin restoration, or dramatic pain elimination) implies that the experience is representative of what consumers will generally achieve. If the advertiser lacks substantiation that such results are typical, the ad must clearly and conspicuously disclose the generally expected results in the depicted circumstances. Vague, boilerplate disclaimers such as 'Results not typical' or 'Results may vary' do not cure deception. Pursuant to 16 CFR § 255.5, if there exists a material connection between the endorser and the advertiser that the audience would not reasonably expect—including monetary compensation, free clinical procedures, product gifts, employee status, or familial relationships—such connection must be clearly and prominently disclosed in immediate visual or auditory proximity to the endorsement (e.g. '#PaidAd', 'Complimentary treatment provided').",
+        "remediationAction": "If featuring patient testimonials with exceptional results, add a clear and conspicuous disclosure stating the generally expected performance based on clinical substantiation. If the patient, influencer, or practitioner received compensation, free treatment, or has an affiliation with the clinic, ensure an unambiguous disclosure of material connection is visibly integrated into the creative before the viewer engages.",
+        "applicabilityConditions": [
+          "Ad targets consumers in the United States across any medium (video, image, text, influencer post, or landing page).",
+          "Creative features consumer reviews, patient testimonials, influencer endorsements, clinician recommendations, or user-generated experience stories."
+        ],
+        "exceptions": [],
+        "restrictionLevel": "DISCLOSURE_REQUIRED",
+        "restrictedClaims": [
+          "Patient testimonials presenting non-typical health outcomes without clear and conspicuous disclosure of generally expected results",
+          "Relying on vague disclaimers such as 'Results may vary' or 'Results not typical' to defend atypical testimonials",
+          "Endorsements where compensation, free procedures, or material connections are hidden, omitted, or buried behind links or obscure hashtags"
+        ],
+        "substantiationRequirements": [
+          "Scientific substantiation demonstrating that consumer experiences depicted in testimonials represent generally expected performance, or documented evidence supporting the disclosed typical results",
+          "Written record of material connection disclosures for all sponsored patients, influencers, and brand advocates"
+        ],
+        "officialEffectiveDate": null,
+        "effectiveFrom": null,
+        "effectiveTo": null,
+        "reviewNote": "RESEARCHED DRAFT, UNVERIFIED (Nov 1, 2026). Researched from FTC Guides Concerning Endorsements and Testimonials (16 CFR Part 255, updated 2023). Statutory regulation, distinct from platform policy. Verifier questions: (1) verify 16 CFR § 255.2 typicality standards; (2) verify § 255.5 disclosure requirements; (3) verify clear and conspicuous standard for mobile video. Not legal advice."
+      },
+      "citations": [
+        {
+          "sourceKey": "us-ftc-endorsement-guides",
+          "sectionReference": "16 CFR Part 255: § 255.2 Consumer endorsements; § 255.5 Disclosure of material connections",
+          "sectionTitle": "Guides Concerning the Use of Endorsements and Testimonials in Advertising",
+          "directUrl": "https://www.ftc.gov/legal-library/browse/rules/endorsement-guides",
+          "excerpt": "Advertisements featuring consumer testimonials must disclose the generally expected performance if results are not typical, and must clearly disclose any material connection between endorser and seller.",
+          "sourceUpdatedAt": null,
+          "retrievedAt": null
+        }
+      ],
+      "openQuestions": [],
+      "researchStatus": "REQUIRES_REVIEW"
+    }
+  ]
+}
