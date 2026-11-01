@@ -172,7 +172,13 @@ async function main() {
       if (stillActive) throw new Error("An imported version is not DRAFT / UNVERIFIED; rolled back.");
       const existingNow = await tx.policySource.findMany({ where: { id: { in: [...touched.keys()] } }, select: { id: true, updatedAt: true } });
       if (existingNow.some((s) => touched.get(s.id) !== s.updatedAt.getTime())) throw new Error("A pre-existing source changed during the import; rolled back.");
-    });
+    },
+    // Prisma's default interactive-transaction timeout is 5 s. The ~25 round
+    // trips above (writes + post-write checks) take longer than that from a
+    // distant client to the hosted database (first Production run: 5370 ms,
+    // rolled back). Same limits as prisma/db-restore.ts; a timeout still
+    // rolls everything back.
+    { timeout: 120_000, maxWait: 30_000 });
 
     const now = await prisma.policyRuleVersion.findMany({ where: { rule: { code: { in: plan.rules.map((r) => r.code) } } }, select: { status: true, verificationStatus: true, rule: { select: { code: true } } } });
     console.log(`Written and verified: ${newSources.length} source(s), ${plan.rules.length} rule(s): ${now.map((v) => `${v.rule.code} ${v.status}/${v.verificationStatus}`).join(", ")}.`);
