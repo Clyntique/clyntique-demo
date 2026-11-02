@@ -23,6 +23,8 @@ import {
 } from "@/lib/workflow/labels";
 import { Breadcrumb } from "@/components/layout/breadcrumb";
 import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
+import { RecordStatusPill } from "@/components/evidence/record-status";
+import { EVIDENCE_ASSESSMENT_LABEL, EVIDENCE_RECORD_NOTICE } from "@/lib/workflow/labels";
 import { Card } from "@/components/ui/card";
 import { StatusBadge, TonePill, type Tone } from "@/components/ui/status-badge";
 import { ExternalOutcomeForm, ExternalSubmissionForm, ReopenReviewForm } from "./lifecycle-forms";
@@ -113,6 +115,14 @@ export async function ReviewRecord({ role, params }: { role: Role; params: Promi
   const latestFinal = finalDecisions[0];
   const generatedAt = new Date();
   const recordCode = submission.id.slice(-8).toUpperCase();
+  // Evidence Dictionary (Nov 2): how much of the evidence is reusable, and whether a reviewer checked it.
+  const activeEvidence = review.evidence.filter((e) => !e.withdrawn);
+  const withdrawnCount = review.evidence.length - activeEvidence.length;
+  const fromDictionary = activeEvidence.filter((e) => e.record);
+  const checkedRecords = fromDictionary.filter((e) => e.record?.status === "ACCEPTED").length;
+  // Findings that asked for evidence and still have nothing linked (open, or awaiting the reviewer).
+  const missingEvidence = review.findings.filter((f) => f.requiredAction === "PROVIDE_EVIDENCE" && (f.status === "OPEN" || f.status === "RESPONDED") && f.evidenceIds.length === 0);
+  const evidenceTitle = new Map(review.evidence.map((e) => [e.id, e.title]));
 
   return (
     <div className="flex min-w-0 flex-col gap-8 print:gap-6">
@@ -173,6 +183,19 @@ export async function ReviewRecord({ role, params }: { role: Role; params: Promi
             <Row label="Markets">{submission.markets.length ? submission.markets.map((m) => m.name).join(", ") : "Not specified"}</Row>
             <Row label="Platforms">{submission.platforms.length ? submission.platforms.map((p) => p.name).join(", ") : "Not specified"}</Row>
             <Row label="Versions">{submission.versions.length ? submission.versions.map((v) => `V${v.versionNumber} (${day(v.createdAt)})`).join(", ") : "None uploaded"}</Row>
+            <Row label="Evidence">
+              {review.evidence.length === 0
+                ? "None on file"
+                : `${activeEvidence.length} on file${withdrawnCount ? ` (${withdrawnCount} withdrawn)` : ""} · ${fromDictionary.length} from the Evidence Dictionary · ${checkedRecords} with a reviewer check accepted`}
+            </Row>
+            {missingEvidence.length > 0 && (
+              <Row label="Evidence still needed">
+                <span className="text-attention-ink">
+                  {missingEvidence.length} {missingEvidence.length === 1 ? "finding asks" : "findings ask"} for evidence and {missingEvidence.length === 1 ? "has" : "have"} none linked yet:{" "}
+                  {missingEvidence.map((f) => f.issue).join("; ")}
+                </span>
+              </Row>
+            )}
           </dl>
         </Card>
       </Section>
@@ -183,14 +206,29 @@ export async function ReviewRecord({ role, params }: { role: Role; params: Promi
         ) : (
           <div className="flex flex-col gap-4">
             {lifecycle.cycles.map((cycle) => (
-              <CycleCard key={cycle.id} cycle={cycle} decisions={review.decisions.filter((d) => d.cycleNumber === cycle.number)} findings={review.findings.filter((f) => f.cycleNumber === cycle.number)} team={team} />
+              <CycleCard
+                key={cycle.id}
+                cycle={cycle}
+                decisions={review.decisions.filter((d) => d.cycleNumber === cycle.number)}
+                findings={review.findings.filter((f) => f.cycleNumber === cycle.number)}
+                evidenceTitle={evidenceTitle}
+                team={team}
+              />
             ))}
           </div>
         )}
       </Section>
 
-      <Section title="Evidence" description={team ? "All evidence on file, including team-only items." : "Evidence you shared with the reviewer."}>
+      <Section
+        title="Evidence"
+        description={
+          team
+            ? "All evidence on file, including team-only items. Items attached from the Evidence Dictionary show the record's current reviewer check."
+            : "Evidence you shared with the reviewer. Items attached from your Evidence Dictionary show the record's current reviewer check."
+        }
+      >
         {review.evidence.length === 0 ? <p className="text-small text-muted">No evidence on file.</p> : <EvidenceTable evidence={review.evidence} team={team} />}
+        {fromDictionary.length > 0 && <p className="text-meta">{EVIDENCE_RECORD_NOTICE}</p>}
       </Section>
 
       <Section
@@ -266,7 +304,19 @@ function Unavailable({ href }: { href: string }) {
   );
 }
 
-function CycleCard({ cycle, decisions, findings, team }: { cycle: CycleView; decisions: DecisionView[]; findings: FindingView[]; team: boolean }) {
+function CycleCard({
+  cycle,
+  decisions,
+  findings,
+  evidenceTitle,
+  team,
+}: {
+  cycle: CycleView;
+  decisions: DecisionView[];
+  findings: FindingView[];
+  evidenceTitle: Map<string, string>;
+  team: boolean;
+}) {
   const final = decisions.find((d) => d.kind === "FINAL");
   const requests = decisions.filter((d) => d.kind === "CHANGES_REQUESTED");
   return (
@@ -335,6 +385,18 @@ function CycleCard({ cycle, decisions, findings, team }: { cycle: CycleView; dec
                   <td className="py-1.5 pr-3">
                     <span className="font-medium text-ink">{f.issue}</span>
                     {f.versionNumber != null && <span className="text-muted"> · V{f.versionNumber}</span>}
+                    {f.policy && (
+                      <span className="text-muted">
+                        {" "}
+                        · cites {f.policy.ruleCode} v{f.policy.versionNumber}
+                      </span>
+                    )}
+                    {f.claimText && <p className="text-muted">Claim: “{f.claimText}”{f.claimLocation ? ` · ${f.claimLocation}` : ""}</p>}
+                    {f.evidenceIds.length > 0 ? (
+                      <p className="text-muted">Evidence: {f.evidenceIds.map((id) => evidenceTitle.get(id) ?? "evidence").join(" · ")}</p>
+                    ) : (
+                      f.requiredAction === "PROVIDE_EVIDENCE" && (f.status === "OPEN" || f.status === "RESPONDED") && <p className="text-attention-ink">No evidence linked yet.</p>
+                    )}
                     {f.resolutionNote && <p className="text-muted">{f.resolutionNote}</p>}
                   </td>
                   <td className="py-1.5 pr-3 whitespace-nowrap">{SEVERITY_LABEL[f.severity]}</td>
@@ -363,26 +425,55 @@ function EvidenceTable({ evidence, team }: { evidence: EvidenceView[]; team: boo
             <th className="py-1 pr-3 font-medium">Type</th>
             <th className="py-1 pr-3 font-medium">Source</th>
             <th className="py-1 pr-3 font-medium">Added</th>
+            <th className="py-1 pr-3 font-medium">Reviewer check</th>
             {team && <th className="py-1 font-medium">Visibility</th>}
           </tr>
         </thead>
         <tbody>
-          {evidence.map((e) => (
-            <tr key={e.id} className="border-t border-line align-top">
-              <td className="py-1.5 pr-3">
-                <span className={e.withdrawn ? "text-muted line-through" : "font-medium text-ink"}>{e.title}</span>
-                {e.withdrawn && <span className="text-muted"> · withdrawn {e.withdrawal ? day(e.withdrawal.at) : ""}</span>}
-                {e.file && <p className="text-muted">{e.file.name}</p>}
-              </td>
-              <td className="py-1.5 pr-3 whitespace-nowrap">{EVIDENCE_TYPES[e.type]}</td>
-              <td className="py-1.5 pr-3">{e.source ?? e.url ?? "—"}</td>
-              <td className="py-1.5 pr-3 whitespace-nowrap">
-                {day(e.createdAt)}
-                {e.submittedWithRound != null && <span className="text-muted"> · R{e.submittedWithRound}</span>}
-              </td>
-              {team && <td className="py-1.5 whitespace-nowrap">{e.visibility === "SHARED" ? "Shared with client" : "Team only"}</td>}
-            </tr>
-          ))}
+          {evidence.map((e) => {
+            const latestAssessment = e.assessments[e.assessments.length - 1];
+            return (
+              <tr key={e.id} className="border-t border-line align-top">
+                <td className="py-1.5 pr-3">
+                  <span className={e.withdrawn ? "text-muted line-through" : "font-medium text-ink"}>{e.title}</span>
+                  {e.withdrawn && <span className="text-muted"> · withdrawn {e.withdrawal ? day(e.withdrawal.at) : ""}</span>}
+                  {e.claimText && <p className="text-muted">Supports: “{e.claimText}”</p>}
+                  {e.file && <p className="text-muted">{e.file.name}</p>}
+                  {e.record && (
+                    <p className="text-muted">
+                      From the Evidence Dictionary
+                      {e.record.href && (
+                        <>
+                          {" · "}
+                          <Link href={e.record.href} className="underline print:no-underline">
+                            record
+                          </Link>
+                        </>
+                      )}
+                      {e.record.validUntil && ` · valid until ${day(e.record.validUntil)}`}
+                    </p>
+                  )}
+                </td>
+                <td className="py-1.5 pr-3 whitespace-nowrap">{EVIDENCE_TYPES[e.type]}</td>
+                <td className="py-1.5 pr-3">{e.source ?? e.url ?? "—"}</td>
+                <td className="py-1.5 pr-3 whitespace-nowrap">
+                  {day(e.createdAt)}
+                  {e.submittedWithRound != null && <span className="text-muted"> · R{e.submittedWithRound}</span>}
+                </td>
+                <td className="py-1.5 pr-3">
+                  <div className="flex flex-col gap-1">
+                    {e.record ? <RecordStatusPill status={e.record.status} expired={e.record.expired} /> : <span className="text-muted">—</span>}
+                    {latestAssessment && (
+                      <span className="text-muted">
+                        This review: {EVIDENCE_ASSESSMENT_LABEL[latestAssessment.result]} (cycle {latestAssessment.cycleNumber})
+                      </span>
+                    )}
+                  </div>
+                </td>
+                {team && <td className="py-1.5 whitespace-nowrap">{e.visibility === "SHARED" ? "Shared with client" : "Team only"}</td>}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </Card>

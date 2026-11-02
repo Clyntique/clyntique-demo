@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/generated/prisma/enums";
 import { cn } from "@/lib/cn";
-import { ActivityIcon, FolderIcon, HomeIcon, ImageIcon, InboxIcon, LayersIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
+import { ActivityIcon, BookOpenIcon, FolderIcon, HomeIcon, ImageIcon, InboxIcon, LayersIcon, MessageIcon, ShieldIcon } from "@/components/ui/icons";
 import { basePathFor } from "@/lib/navigation";
 
 // Intentionally small: only sections that exist. The review queue is TEAM-only.
@@ -21,6 +21,7 @@ const ITEMS: {
   { label: "Review queue", segment: "/review", icon: InboxIcon, teamOnly: true },
   { label: "Submissions", segment: "/creatives", icon: ImageIcon },
   { label: "Projects", segment: "/projects", icon: FolderIcon },
+  { label: "Evidence dictionary", segment: "/evidence", icon: BookOpenIcon },
   { label: "Messages", segment: "/messages", icon: MessageIcon },
   { label: "Activity", segment: "/activity", icon: ActivityIcon },
   { label: "Policy library", segment: "/policy-library", icon: ShieldIcon, teamOnly: true },

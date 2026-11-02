@@ -204,6 +204,7 @@ export function EvidenceForm({
         claimLocation: String(formData.get("claimLocation") ?? ""),
         file: uploaded,
         findingIds: formData.getAll("findings").map(String),
+        saveToDictionary: !reviewer && formData.get("saveToDictionary") === "1",
       };
       result = reviewer
         ? await addReviewerEvidenceAction({ ...input, visibility: String(formData.get("visibility") ?? ""), ruleVersionId: rule })
@@ -353,6 +354,16 @@ export function EvidenceForm({
           <Input name="source" maxLength={120} placeholder="e.g. Internal sales data" />
         </Field>
       </div>
+
+      {!reviewer && (
+        <label className="flex items-start gap-2.5 rounded-md border border-line bg-subtle/40 px-3 py-2.5">
+          <input type="checkbox" name="saveToDictionary" value="1" className="mt-0.5 size-4 accent-brand-600" />
+          <span className="flex min-w-0 flex-col">
+            <span className="text-small font-medium text-ink">Save to my Evidence Dictionary</span>
+            <span className="text-meta">Keeps the title, claim, description, source and link as a reusable record you can attach to other submissions. An attached file stays with this submission.</span>
+          </span>
+        </label>
+      )}
 
       {findings.length > 0 && (
         <fieldset className="flex flex-col gap-1.5">

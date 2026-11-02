@@ -53,17 +53,17 @@ import { checkDecisionTarget, transition, type WorkflowAction } from "./transiti
 
 export type CommandResult<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-const fail = (error: string) => ({ ok: false as const, error });
+export const fail = (error: string) => ({ ok: false as const, error });
 
-class Conflict extends Error {}
+export class Conflict extends Error {}
 
-const LIMITS = { name: 120, description: 1000, context: 2000, finding: 300, text: 4000, note: 2000, reference: 200 };
+export const LIMITS = { name: 120, description: 1000, context: 2000, finding: 300, text: 4000, note: 2000, reference: 200 };
 
 function isUniqueViolation(error: unknown) {
   return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
 }
 
-function clean(value: unknown, max: number) {
+export function clean(value: unknown, max: number) {
   const text = String(value ?? "").trim();
   return text.length > max ? null : text;
 }
@@ -79,10 +79,10 @@ async function loadFacts(creativeId: string) {
   return { ...facts, name: row.name, projectId: row.projectId, updatedAt: row.updatedAt };
 }
 
-type Loaded = NonNullable<Awaited<ReturnType<typeof loadFacts>>>;
+export type Loaded = NonNullable<Awaited<ReturnType<typeof loadFacts>>>;
 
 /** Loads the submission and authorizes the action. Missing and forbidden look the same to the user. */
-async function guard(user: CurrentUser, action: SubmissionAction, creativeId: string): Promise<CommandResult<{ s: Loaded }>> {
+export async function guard(user: CurrentUser, action: SubmissionAction, creativeId: string): Promise<CommandResult<{ s: Loaded }>> {
   const s = await loadFacts(creativeId);
   if (!s) return fail(DENIAL_MESSAGE.NOT_FOUND);
   const decision = authorize(user, action, s);
@@ -105,7 +105,7 @@ async function validCodes(kind: "market" | "platform", codes: string[]) {
   return rows.length === unique.length ? { ok: true as const, codes: unique } : { ok: false as const };
 }
 
-async function latestVersion(creativeId: string, db: Prisma.TransactionClient = prisma) {
+export async function latestVersion(creativeId: string, db: Prisma.TransactionClient = prisma) {
   return db.creativeVersion.findFirst({
     where: { creativeId },
     orderBy: { versionNumber: "desc" },
@@ -114,7 +114,7 @@ async function latestVersion(creativeId: string, db: Prisma.TransactionClient = 
 }
 
 /** The open cycle and its newest round. */
-async function currentRound(creativeId: string) {
+export async function currentRound(creativeId: string) {
   const cycle = await prisma.reviewCycle.findFirst({
     where: { creativeId },
     orderBy: { number: "desc" },
@@ -139,7 +139,7 @@ function activity(tx: Prisma.TransactionClient, s: Loaded, user: CurrentUser, ty
  * re-checks its status after any concurrent writer has committed. Nothing
  * visible changes (the "updated" time is written back as it was).
  */
-async function lockSubmission(tx: Prisma.TransactionClient, s: Loaded, status: Loaded["status"]) {
+export async function lockSubmission(tx: Prisma.TransactionClient, s: Loaded, status: Loaded["status"]) {
   const { count } = await tx.creative.updateMany({
     where: { id: s.id, workflow: "SUBMISSION_REVIEW", status },
     data: { updatedAt: s.updatedAt },
@@ -147,7 +147,7 @@ async function lockSubmission(tx: Prisma.TransactionClient, s: Loaded, status: L
   if (!count) throw new Conflict("This submission changed meanwhile. Refresh and try again.");
 }
 
-async function run<T>(label: string, fn: () => Promise<CommandResult<T>>): Promise<CommandResult<T>> {
+export async function run<T>(label: string, fn: () => Promise<CommandResult<T>>): Promise<CommandResult<T>> {
   try {
     return await fn();
   } catch (error) {
@@ -467,9 +467,11 @@ export type EvidenceInput = {
   /** The claim in the creative it supports, and where it appears (decision D3). */
   claimText?: string;
   claimLocation?: string;
+  /** Evidence Dictionary: also file it as a reusable record in the client's dictionary (text only; the file stays with this submission). */
+  saveToDictionary?: boolean;
 };
 
-function validLink(value: string) {
+export function validLink(value: string) {
   if (!value) return { ok: true as const, url: null };
   try {
     const url = new URL(value);
@@ -548,6 +550,14 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
         data: { updatedAt: g.s.updatedAt },
       });
       if (!count) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
+      // Evidence Dictionary: the same text becomes a reusable record of the client's own.
+      const record =
+        input.saveToDictionary === true
+          ? await tx.evidenceRecord.create({
+              data: { ownerClientId: user.id, createdById: user.id, title, type, description: description || null, source: source || null, url: link.url, claimText: claimText || null },
+              select: { id: true },
+            })
+          : null;
       const evidence = await tx.evidence.create({
         data: {
           creativeId: g.s.id,
@@ -562,6 +572,7 @@ export async function addEvidence(user: CurrentUser, input: EvidenceInput): Prom
           visibility: "SHARED",
           addedById: user.id,
           versionId: version?.id ?? null,
+          recordId: record?.id ?? null,
           fileUrl: file?.url ?? null,
           fileName: file?.name ?? null,
           mimeType: file?.mimeType ?? null,
