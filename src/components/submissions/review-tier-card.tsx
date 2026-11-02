@@ -53,9 +53,10 @@ export function ReviewTierCard({
 
   return (
     <div className="rounded-xl border border-line bg-surface p-4 shadow-xs">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
+      {/* Wraps on narrow screens: the queue badge drops below the title instead of widening the page. */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-caption font-semibold uppercase tracking-wider text-muted">
               Review Type &amp; Status
             </span>
@@ -79,9 +80,9 @@ export function ReviewTierCard({
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 text-micro text-muted shrink-0 font-medium bg-subtle px-2.5 py-1 rounded-md">
-          <ClockIcon className="size-3.5 text-brand-600" />
-          <span>{details.slaText}</span>
+        <div className="flex max-w-full items-center gap-1.5 text-micro text-muted font-medium bg-subtle px-2.5 py-1 rounded-md">
+          <ClockIcon className="size-3.5 shrink-0 text-brand-600" />
+          <span className="min-w-0">{details.slaText}</span>
         </div>
       </div>
 
@@ -95,7 +96,7 @@ export function ReviewTierCard({
       {isClient && (
         <div className="mt-3.5 pt-3 border-t border-line/70 flex flex-wrap items-center justify-between gap-2">
           {tier === "AI_ONLY" ? (
-            <div className="flex items-center justify-between w-full">
+            <div className="flex flex-wrap items-center justify-between gap-2 w-full">
               <span className="text-micro text-muted">
                 Need dual-check sign-off? Human review is an optional add-on (pilot quota).
               </span>
@@ -112,9 +113,9 @@ export function ReviewTierCard({
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-between w-full">
+            <div className="flex flex-wrap items-center justify-between gap-2 w-full">
               <span className="text-micro text-positive-ink font-medium flex items-center gap-1">
-                <CheckIcon className="size-3.5" />
+                <CheckIcon className="size-3.5 shrink-0" />
                 <span>Senior Regulatory Specialist review requested (Pilot quota)</span>
               </span>
               {canEdit && (
