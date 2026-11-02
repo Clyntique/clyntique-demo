@@ -37,11 +37,13 @@
     "@vercel/functions": "3.9.9",
     "bcryptjs": "3.0.3",
     "jose": "6.2.12",
+    "mammoth": "^1.13.0",
     "next": "16.4.3",
     "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "unpdf": "^2.1.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

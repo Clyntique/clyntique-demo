@@ -155,6 +155,8 @@ export type EvidenceRecordRef = {
   expired: boolean;
   /** Link to the record page, when this viewer may open it (null for a client looking at a Clyntique record). */
   href: string | null;
+  /** Knowledge base: the library document the record quotes (title; "deleted" when its file is gone). */
+  document: { title: string; deleted: boolean } | null;
 };
 
 /**
@@ -414,7 +416,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
         claimLocation: true,
         version: { select: { versionNumber: true } },
         policyRuleVersion: POLICY_REFERENCE_SELECT,
-        record: { select: { id: true, ownerClientId: true, status: true, validUntil: true } },
+        record: { select: { id: true, ownerClientId: true, status: true, validUntil: true, document: { select: { title: true, status: true } } } },
         assessments: {
           orderBy: { createdAt: "asc" },
           select: { id: true, result: true, note: true, createdAt: true, reviewer: { select: { name: true } }, cycle: { select: { number: true } } },
@@ -615,6 +617,7 @@ export async function getSubmissionReview(user: CurrentUser, creativeId: string)
               expired: recordExpired(e.record.validUntil),
               // The team opens any record it can see; a client only their own.
               href: team || e.record.ownerClientId === user.id ? `${basePathFor(user.role)}/evidence/${e.record.id}` : null,
+              document: e.record.document ? { title: e.record.document.title, deleted: e.record.document.status === "DELETED" } : null,
             }
           : null,
       };
