@@ -106,7 +106,7 @@ function PassageCard({ passage, cited, role }: { passage: Passage; cited: boolea
         <a href={passage.downloadHref} className="text-small font-medium text-brand-700 hover:underline">
           Open original ({passage.fileName})
         </a>
-        <SaveChunkForm chunkId={passage.chunkId} recordsHref={`${basePathFor(role)}/evidence`} />
+        {passage.ownedByViewer && <SaveChunkForm chunkId={passage.chunkId} recordsHref={`${basePathFor(role)}/evidence`} />}
       </div>
     </li>
   );

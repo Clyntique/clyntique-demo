@@ -11,7 +11,12 @@ import { normalizeText, type ExtractedPage } from "./chunk";
  * words so the uploader can act (for example a scanned PDF with no text).
  */
 
-export class ExtractionError extends Error {}
+export class ExtractionError extends Error {
+  /** True when the file's bytes do not match its declared type; the file is useless and is removed. */
+  constructor(message: string, readonly disguised = false) {
+    super(message);
+  }
+}
 
 export type Extraction = { pages: ExtractedPage[]; pageCount: number | null; truncated: boolean };
 
@@ -54,7 +59,7 @@ function capPages(pages: ExtractedPage[]): { pages: ExtractedPage[]; truncated: 
 }
 
 export async function extractDocumentText(buffer: Buffer, mimeType: string): Promise<Extraction> {
-  if (!contentLooksLike(mimeType, buffer.subarray(0, 512))) throw new ExtractionError("This file is not what its name says it is.");
+  if (!contentLooksLike(mimeType, buffer.subarray(0, 512))) throw new ExtractionError("This file is not what its name says it is.", true);
   let pages: ExtractedPage[];
   let pageCount: number | null = null;
   if (mimeType === "application/pdf") {

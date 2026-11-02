@@ -25,6 +25,8 @@ export type Passage = {
   documentTitle: string;
   documentType: EvidenceType;
   fileName: string;
+  /** Whether the viewer's workspace uploaded the document (only then can a passage be saved as a record). */
+  ownedByViewer: boolean;
   page: number | null;
   /** Full passage text. */
   text: string;
@@ -62,6 +64,7 @@ export type KnowledgeResult = {
 };
 
 export const MAX_PASSAGES = 10;
+const QUERY_LOG_WINDOW_MS = 10_000;
 const MAX_PER_DOCUMENT = 3;
 
 type Row = { id: string; documentId: string; page: number | null; text: string; snippet: string; rank: number };
@@ -136,13 +139,13 @@ export async function searchKnowledge(user: CurrentUser, question: string): Prom
     if (kept.length >= MAX_PASSAGES) break;
   }
   const docs = kept.length
-    ? await prisma.libraryDocument.findMany({ where: { id: { in: [...new Set(kept.map((r) => r.documentId))] } }, select: { id: true, title: true, type: true, fileName: true } })
+    ? await prisma.libraryDocument.findMany({ where: { id: { in: [...new Set(kept.map((r) => r.documentId))] } }, select: { id: true, title: true, type: true, fileName: true, ownerClientId: true } })
     : [];
   const docById = new Map(docs.map((d) => [d.id, d]));
   const passages: Passage[] = kept.flatMap((r) => {
     const d = docById.get(r.documentId);
     if (!d) return [];
-    return [{ chunkId: r.id, documentId: d.id, documentTitle: d.title, documentType: d.type, fileName: d.fileName, page: r.page, text: r.text, snippet: r.snippet, rank: r.rank, href: `${base}/evidence/library/${d.id}`, downloadHref: `/api/library/${d.id}` }];
+    return [{ chunkId: r.id, documentId: d.id, documentTitle: d.title, documentType: d.type, fileName: d.fileName, ownedByViewer: d.ownerClientId === (user.role === "TEAM" ? null : user.id), page: r.page, text: r.text, snippet: r.snippet, rank: r.rank, href: `${base}/evidence/library/${d.id}`, downloadHref: `/api/library/${d.id}` }];
   });
 
   let verdict = verdictFor({ question: plan.strict, ruleMatches: rules.length, passages: passages.map((p) => ({ chunkId: p.chunkId, rank: p.rank, documentType: p.documentType })) });
@@ -163,9 +166,20 @@ export async function searchKnowledge(user: CurrentUser, question: string): Prom
     aiNote = "No passages to answer from.";
   }
 
-  await prisma.knowledgeQuery
-    .create({ data: { userId: user.id, ownerClientId: user.role === "TEAM" ? null : user.id, question: plan.strict, verdict, resultCount: passages.length, aiUsed: answer !== null } })
-    .catch((error) => console.error("Knowledge query log failed", error instanceof Error ? error.name : "unknown error"));
+  // One audit row per question: the page can render more than once for a
+  // single view (streaming, a refresh), so the same question by the same
+  // person within a short window is not logged twice.
+  try {
+    const recent = await prisma.knowledgeQuery.findFirst({
+      where: { userId: user.id, question: plan.strict, createdAt: { gte: new Date(Date.now() - QUERY_LOG_WINDOW_MS) } },
+      select: { id: true },
+    });
+    if (!recent) {
+      await prisma.knowledgeQuery.create({ data: { userId: user.id, ownerClientId: user.role === "TEAM" ? null : user.id, question: plan.strict, verdict, resultCount: passages.length, aiUsed: answer !== null } });
+    }
+  } catch (error) {
+    console.error("Knowledge query log failed", error instanceof Error ? error.name : "unknown error");
+  }
 
   return { question: plan.strict, verdict, passages, records: records.slice(0, 6), rules, answer, aiEnabled, aiNote, documentsSearched };
 }

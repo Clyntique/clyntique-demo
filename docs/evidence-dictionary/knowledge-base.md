@@ -133,7 +133,17 @@ characters per question.
   scope re-checked on every request; files are served as attachments with a
   restrictive CSP; blob URLs are never shown.
 - Deletion removes the chunks (search index) in a transaction, then the file;
-  the row stays as a tombstone so evidence records keep their provenance.
+  the row stays as a tombstone so evidence records keep their provenance. A
+  file whose bytes are not the declared type (for example an executable
+  renamed `.pdf`) is removed from storage as soon as indexing detects it.
+- "Save as evidence record" is owner-only: a client saves from their own
+  documents, the team only from Clyntique's. A reviewer can read a client's
+  shared document but cannot turn its text into a Clyntique record (which
+  could otherwise be attached to another client's creative).
+- Questions are logged once per person and question within a 10-second
+  window (a page can render more than once per view), as typed, up to 300
+  characters. A retention period for `KnowledgeQuery` is a product decision
+  (section 12).
 - Prompt injection: document text reaches the model only as delimited data;
   the model cannot act, only answer, and its answer is validated.
 - Nothing from the library is reachable from `/demo` (no imports, no routes).
@@ -142,7 +152,7 @@ characters per question.
 
 ## 9. Test results
 
-`tests/knowledge-base.test.ts`: 34 tests covering chunking, question
+`tests/knowledge-base.test.ts`: 36 tests covering chunking, question
 planning, verdicts, AI-answer validation, file rules and paths, real text
 extraction and signature checks, upload recording (ownership, path, size,
 type, library cap, cleanup of bad uploads), processing (ownership, claim,
@@ -153,7 +163,7 @@ exclusion, AI gating and validation, prompt content. `tests/migrations.test.ts`
 covers the new migration (additive, only the search index cascades) and the
 restore order.
 
-Full suite: 49 files, 615 tests passing. `tsc --noEmit`, ESLint and
+Full suite: 49 files, 617 tests passing. `tsc --noEmit`, ESLint and
 `next build` clean. Both migrations and both rollback scripts verified on
 embedded PostgreSQL (apply, refuse while data exists, roll back, re-apply).
 
@@ -197,3 +207,7 @@ upload processing; on the Hobby plan that is the maximum.
    a text layer.
 5. **Limits**: 10 MB / 200 documents / 600 passages per document are
    starting points, not findings.
+6. **Question log retention**: `KnowledgeQuery` stores the question as
+   typed (clients may type sensitive details). Decide a retention period
+   (for example 90 days) and whether the log is shown to the client; until
+   then nothing displays it.

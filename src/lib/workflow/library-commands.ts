@@ -23,6 +23,7 @@ import { createEvidenceRecord } from "./evidence-record-commands";
  */
 
 const NOT_FOUND = "This document is no longer available.";
+const NOT_OWNER_SAVE = "Only the workspace that uploaded a document can save its passages as evidence records.";
 const NO_PERMISSION = "You don't have permission to do that.";
 
 /** The workspace a user's uploads belong to: their own, or Clyntique's for the team. */
@@ -179,7 +180,19 @@ export async function processLibraryDocument(user: CurrentUser, documentId: stri
   try {
     extraction = await extractDocumentText(buffer, doc.mimeType);
   } catch (error) {
-    if (error instanceof ExtractionError) return failWith(error.message);
+    if (error instanceof ExtractionError) {
+      if (error.disguised) {
+        // A file that is not what its name says must not stay in storage; there is nothing to retry.
+        try {
+          await del(doc.fileUrl, blobAuth());
+          await prisma.libraryDocument.update({ where: { id: doc.id }, data: { fileUrl: null } });
+        } catch (deleteError) {
+          console.error("Library file delete failed", deleteError instanceof Error ? deleteError.name : "unknown error");
+        }
+        return failWith(`${error.message} The file was removed; upload a real PDF, DOCX or TXT.`);
+      }
+      return failWith(error.message);
+    }
     console.error("Library extraction failed", error instanceof Error ? error.name : "unknown error");
     return failWith("The text could not be extracted from this file.");
   }
@@ -278,7 +291,11 @@ export async function saveChunkAsRecord(user: CurrentUser, input: { chunkId: str
       })
     : null;
   if (!chunk || chunk.document.status !== "READY" || !mayReadDocument(user, chunk.document)) return fail(NOT_FOUND);
-  // A team member saving from a client's shared document creates a Clyntique record; a client's stays theirs.
+  // Only the workspace that owns a document may turn its text into a record.
+  // A team member may read a client's shared document, but a Clyntique record
+  // quoting it could later be attached to another client's creative, so the
+  // team saves only from Clyntique's own documents.
+  if (!ownsDocument(user, chunk.document)) return fail(NOT_OWNER_SAVE);
   const type: EvidenceType = chunk.document.type === "POLICY_REFERENCE" && user.role !== "TEAM" ? "SOURCE" : chunk.document.type;
   const where = chunk.page ? `${chunk.document.fileName}, page ${chunk.page}` : chunk.document.fileName;
   const result = await createEvidenceRecord(user, {

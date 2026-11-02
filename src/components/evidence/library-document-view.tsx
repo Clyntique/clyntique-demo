@@ -90,9 +90,11 @@ export async function LibraryDocumentView({ role, params }: { role: Role; params
                       {c.page ? ` · page ${c.page}` : ""}
                     </p>
                     <p className="text-small whitespace-pre-line break-words text-ink-soft">{c.text}</p>
-                    <div>
-                      <SaveChunkForm chunkId={c.id} recordsHref={evidenceHref} />
-                    </div>
+                    {doc.mine && (
+                      <div>
+                        <SaveChunkForm chunkId={c.id} recordsHref={evidenceHref} />
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -123,7 +125,7 @@ export async function LibraryDocumentView({ role, params }: { role: Role; params
           {doc.mine && doc.status !== "DELETED" && (
             <Card className="flex flex-col gap-4 p-4">
               <h2 className="text-card-title">Manage</h2>
-              {(doc.status === "FAILED" || doc.status === "PENDING") && <ProcessDocumentForm documentId={doc.id} />}
+              {(doc.status === "FAILED" || doc.status === "PENDING") && doc.downloadable && <ProcessDocumentForm documentId={doc.id} />}
               {role === "CLIENT" && <VisibilityForm documentId={doc.id} visibility={doc.visibility} />}
               <DeleteDocumentForm documentId={doc.id} />
             </Card>
