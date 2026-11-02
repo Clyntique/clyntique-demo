@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/states";
-import { CheckCircleIcon, ChevronLeftIcon, LockIcon, RefreshCwIcon, ShieldIcon, SparklesIcon } from "@/components/ui/icons";
+import { buttonClasses } from "@/components/ui/button";
+import { CheckCircleIcon, ChevronLeftIcon, ClipboardCheckIcon, LockIcon, RefreshCwIcon, ShieldIcon, SparklesIcon } from "@/components/ui/icons";
 import { REQUIRED_ACTION_LABEL, REVIEW_DISCLAIMER, REVIEW_OUTCOME_LABEL, SEVERITY_LABEL } from "@/lib/workflow/labels";
 import {
   DEMO_CLIENTS,
@@ -103,13 +104,18 @@ function SubmissionWorkspace({ role, submission }: { role: DemoRole; submission:
               {role === "team" && ` · Submitted by ${client.contactName}`}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge status={submission.status} />
-            {submission.outcome && <Badge tone="brand">{REVIEW_OUTCOME_LABEL[submission.outcome]}</Badge>}
-            <Badge tone="outline">
-              V{latest} current · {findings.length} finding{findings.length === 1 ? "" : "s"}
-              {openCount ? ` · ${openCount} open` : ""}
-            </Badge>
+          <div className="flex flex-col items-start lg:items-end gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusBadge status={submission.status} />
+              {submission.outcome && <Badge tone="brand">{REVIEW_OUTCOME_LABEL[submission.outcome]}</Badge>}
+              <Badge tone="outline">
+                V{latest} current · {findings.length} finding{findings.length === 1 ? "" : "s"}
+                {openCount ? ` · ${openCount} open` : ""}
+              </Badge>
+            </div>
+            <Link href={demoHref(role, "passport", submission.id)} className={buttonClasses({ variant: submission.status === "REVIEW_COMPLETE" ? "primary" : "secondary", size: "sm" })}>
+              <ClipboardCheckIcon /> View Compliance Passport
+            </Link>
           </div>
         </div>
 

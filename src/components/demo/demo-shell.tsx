@@ -9,6 +9,7 @@ import { DEMO_ROLES, demoHref, type DemoView } from "@/lib/demo/links";
 import { Avatar } from "@/components/ui/avatar";
 import {
   ActivityIcon,
+  BookOpenIcon,
   ClipboardCheckIcon,
   FolderIcon,
   HomeIcon,
@@ -132,6 +133,7 @@ export function navItemsFor(role: DemoRole, counts: { queue: number; messages: n
     return [
       { view: "queue", label: "Review queue", icon: <InboxIcon />, count: counts.queue },
       { view: "submissions", label: "Submissions", icon: <ImageIcon /> },
+      { view: "evidence", label: "Evidence dictionary", icon: <BookOpenIcon /> },
       { view: "messages", label: "Messages", icon: <MessageIcon />, count: counts.messages },
       { view: "policies", label: "Policy library", icon: <ShieldIcon /> },
     ];
@@ -140,6 +142,7 @@ export function navItemsFor(role: DemoRole, counts: { queue: number; messages: n
     { view: "overview", label: "Overview", icon: <HomeIcon /> },
     { view: "projects", label: "Projects", icon: <FolderIcon /> },
     { view: "submissions", label: "Submissions", icon: <ImageIcon /> },
+    { view: "evidence", label: "Evidence dictionary", icon: <BookOpenIcon /> },
     { view: "messages", label: "Messages", icon: <MessageIcon /> },
   ];
 }
@@ -158,7 +161,7 @@ export function DemoNav({ role, active, items }: { role: DemoRole; active: DemoV
       </div>
       <nav aria-label="Demo workspace" className="flex lg:flex-col gap-1 overflow-x-auto no-scrollbar -mx-1 px-1">
         {items.map((item) => {
-          const isActive = item.view === active || (active === "submission" && item.view === "submissions");
+          const isActive = item.view === active || ((active === "submission" || active === "passport") && item.view === "submissions");
           return (
             <Link
               key={item.view}
