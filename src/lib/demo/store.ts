@@ -8,6 +8,7 @@ import {
   DEMO_CLIENTS,
   DEMO_EVENTS,
   DEMO_EVIDENCE,
+  DEMO_EVIDENCE_RECORDS,
   DEMO_FINDINGS,
   DEMO_MESSAGES,
   DEMO_POLICIES,
@@ -19,6 +20,9 @@ import {
   type DemoClientRole,
   type DemoEvent,
   type DemoEvidence,
+  type DemoEvidenceRecord,
+  type DemoEvidenceRecordStatus,
+  type DemoEvidenceRecordType,
   type DemoFinding,
   type DemoMessage,
   type DemoReviewOutcome,
@@ -26,7 +30,8 @@ import {
   type DemoSubmission,
 } from "./data";
 
-export const DEMO_STATE_VERSION = 1;
+// v2 (Nov 2026): Evidence Dictionary records; older session copies are discarded.
+export const DEMO_STATE_VERSION = 2;
 
 export interface DemoScanResult {
   submissionId: string;
@@ -43,6 +48,8 @@ export interface DemoState {
   version: number;
   submissions: DemoSubmission[];
   evidence: DemoEvidence[];
+  /** Evidence Dictionary: reusable substantiation records per workspace. */
+  records: DemoEvidenceRecord[];
   findings: DemoFinding[];
   events: DemoEvent[];
   messages: DemoMessage[];
@@ -55,6 +62,9 @@ export type DemoAction =
   | { type: "SEND_MESSAGE"; clientId: DemoClientRole; from: "client" | "team"; body: string; at: string }
   | { type: "ADD_EVIDENCE"; submissionId: string; name: string; kind: string; description: string; uploadedBy: "client" | "team"; at: string }
   | { type: "MARK_EVIDENCE_REVIEWED"; evidenceId: string; at: string }
+  | { type: "ADD_EVIDENCE_RECORD"; ownerId: DemoRole; title: string; recordType: DemoEvidenceRecordType; description: string; source: string; supportedClaim: string; at: string }
+  | { type: "ATTACH_EVIDENCE_RECORD"; submissionId: string; recordId: string; attachedBy: "client" | "team"; at: string }
+  | { type: "REVIEW_EVIDENCE_RECORD"; recordId: string; verdict: Extract<DemoEvidenceRecordStatus, "VERIFIED" | "NEEDS_MORE_INFO" | "UNDER_REVIEW">; note: string; at: string }
   | { type: "SUBMIT_REVISION"; submissionId: string; headline: string; bodyCopy: string; disclosure: string; changeNote: string; at: string }
   | { type: "RESPOND_TO_FINDING"; findingId: string; response: string; at: string }
   | { type: "START_REVIEW"; submissionId: string; at: string }
@@ -72,6 +82,7 @@ export function initialDemoState(): DemoState {
     version: DEMO_STATE_VERSION,
     submissions: clone(DEMO_SUBMISSIONS),
     evidence: clone(DEMO_EVIDENCE),
+    records: clone(DEMO_EVIDENCE_RECORDS),
     findings: clone(DEMO_FINDINGS),
     events: clone(DEMO_EVENTS),
     messages: clone(DEMO_MESSAGES),
@@ -112,27 +123,115 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
 
     case "ADD_EVIDENCE": {
       const submission = state.submissions.find((s) => s.id === action.submissionId);
-      if (!submission || !action.name.trim()) return state;
-      const [id, next] = nextId(state, "ev-demo");
+      if (!submission || !action.name.trim() || submission.status === "REVIEW_COMPLETE") return state;
+      // Every attachment also becomes an Evidence Dictionary record, so it can be reused.
+      const [recordId, withRecordId] = nextId(state, "rec-demo");
+      const record: DemoEvidenceRecord = {
+        id: recordId,
+        ownerId: action.uploadedBy === "team" ? "team" : submission.clientId,
+        title: action.name.trim(),
+        type: recordTypeForKind(action.kind),
+        description: action.description.trim() || "Added in the demo session.",
+        source: `Simulated upload · ${action.name.trim()} (no file stored)`,
+        supportedClaim: "",
+        status: action.uploadedBy === "team" ? "VERIFIED" : "UNVERIFIED",
+        reviewNote: action.uploadedBy === "team" ? "Recorded by the reviewer." : null,
+        validUntil: null,
+        createdAt: action.at,
+        updatedAt: action.at,
+      };
+      const [id, next] = nextId(withRecordId, "ev-demo");
       const item: DemoEvidence = {
         id,
         submissionId: submission.id,
         name: action.name.trim(),
         kind: action.kind,
-        description: action.description.trim() || "Added in the demo session.",
+        description: record.description,
         uploadedBy: action.uploadedBy,
         versionNumber: currentVersionNumber(submission),
         uploadedAt: action.at,
         reviewed: action.uploadedBy === "team",
+        recordId,
       };
-      return addEvent({ ...next, evidence: [...next.evidence, item] }, {
+      return addEvent({ ...next, evidence: [...next.evidence, item], records: [...next.records, record] }, {
         submissionId: submission.id,
         at: action.at,
         actor: action.uploadedBy,
         title: "Evidence added",
-        detail: `${item.name} attached to version ${item.versionNumber} (simulated upload, no file stored).`,
+        detail: `${item.name} attached to version ${item.versionNumber} and filed in the Evidence Dictionary (simulated upload, no file stored).`,
         simulated: true,
       });
+    }
+
+    case "ADD_EVIDENCE_RECORD": {
+      if (!action.title.trim()) return state;
+      const [id, next] = nextId(state, "rec-demo");
+      const record: DemoEvidenceRecord = {
+        id,
+        ownerId: action.ownerId,
+        title: action.title.trim(),
+        type: action.recordType,
+        description: action.description.trim() || "Added in the demo session.",
+        source: action.source.trim() || "Not stated (demo record, no file stored)",
+        supportedClaim: action.supportedClaim.trim(),
+        status: action.ownerId === "team" ? "VERIFIED" : "UNVERIFIED",
+        reviewNote: action.ownerId === "team" ? "Recorded by the reviewer." : null,
+        validUntil: null,
+        createdAt: action.at,
+        updatedAt: action.at,
+      };
+      return { ...next, records: [...next.records, record] };
+    }
+
+    case "ATTACH_EVIDENCE_RECORD": {
+      const submission = state.submissions.find((s) => s.id === action.submissionId);
+      const record = state.records.find((r) => r.id === action.recordId);
+      if (!submission || !record || submission.status === "REVIEW_COMPLETE") return state;
+      // A client may only attach its own records; the team may attach its own references.
+      const allowed = action.attachedBy === "team" ? record.ownerId === "team" || record.ownerId === submission.clientId : record.ownerId === submission.clientId;
+      if (!allowed) return state;
+      const versionNumber = currentVersionNumber(submission);
+      if (state.evidence.some((e) => e.submissionId === submission.id && e.recordId === record.id && e.versionNumber === versionNumber)) return state;
+      const [id, next] = nextId(state, "ev-demo");
+      const item: DemoEvidence = {
+        id,
+        submissionId: submission.id,
+        name: record.title,
+        kind: EVIDENCE_KIND_FOR_TYPE[record.type],
+        description: record.supportedClaim ? `Supports: "${record.supportedClaim}"` : record.description,
+        uploadedBy: action.attachedBy,
+        versionNumber,
+        uploadedAt: action.at,
+        reviewed: record.status === "VERIFIED",
+        recordId: record.id,
+      };
+      return addEvent({ ...next, evidence: [...next.evidence, item] }, {
+        submissionId: submission.id,
+        at: action.at,
+        actor: action.attachedBy,
+        title: "Evidence attached from the dictionary",
+        detail: `${record.title} (${EVIDENCE_RECORD_STATUS_TEXT[record.status]}) attached to version ${versionNumber}.`,
+      });
+    }
+
+    case "REVIEW_EVIDENCE_RECORD": {
+      const record = state.records.find((r) => r.id === action.recordId);
+      if (!record || record.status === action.verdict) return state;
+      const note = action.note.trim() || (action.verdict === "VERIFIED" ? "Checked by the reviewer in the demo session." : action.verdict === "NEEDS_MORE_INFO" ? "The reviewer asked for more information." : "Opened for reviewer check.");
+      const records = state.records.map((r) => (r.id === record.id ? { ...r, status: action.verdict, reviewNote: note, updatedAt: action.at } : r));
+      // Attachments drawn from this record follow its verification.
+      const evidence = state.evidence.map((e) => (e.recordId === record.id ? { ...e, reviewed: action.verdict === "VERIFIED" } : e));
+      let next: DemoState = { ...state, records, evidence };
+      for (const e of state.evidence.filter((x) => x.recordId === record.id)) {
+        next = addEvent(next, {
+          submissionId: e.submissionId,
+          at: action.at,
+          actor: "team",
+          title: action.verdict === "VERIFIED" ? "Evidence checked by reviewer" : action.verdict === "NEEDS_MORE_INFO" ? "Evidence needs more information" : "Evidence under reviewer check",
+          detail: `${record.title}: ${note}`,
+        });
+      }
+      return next;
     }
 
     case "MARK_EVIDENCE_REVIEWED":
@@ -330,6 +429,30 @@ export function demoReducer(state: DemoState, action: DemoAction): DemoState {
   }
 }
 
+const EVIDENCE_RECORD_STATUS_TEXT: Record<DemoEvidenceRecordStatus, string> = {
+  UNVERIFIED: "unverified",
+  UNDER_REVIEW: "under reviewer check",
+  VERIFIED: "checked by reviewer",
+  NEEDS_MORE_INFO: "needs more information",
+};
+
+const EVIDENCE_KIND_FOR_TYPE: Record<DemoEvidenceRecordType, string> = {
+  CLINICAL_STUDY: "Clinical reference",
+  CERTIFICATION: "Certification",
+  REGULATORY_DOCUMENT: "Regulatory document",
+  CLAIM_SUBSTANTIATION: "Claim substantiation",
+  OTHER: "Other",
+};
+
+function recordTypeForKind(kind: string): DemoEvidenceRecordType {
+  const k = kind.toLowerCase();
+  if (k.includes("clinical")) return "CLINICAL_STUDY";
+  if (k.includes("certif") || k.includes("licen")) return "CERTIFICATION";
+  if (k.includes("regulat")) return "REGULATORY_DOCUMENT";
+  if (k.includes("service") || k.includes("disclosure") || k.includes("substantiation")) return "CLAIM_SUBSTANTIATION";
+  return "OTHER";
+}
+
 const OUTCOME_TITLE: Record<DemoReviewOutcome, string> = {
   NO_ISSUES_IDENTIFIED: "No issues identified",
   ISSUES_RESOLVED: "Issues resolved",
@@ -396,8 +519,60 @@ export function policyByCode(code: string) {
   return DEMO_POLICIES.find((p) => p.code === code);
 }
 
+// ---------------------------------------------------------------------------
+// Evidence Dictionary selectors. A client sees only its own records; the team
+// sees every client's records plus its own internal references.
+
+export function canViewRecord(role: DemoRole, record: DemoEvidenceRecord | undefined): record is DemoEvidenceRecord {
+  if (!record) return false;
+  return role === "team" || record.ownerId === role;
+}
+
+export function evidenceRecordsFor(state: DemoState, role: DemoRole): DemoEvidenceRecord[] {
+  return state.records.filter((r) => canViewRecord(role, r)).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+}
+
+export interface EvidenceRecordFilter {
+  query?: string;
+  type?: DemoEvidenceRecordType | "ALL";
+  status?: DemoEvidenceRecordStatus | "ALL";
+}
+
+export function filterEvidenceRecords(records: DemoEvidenceRecord[], filter: EvidenceRecordFilter): DemoEvidenceRecord[] {
+  const q = (filter.query ?? "").trim().toLowerCase();
+  return records.filter((r) => {
+    if (filter.type && filter.type !== "ALL" && r.type !== filter.type) return false;
+    if (filter.status && filter.status !== "ALL" && r.status !== filter.status) return false;
+    if (!q) return true;
+    return [r.title, r.description, r.source, r.supportedClaim].some((t) => t.toLowerCase().includes(q));
+  });
+}
+
+/** Where a record is used: each attachment with the creative it is bound to, limited to what the viewer may see. */
+export function recordUsage(state: DemoState, role: DemoRole, recordId: string): Array<{ evidence: DemoEvidence; submission: DemoSubmission }> {
+  return state.evidence
+    .filter((e) => e.recordId === recordId)
+    .flatMap((evidence) => {
+      const submission = state.submissions.find((s) => s.id === evidence.submissionId);
+      return canView(role, submission) ? [{ evidence, submission }] : [];
+    });
+}
+
+/** Records this viewer could attach to a given creative right now. */
+export function attachableRecords(state: DemoState, role: DemoRole, submissionId: string): DemoEvidenceRecord[] {
+  const submission = state.submissions.find((s) => s.id === submissionId);
+  if (!canView(role, submission) || submission.status === "REVIEW_COMPLETE") return [];
+  const version = currentVersionNumber(submission);
+  const attached = new Set(state.evidence.filter((e) => e.submissionId === submission.id && e.versionNumber === version).map((e) => e.recordId));
+  return state.records.filter((r) => {
+    if (attached.has(r.id)) return false;
+    if (role === "team") return r.ownerId === "team" || r.ownerId === submission.clientId;
+    return r.ownerId === role;
+  });
+}
+
 export function isDemoState(value: unknown): value is DemoState {
   if (!value || typeof value !== "object") return false;
   const v = value as Partial<DemoState>;
-  return v.version === DEMO_STATE_VERSION && Array.isArray(v.submissions) && Array.isArray(v.findings) && Array.isArray(v.messages);
+  return v.version === DEMO_STATE_VERSION && Array.isArray(v.submissions) && Array.isArray(v.findings) && Array.isArray(v.messages) && Array.isArray(v.records);
 }

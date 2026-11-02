@@ -1,6 +1,6 @@
 import type { DemoRole } from "./data";
 
-export type DemoView = "overview" | "projects" | "submissions" | "submission" | "messages" | "queue" | "policies";
+export type DemoView = "overview" | "projects" | "submissions" | "submission" | "passport" | "evidence" | "messages" | "queue" | "policies";
 
 export const DEMO_ROLES: DemoRole[] = ["client1", "client2", "team"];
 
@@ -11,8 +11,8 @@ export function parseDemoRole(value: string | null | undefined): DemoRole | null
 export function parseDemoView(value: string | null | undefined, role: DemoRole): DemoView {
   const views: DemoView[] =
     role === "team"
-      ? ["queue", "submissions", "submission", "messages", "policies"]
-      : ["overview", "projects", "submissions", "submission", "messages"];
+      ? ["queue", "submissions", "submission", "passport", "evidence", "messages", "policies"]
+      : ["overview", "projects", "submissions", "submission", "passport", "evidence", "messages"];
   return views.includes(value as DemoView) ? (value as DemoView) : views[0];
 }
 

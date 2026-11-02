@@ -66,7 +66,53 @@ export interface DemoEvidence {
   versionNumber: number;
   uploadedAt: string;
   reviewed: boolean;
+  /** The Evidence Dictionary record this attachment is drawn from, when there is one. */
+  recordId: string | null;
 }
+
+/*
+ * Evidence Dictionary (demo-only definition, see docs/demo/passport-and-evidence-dictionary.md):
+ * a reusable substantiation record owned by one client (or by the team), which
+ * can be attached to any of that client's creatives. The record carries its own
+ * verification status, so a passport can say whether the evidence behind a
+ * claim was checked by a reviewer or only supplied by the client.
+ */
+export type DemoEvidenceRecordType = "CLINICAL_STUDY" | "CERTIFICATION" | "REGULATORY_DOCUMENT" | "CLAIM_SUBSTANTIATION" | "OTHER";
+export type DemoEvidenceRecordStatus = "UNVERIFIED" | "UNDER_REVIEW" | "VERIFIED" | "NEEDS_MORE_INFO";
+
+export interface DemoEvidenceRecord {
+  id: string;
+  /** Which workspace owns the record; team records are internal references. */
+  ownerId: DemoRole;
+  title: string;
+  type: DemoEvidenceRecordType;
+  description: string;
+  /** A fictional reference: a document name, registry entry or issuer. Never a real URL. */
+  source: string;
+  supportedClaim: string;
+  status: DemoEvidenceRecordStatus;
+  /** Reviewer note from the last verification decision. */
+  reviewNote: string | null;
+  /** Fictional validity end, if the record expires (licences, certifications). */
+  validUntil: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const EVIDENCE_RECORD_TYPE_LABEL: Record<DemoEvidenceRecordType, string> = {
+  CLINICAL_STUDY: "Clinical study",
+  CERTIFICATION: "Certification or licence",
+  REGULATORY_DOCUMENT: "Regulatory document",
+  CLAIM_SUBSTANTIATION: "Claim substantiation",
+  OTHER: "Other",
+};
+
+export const EVIDENCE_RECORD_STATUS_LABEL: Record<DemoEvidenceRecordStatus, string> = {
+  UNVERIFIED: "Unverified · supplied by client",
+  UNDER_REVIEW: "Under reviewer check",
+  VERIFIED: "Checked by reviewer",
+  NEEDS_MORE_INFO: "Needs more information",
+};
 
 export interface DemoFinding {
   id: string;
@@ -228,6 +274,8 @@ export const DEMO_POLICIES: DemoPolicy[] = [
 
 const AT = (day: number, hour: number, minute = 0) =>
   new Date(Date.UTC(2026, 9, day, hour, minute)).toISOString();
+/** A fictional future date (year, month 1-12, day). */
+const ON = (year: number, month: number, day: number) => new Date(Date.UTC(year, month - 1, day)).toISOString();
 
 export const DEMO_PROJECTS: DemoProject[] = [
   {
@@ -395,6 +443,7 @@ export const DEMO_EVIDENCE: DemoEvidence[] = [
     versionNumber: 2,
     uploadedAt: AT(16, 14, 8),
     reviewed: true,
+    recordId: "rec-c1-vaccine",
   },
   {
     id: "ev-c1-flu-2",
@@ -406,6 +455,7 @@ export const DEMO_EVIDENCE: DemoEvidence[] = [
     versionNumber: 2,
     uploadedAt: AT(17, 9, 30),
     reviewed: true,
+    recordId: null,
   },
   {
     id: "ev-c2-checkups-1",
@@ -417,6 +467,126 @@ export const DEMO_EVIDENCE: DemoEvidence[] = [
     versionNumber: 1,
     uploadedAt: AT(21, 10, 20),
     reviewed: true,
+    recordId: "rec-c2-physical",
+  },
+];
+
+/*
+ * Evidence Dictionary seed. Every document named here is invented for the
+ * demo; none is a real study, licence or regulator publication.
+ */
+export const DEMO_EVIDENCE_RECORDS: DemoEvidenceRecord[] = [
+  {
+    id: "rec-c1-vaccine",
+    ownerId: "client1",
+    title: "Vaccine effectiveness reference summary",
+    type: "CLAIM_SUBSTANTIATION",
+    description: "A two-page summary of published seasonal-vaccine effectiveness ranges, prepared by the practice for its flu-season copy. Supports risk-reduction wording, not a prevention guarantee.",
+    source: "Internal document · Vaccine-effectiveness-summary.pdf · prepared by Northside clinical lead (fictional)",
+    supportedClaim: "Vaccination helps reduce the risk of flu.",
+    status: "VERIFIED",
+    reviewNote: "Checked against the revised copy on version 2: the summary supports a risk-reduction statement and nothing stronger.",
+    validUntil: null,
+    createdAt: AT(16, 14, 8),
+    updatedAt: AT(17, 9, 20),
+  },
+  {
+    id: "rec-c1-licence",
+    ownerId: "client1",
+    title: "State medical practice licence · Northside Family Practice",
+    type: "CERTIFICATION",
+    description: "Current practice licence for the clinic named in the ads. Confirms the advertiser is a licensed provider in its market.",
+    source: "Licence record · NFP-2026-0417 · issued by the state medical board (fictional)",
+    supportedClaim: "Northside Family Practice is a licensed medical provider.",
+    status: "VERIFIED",
+    reviewNote: "Licence number and expiry read by the reviewer on intake.",
+    validUntil: ON(2027, 6, 30),
+    createdAt: AT(12, 9, 5),
+    updatedAt: AT(12, 11),
+  },
+  {
+    id: "rec-c1-booking",
+    ownerId: "client1",
+    title: "Online booking timing log · September",
+    type: "CLAIM_SUBSTANTIATION",
+    description: "Export from the booking tool showing median and 90th-percentile time to complete an online booking in September.",
+    source: "Internal export · booking-timing-sept.csv · Northside operations (fictional)",
+    supportedClaim: "Book online in 60 seconds.",
+    status: "UNVERIFIED",
+    reviewNote: null,
+    validUntil: null,
+    createdAt: AT(28, 15, 40),
+    updatedAt: AT(28, 15, 40),
+  },
+  {
+    id: "rec-c1-google-cert",
+    ownerId: "client1",
+    title: "Google Ads healthcare advertiser certification · application",
+    type: "CERTIFICATION",
+    description: "Application receipt for the platform certification needed before prescription-related search ads can serve. The certification itself has not been granted yet.",
+    source: "Application receipt · ref GHC-APP-88213 (fictional)",
+    supportedClaim: "The advertiser may run prescription-related telehealth ads on Google Ads.",
+    status: "NEEDS_MORE_INFO",
+    reviewNote: "A receipt is not a certification. The record stays open until the granted certification is attached.",
+    validUntil: null,
+    createdAt: AT(28, 16),
+    updatedAt: AT(29, 10, 15),
+  },
+  {
+    id: "rec-c2-physical",
+    ownerId: "client2",
+    title: "Sports physical service description",
+    type: "CLAIM_SUBSTANTIATION",
+    description: "Describes what the back-to-school checkup and sports physical include, who performs them and the same-week scheduling commitment shown in the ad.",
+    source: "Internal document · Sports-physical-service-description.pdf · Lakeview practice manager (fictional)",
+    supportedClaim: "Same-week appointments available for checkups and sports physicals.",
+    status: "VERIFIED",
+    reviewNote: "Matches the offer in the feed image. The headline finding is about the condition wording, not this claim.",
+    validUntil: null,
+    createdAt: AT(21, 10, 20),
+    updatedAt: AT(22, 9, 20),
+  },
+  {
+    id: "rec-c2-testimonial",
+    ownerId: "client2",
+    title: "Parent testimonial consent and disclosure form",
+    type: "OTHER",
+    description: "Signed consent from the parent quoted in the allergy Reel, with a statement on whether anything of value was given and whether the result is typical.",
+    source: "Signed form · testimonial-consent-LP-031.pdf · Lakeview front desk (fictional)",
+    supportedClaim: "The quoted parent is a real patient family who consented and received no compensation.",
+    status: "UNDER_REVIEW",
+    reviewNote: null,
+    validUntil: null,
+    createdAt: AT(29, 9, 50),
+    updatedAt: AT(29, 9, 50),
+  },
+  {
+    id: "rec-c2-licence",
+    ownerId: "client2",
+    title: "State medical practice licence · Lakeview Pediatrics",
+    type: "CERTIFICATION",
+    description: "Current practice licence for the pediatric clinic named in the ads.",
+    source: "Licence record · LVP-2025-1190 · issued by the state medical board (fictional)",
+    supportedClaim: "Lakeview Pediatrics is a licensed medical provider.",
+    status: "VERIFIED",
+    reviewNote: "Licence number and expiry read by the reviewer on intake.",
+    validUntil: ON(2027, 3, 31),
+    createdAt: AT(14, 11, 5),
+    updatedAt: AT(14, 12),
+  },
+  {
+    id: "rec-team-substantiation",
+    ownerId: "team",
+    title: "Sample regulator guidance · substantiating health claims",
+    type: "REGULATORY_DOCUMENT",
+    description: "Team reference note summarising what 'competent and reliable evidence' means for the sample health-claims policy. Internal reading aid, not a rule.",
+    source: "Team reference note · sample-substantiation-guide.md (fictional summary, no official document attached)",
+    supportedClaim: "Objective health claims need evidence proportionate to the claim.",
+    status: "VERIFIED",
+    reviewNote: "Internal reference only; cited to clients as guidance, never as approval.",
+    validUntil: null,
+    createdAt: AT(10, 9),
+    updatedAt: AT(10, 9),
   },
 ];
 

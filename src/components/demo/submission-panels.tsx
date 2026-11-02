@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +10,11 @@ import { EmptyState } from "@/components/ui/states";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { FindingStatusPill, SeverityMarker } from "@/components/ui/severity";
-import { CheckCircleIcon, FileTextIcon, PaperclipIcon, SendIcon, SparklesIcon, UploadIcon } from "@/components/ui/icons";
+import { BookOpenIcon, CheckCircleIcon, FileTextIcon, PaperclipIcon, SendIcon, SparklesIcon, UploadIcon } from "@/components/ui/icons";
 import { REQUIRED_ACTION_LABEL, REVIEW_DISCLAIMER, REVIEW_OUTCOME_LABEL } from "@/lib/workflow/labels";
-import { DEMO_CLIENTS, type DemoClientRole, type DemoEvent, type DemoEvidence, type DemoFinding, type DemoRole, type DemoSubmission } from "@/lib/demo/data";
-import { counterpartName, messagesFor, policyByCode } from "@/lib/demo/store";
+import { DEMO_CLIENTS, EVIDENCE_RECORD_STATUS_LABEL, type DemoClientRole, type DemoEvent, type DemoEvidence, type DemoFinding, type DemoRole, type DemoSubmission } from "@/lib/demo/data";
+import { demoHref } from "@/lib/demo/links";
+import { attachableRecords, counterpartName, messagesFor, policyByCode } from "@/lib/demo/store";
 import { formatDemoTime, useDemo } from "./demo-provider";
 
 export function SimulatedTag({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -214,29 +216,85 @@ export function FindingsList({ findings, role }: { findings: DemoFinding[]; role
 const EVIDENCE_KINDS = ["Clinical reference", "Service description", "Certification", "Disclosure copy", "Reviewer note", "Other"];
 
 export function EvidencePanel({ submission, items, role }: { submission: DemoSubmission; items: DemoEvidence[]; role: DemoRole }) {
-  const { act } = useDemo();
+  const { state, act } = useDemo();
   const [name, setName] = useState("");
   const [kind, setKind] = useState(role === "team" ? "Reviewer note" : EVIDENCE_KINDS[0]);
   const [description, setDescription] = useState("");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<"none" | "upload" | "dictionary">("none");
   const uploadedBy = role === "team" ? "team" : "client";
   const closed = submission.status === "REVIEW_COMPLETE";
+  const reusable = attachableRecords(state, role, submission.id);
+  const [recordId, setRecordId] = useState("");
+  const chosenRecord = reusable.find((r) => r.id === recordId) ?? reusable[0];
+  const needsEvidence = state.findings.some((f) => f.submissionId === submission.id && f.requiredAction === "PROVIDE_EVIDENCE" && f.status !== "RESOLVED" && (role === "team" || f.status !== "DRAFT"));
 
   return (
     <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-4 mb-4">
         <div>
           <h2 className="text-body font-semibold text-ink">Evidence</h2>
-          <p className="text-caption text-muted mt-0.5">Two-sided: the client substantiates claims, the reviewer records what was checked.</p>
+          <p className="text-caption text-muted mt-0.5">Two-sided: the client substantiates claims, the reviewer records what was checked. Every attachment is filed in the Evidence Dictionary.</p>
         </div>
         {!closed && (
-          <Button size="sm" variant="secondary" onClick={() => setOpen((v) => !v)}>
-            <UploadIcon /> {open ? "Cancel" : "Add evidence"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant={open === "dictionary" ? "primary" : "secondary"} onClick={() => setOpen((v) => (v === "dictionary" ? "none" : "dictionary"))} disabled={reusable.length === 0 && open !== "dictionary"}>
+              <BookOpenIcon /> {open === "dictionary" ? "Cancel" : "Attach from dictionary"}
+            </Button>
+            <Button size="sm" variant={open === "upload" ? "primary" : "secondary"} onClick={() => setOpen((v) => (v === "upload" ? "none" : "upload"))}>
+              <UploadIcon /> {open === "upload" ? "Cancel" : "Add new"}
+            </Button>
+          </div>
         )}
       </div>
 
-      {open && !closed && (
+      {needsEvidence && !closed && (
+        <p className="mb-4 rounded-xl border border-attention-line bg-attention-soft/50 px-3.5 py-2.5 text-caption text-attention-ink">
+          A finding on this creative asks for evidence. Attach a dictionary record or add a new one; the Compliance Passport lists it as missing until then.
+        </p>
+      )}
+
+      {open === "dictionary" && !closed && (
+        <form
+          className="mb-5 rounded-xl border border-dashed border-brand-300 bg-brand-50/40 p-4 flex flex-col gap-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (chosenRecord) act({ type: "ATTACH_EVIDENCE_RECORD", submissionId: submission.id, recordId: chosenRecord.id, attachedBy: uploadedBy });
+            setOpen("none");
+          }}
+        >
+          <p className="text-caption text-ink-soft">Reuse a record you already hold. The reviewer&apos;s check on the record carries over to this creative.</p>
+          {reusable.length === 0 ? (
+            <p className="text-caption text-muted">Every record in your dictionary is already attached to this version.</p>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+              <div className="flex-1">
+                <Field label="Dictionary record">
+                  <Select value={chosenRecord?.id ?? ""} onChange={(e) => setRecordId(e.target.value)}>
+                    {reusable.map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.title} · {EVIDENCE_RECORD_STATUS_LABEL[r.status]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              </div>
+              <Button type="submit" size="md" disabled={!chosenRecord}>
+                Attach to version {submission.versions[submission.versions.length - 1].number}
+              </Button>
+            </div>
+          )}
+          {chosenRecord && (
+            <p className="text-caption text-muted">
+              {chosenRecord.supportedClaim ? `Supports: “${chosenRecord.supportedClaim}” · ` : ""}
+              <Link href={demoHref(role, "evidence", chosenRecord.id)} className="font-medium text-brand-700 hover:text-brand-900">
+                Open the record
+              </Link>
+            </p>
+          )}
+        </form>
+      )}
+
+      {open === "upload" && !closed && (
         <form
           className="mb-5 rounded-xl border border-dashed border-line-strong bg-subtle/40 p-4 flex flex-col gap-3"
           onSubmit={(e) => {
@@ -244,10 +302,10 @@ export function EvidencePanel({ submission, items, role }: { submission: DemoSub
             act({ type: "ADD_EVIDENCE", submissionId: submission.id, name, kind, description, uploadedBy });
             setName("");
             setDescription("");
-            setOpen(false);
+            setOpen("none");
           }}
         >
-          <SimulatedTag className="self-start">Simulated upload · no file is stored</SimulatedTag>
+          <SimulatedTag className="self-start">Simulated upload · no file is stored · filed in the Evidence Dictionary</SimulatedTag>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="File name">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Effectiveness-summary.pdf" required />
@@ -294,7 +352,17 @@ export function EvidencePanel({ submission, items, role }: { submission: DemoSub
                 <p className="text-caption text-muted mt-1 leading-relaxed">{e.description}</p>
               </div>
               <div className="mt-3 pt-3 border-t border-line/60 flex flex-wrap items-center justify-between gap-1 text-micro text-muted">
-                <span>{e.kind} · V{e.versionNumber}</span>
+                <span>
+                  {e.kind} · V{e.versionNumber}
+                  {e.recordId && (
+                    <>
+                      {" · "}
+                      <Link href={demoHref(role, "evidence", e.recordId)} className="font-medium text-brand-700 hover:text-brand-900">
+                        dictionary record
+                      </Link>
+                    </>
+                  )}
+                </span>
                 <span>
                   {e.uploadedBy === "team" ? (role === "team" ? "Reviewer" : "Clyntique Reviewer") : DEMO_CLIENTS[submission.clientId].contactName} · {formatDemoTime(e.uploadedAt)}
                 </span>

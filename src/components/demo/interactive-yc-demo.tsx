@@ -7,6 +7,8 @@ import { messagesFor, reviewQueue } from "@/lib/demo/store";
 import { DemoProvider, useDemo } from "./demo-provider";
 import { DemoBanner, DemoHeader, DemoNav, navItemsFor } from "./demo-shell";
 import { DemoRoleChooser } from "./role-chooser";
+import { CompliancePassportView } from "./compliance-passport";
+import { EvidenceDictionary } from "./evidence-dictionary";
 import { SubmissionDetail } from "./submission-detail";
 import { ClientMessages, ClientOverview, ClientProjects, SubmissionsList, TeamMessages, TeamPolicies, TeamQueue } from "./workspace-views";
 
@@ -70,6 +72,8 @@ function Sandbox({ role, view, id }: { role: DemoRole | null; view: DemoView | u
 
 function Screen({ role, view, id }: { role: DemoRole; view: DemoView; id: string | null }) {
   if (view === "submission") return <SubmissionDetail role={role} id={id} />;
+  if (view === "passport") return <CompliancePassportView role={role} id={id} />;
+  if (view === "evidence") return <EvidenceDictionary role={role} id={id} />;
   if (view === "submissions") return <SubmissionsList role={role} />;
   if (role === "team") {
     if (view === "messages") return <TeamMessages selected={id} />;
