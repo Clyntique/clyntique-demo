@@ -48,7 +48,7 @@ CREATE TABLE "LibraryChunk" (
     "index" INTEGER NOT NULL,
     "page" INTEGER,
     "text" TEXT NOT NULL,
-    "tsv" tsvector GENERATED ALWAYS AS (to_tsvector('english', "text")) STORED,
+    "tsv" tsvector,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "LibraryChunk_pkey" PRIMARY KEY ("id")
@@ -79,6 +79,14 @@ CREATE UNIQUE INDEX "LibraryChunk_documentId_index_key" ON "LibraryChunk"("docum
 
 -- CreateIndex
 CREATE INDEX "LibraryChunk_tsv_idx" ON "LibraryChunk" USING GIN ("tsv");
+
+-- Full-text index column, filled by PostgreSQL's built-in trigger on every
+-- insert and on every change of "text". The application never writes "tsv".
+-- (A generated column would do the same, but Prisma cannot declare one, so
+-- `prisma migrate diff` would report drift; a trigger is outside Prisma's model.)
+CREATE TRIGGER "LibraryChunk_tsv_update"
+BEFORE INSERT OR UPDATE OF "text" ON "LibraryChunk"
+FOR EACH ROW EXECUTE FUNCTION tsvector_update_trigger("tsv", 'pg_catalog.english', "text");
 
 -- CreateIndex
 CREATE INDEX "KnowledgeQuery_ownerClientId_createdAt_idx" ON "KnowledgeQuery"("ownerClientId", "createdAt");
