@@ -435,6 +435,12 @@ describe("knowledge search (searchKnowledge)", () => {
     const lookup = h.prisma.knowledgeQuery.findFirst.mock.calls[0][0].where;
     expect(lookup).toMatchObject({ userId: CLIENT_A.id, question: "Does the study show lines are reduced?" });
     expect(lookup.createdAt.gte.getTime()).toBeGreaterThan(Date.now() - 60_000);
+    // Check and insert run inside a transaction that first takes an advisory lock on (person, question).
+    expect(h.prisma.$transaction).toHaveBeenCalledTimes(2);
+    const [strings, ...values] = h.prisma.$executeRaw.mock.calls[0];
+    const lock = flat({ strings, values });
+    expect(lock).toContain("pg_advisory_xact_lock(hashtext(");
+    expect(lock).toContain(CLIENT_A.id);
   });
 
   it("the team's scope is Clyntique's library plus shared documents, never a client id; a policy document or verified rule raises a concern", async () => {

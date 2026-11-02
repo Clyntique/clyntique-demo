@@ -166,17 +166,22 @@ export async function searchKnowledge(user: CurrentUser, question: string): Prom
     aiNote = "No passages to answer from.";
   }
 
-  // One audit row per question: the page can render more than once for a
-  // single view (streaming, a refresh), so the same question by the same
-  // person within a short window is not logged twice.
+  // One audit row per question: the page renders more than once per view
+  // (two concurrent renders a few milliseconds apart, plus refreshes), so the
+  // same question by the same person within a short window is logged once.
+  // The check and the insert run under a transaction-scoped advisory lock on
+  // (person, question), so concurrent renders cannot both pass the check.
   try {
-    const recent = await prisma.knowledgeQuery.findFirst({
-      where: { userId: user.id, question: plan.strict, createdAt: { gte: new Date(Date.now() - QUERY_LOG_WINDOW_MS) } },
-      select: { id: true },
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${user.id}\n${plan.strict}`}))`;
+      const recent = await tx.knowledgeQuery.findFirst({
+        where: { userId: user.id, question: plan.strict, createdAt: { gte: new Date(Date.now() - QUERY_LOG_WINDOW_MS) } },
+        select: { id: true },
+      });
+      if (!recent) {
+        await tx.knowledgeQuery.create({ data: { userId: user.id, ownerClientId: user.role === "TEAM" ? null : user.id, question: plan.strict, verdict, resultCount: passages.length, aiUsed: answer !== null } });
+      }
     });
-    if (!recent) {
-      await prisma.knowledgeQuery.create({ data: { userId: user.id, ownerClientId: user.role === "TEAM" ? null : user.id, question: plan.strict, verdict, resultCount: passages.length, aiUsed: answer !== null } });
-    }
   } catch (error) {
     console.error("Knowledge query log failed", error instanceof Error ? error.name : "unknown error");
   }
