@@ -6,6 +6,8 @@ import { requireRole } from "@/lib/auth/dal";
 import { getSubmission, getTargetingOptions, type SubmissionDetail } from "@/lib/data/submission";
 import { getSubmissionReview, type SubmissionReview } from "@/lib/data/submission-review";
 import { getScanHistory } from "@/lib/data/lifecycle";
+import { getAttachableRecords } from "@/lib/data/evidence-records";
+import { AttachFromDictionaryForm } from "@/components/evidence/evidence-record-forms";
 import { FORMATS } from "@/lib/creative-format";
 import { formatRelative, pluralize } from "@/lib/format";
 import { getUploadLimits } from "@/lib/media";
@@ -84,12 +86,14 @@ export async function SubmissionView({
   const canUpload = role === "CLIENT" && authorize(user, "UPLOAD_VERSION", facts).ok;
   const canSubmit = role === "CLIENT" && authorize(user, "SUBMIT", facts).ok;
   const canManageEvidence = role === "CLIENT" && authorize(user, "MANAGE_EVIDENCE", facts).ok;
-  const [targeting, review, scanHistory, citable] = await Promise.all([
+  const [targeting, review, scanHistory, citable, attachable] = await Promise.all([
     editable ? getTargetingOptions() : Promise.resolve(null),
     reviewLoad,
     role === "TEAM" ? getScanHistory(user, creativeId) : Promise.resolve([]),
     // Rules a reviewer may cite while reviewing (the server re-checks each choice).
     role === "TEAM" && submission.status === "IN_REVIEW" ? citableRulesForSubmission(user, creativeId) : Promise.resolve([]),
+    // Evidence Dictionary records this viewer may attach now (empty when evidence can't be added).
+    canManageEvidence || (role === "TEAM" && submission.status === "IN_REVIEW") ? getAttachableRecords(user, creativeId) : Promise.resolve([]),
   ]);
   const ruleChoices = citable.map((r) => ({ versionId: r.currentVersion.id, label: `${r.code} v${r.currentVersion.versionNumber} — ${r.title}` }));
   if (!review) notFound();
@@ -197,19 +201,35 @@ export async function SubmissionView({
         )}
         <EvidenceList evidence={review.evidence} role={role} findingLabels={findingLabels} />
         {canManageEvidence && (
-          <EvidenceForm
-            creativeId={submission.id}
-            configured={uploadsConfigured()}
-            findings={remediation ? openInCycle.map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue })) : []}
-          />
+          <>
+            <EvidenceForm
+              creativeId={submission.id}
+              configured={uploadsConfigured()}
+              findings={remediation ? openInCycle.map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue })) : []}
+            />
+            <AttachFromDictionaryForm
+              role={role}
+              creativeId={submission.id}
+              records={attachable}
+              findings={remediation ? openInCycle.map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue })) : []}
+            />
+          </>
         )}
         {target && (
-          <EvidenceForm
-            creativeId={submission.id}
-            configured={uploadsConfigured()}
-            findings={cycleFindings.filter((f) => f.status !== "DISMISSED").map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue }))}
-            reviewer={{ rules: ruleChoices }}
-          />
+          <>
+            <EvidenceForm
+              creativeId={submission.id}
+              configured={uploadsConfigured()}
+              findings={cycleFindings.filter((f) => f.status !== "DISMISSED").map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue }))}
+              reviewer={{ rules: ruleChoices }}
+            />
+            <AttachFromDictionaryForm
+              role={role}
+              creativeId={submission.id}
+              records={attachable}
+              findings={cycleFindings.filter((f) => f.status !== "DISMISSED").map((f) => ({ id: f.id, label: findingLabels.get(f.id) ?? f.issue }))}
+            />
+          </>
         )}
       </div>
     ),

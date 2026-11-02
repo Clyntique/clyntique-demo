@@ -16,6 +16,7 @@ import { EVIDENCE_TYPES } from "@/components/review/evidence-types";
 import { WithdrawEvidenceForm } from "./client-remediation";
 import { AssessEvidenceForm } from "./assess-evidence-form";
 import { PolicyReference } from "./policy-reference";
+import { RecordStatusPill } from "@/components/evidence/record-status";
 
 // Decision history and evidence for a submission (both roles). The controls
 // are withdrawing evidence (client) and assessing it (team), each offered
@@ -106,6 +107,22 @@ export function EvidenceList({
             {!e.claimText && e.claimLocation && <p className="text-meta mt-1">Location: {e.claimLocation}</p>}
             {e.description && <p className="text-small mt-1 break-words whitespace-pre-line text-ink-soft">{e.description}</p>}
             {e.policy && <PolicyReference policy={e.policy} />}
+            {e.record && (
+              <p className="text-meta mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span>
+                  From the Evidence Dictionary
+                  {e.record.href && (
+                    <>
+                      {" · "}
+                      <a href={e.record.href} className="font-medium text-brand-700 hover:underline">
+                        Open record
+                      </a>
+                    </>
+                  )}
+                </span>
+                <RecordStatusPill status={e.record.status} expired={e.record.expired} />
+              </p>
+            )}
             {e.file && (
               <a
                 href={`/api/media/evidence/${e.id}`}

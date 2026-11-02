@@ -27,7 +27,27 @@ describe("prisma/migrations", () => {
       "20261019190000_lifecycle_records",
       "20261028000000_policy_structure_and_evidence",
       "20261031160000_policy_source_monitoring",
+      "20261102170000_evidence_dictionary",
     ]);
+  });
+
+  it("the evidence-dictionary migration (Nov 2) only creates and adds, with history on RESTRICT and records unchecked by default", () => {
+    const body = statements("20261102170000_evidence_dictionary");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|ALTER TABLE "\w+" ADD COLUMN|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 60));
+    for (const k of kinds) expect(k).toMatch(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|ALTER TABLE "\w+" ADD (COLUMN|CONSTRAINT))$/);
+    expect([...body.matchAll(/CREATE TABLE "(\w+)"/g)].map((m) => m[1])).toEqual(["EvidenceRecord", "EvidenceRecordCheck"]);
+    // The only change to an existing table: one nullable column on Evidence.
+    expect([...body.matchAll(/ALTER TABLE "(\w+)" ADD COLUMN\s+"(\w+)" (\w+)/g)].map((m) => `${m[1]}.${m[2]} ${m[3]}`)).toEqual(["Evidence.recordId TEXT"]);
+    expect(body).not.toMatch(/ALTER COLUMN|\bINSERT\b|\bUPDATE\s+"|\bDROP\b/i);
+    expect(body).toContain(`"status" "EvidenceRecordStatus" NOT NULL DEFAULT 'UNCHECKED'`);
+    // Records, checks, their owners and reviewers are history: nothing cascades.
+    for (const m of body.matchAll(/ON DELETE (\w+)/g)) expect(m[1]).toBe("RESTRICT");
+    expect(body).toMatch(/"Evidence" ADD CONSTRAINT[^;]*"recordId"[^;]*REFERENCES "EvidenceRecord"/);
+    expect(body).toMatch(/"EvidenceRecordCheck" ADD CONSTRAINT[^;]*"reviewerId"[^;]*REFERENCES "User"/);
   });
 
   it("the lifecycle-records migration (Oct 19 sprint) only creates and adds, and keeps history on RESTRICT", () => {

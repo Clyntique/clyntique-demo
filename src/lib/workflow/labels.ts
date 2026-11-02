@@ -133,3 +133,38 @@ export const AI_ORIGIN_NOTE = "Started as an AI suggestion; a reviewer checked a
 /** Shown with every policy reference. */
 export const POLICY_REFERENCE_NOTICE =
   "Clyntique's own summary of the official policy, with links to the source. Not legal advice; only the platform or regulator decides whether an ad is accepted.";
+
+// ---------------------------------------------------------------------------
+// Evidence Dictionary (Nov 2). A reviewer's check of a reusable record is an
+// internal review check of the record as described: never a scientific,
+// legal, regulatory or platform validation, and never a decision about a creative.
+
+export type EvidenceRecordStatusKey = "UNCHECKED" | "ACCEPTED" | "NEEDS_MORE_INFO" | "NOT_ACCEPTED";
+export type EvidenceRecordCheckResultKey = Exclude<EvidenceRecordStatusKey, "UNCHECKED">;
+
+export const EVIDENCE_RECORD_STATUS_LABEL: Record<EvidenceRecordStatusKey, string> = {
+  UNCHECKED: "Not yet checked",
+  ACCEPTED: "Checked by Clyntique reviewer",
+  NEEDS_MORE_INFO: "Needs more information",
+  NOT_ACCEPTED: "Not accepted for review",
+};
+
+export const EVIDENCE_RECORD_STATUS_DESCRIPTION: Record<EvidenceRecordStatusKey, string> = {
+  UNCHECKED: "No Clyntique reviewer has checked this record yet.",
+  ACCEPTED: "A Clyntique reviewer read the record as described and accepted it for use in reviews.",
+  NEEDS_MORE_INFO: "A Clyntique reviewer asked for more information before the record can support a claim.",
+  NOT_ACCEPTED: "A Clyntique reviewer did not accept this record as support for the claim it describes.",
+};
+
+export const EVIDENCE_RECORD_CHECK_LABEL: Record<EvidenceRecordCheckResultKey, string> = {
+  ACCEPTED: "Accept for use in reviews",
+  NEEDS_MORE_INFO: "Needs more information",
+  NOT_ACCEPTED: "Not accepted",
+};
+
+export const EVIDENCE_RECORD_NOTICE =
+  "A reviewer check is Clyntique's internal review of the record as described. It is not a scientific, legal, regulatory or platform validation, and it is not a decision about any creative.";
+
+/** Shown with every dictionary record. */
+export const EVIDENCE_DICTIONARY_NOTICE =
+  "Records in the Evidence Dictionary are reusable references. Attaching one to a submission adds a copy to that submission's evidence; the review record keeps that copy even if the dictionary record changes later.";

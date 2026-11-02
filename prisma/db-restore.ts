@@ -47,9 +47,14 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "Finding",
   "FindingEvent",
   "FindingResponse",
+  // Evidence Dictionary (20261102170000): a record references users only and
+  // is referenced by Evidence (Evidence.recordId), so it comes before Evidence.
+  "EvidenceRecord",
   "Evidence",
   // P0 two-sided evidence (20261028000000): references Evidence, ReviewCycle, User.
   "EvidenceAssessment",
+  // Evidence Dictionary (20261102170000): a check references the record and the reviewer.
+  "EvidenceRecordCheck",
   "FindingEvidence",
   "FindingMarket",
   "FindingPlatform",

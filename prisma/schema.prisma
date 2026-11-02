@@ -191,6 +191,10 @@ model User {
   verifiedPolicyRuleVersions PolicyRuleVersion[]          @relation("RuleVersionVerifiedBy")
   verifiedPolicySources      PolicySource[]               @relation("SourceVerifiedBy")
   evidenceAssessments        EvidenceAssessment[]         @relation("EvidenceAssessedBy")
+  // Evidence Dictionary (Nov 2)
+  ownedEvidenceRecords       EvidenceRecord[]             @relation("EvidenceRecordOwner")
+  createdEvidenceRecords     EvidenceRecord[]             @relation("EvidenceRecordCreatedBy")
+  evidenceRecordChecks       EvidenceRecordCheck[]        @relation("EvidenceRecordCheckedBy")
   // Policy source monitoring (Oct 31)
   triggeredSourceSnapshots   PolicySourceSnapshot[]       @relation("SnapshotTriggeredBy")
   detectedSourceChanges      PolicySourceChangeProposal[] @relation("ChangeDetectedBy")
@@ -324,6 +328,10 @@ model Evidence {
   claimLocation       String?
   // Clyntique (REVIEWER_ADDED) evidence only: the reviewed rule version it cites.
   policyRuleVersionId String?
+  // Evidence Dictionary (Nov 2): the reusable record this item was attached
+  // from. The item keeps its own copy of the record's text, so the review
+  // record never changes when the dictionary does. Null on items added directly.
+  recordId            String?
 
   creative          Creative             @relation(fields: [creativeId], references: [id], onDelete: Cascade)
   addedBy           User?                @relation("EvidenceAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
@@ -333,9 +341,11 @@ model Evidence {
   externalOutcomes  ExternalOutcome[]
   policyRuleVersion PolicyRuleVersion?   @relation("EvidencePolicyRuleVersion", fields: [policyRuleVersionId], references: [id], onDelete: Restrict)
   assessments       EvidenceAssessment[]
+  record            EvidenceRecord?      @relation(fields: [recordId], references: [id], onDelete: Restrict)
 
   @@index([creativeId])
   @@index([policyRuleVersionId])
+  @@index([recordId])
 }
 
 model Comment {
@@ -1231,4 +1241,73 @@ model EvidenceAssessment {
 
   @@index([evidenceId, createdAt])
   @@index([cycleId])
+}
+
+// ---------------------------------------------------------------------------
+// Evidence Dictionary (Nov 2). A reusable substantiation record: a client's
+// own (ownerClientId = the client) or Clyntique's (ownerClientId null, team
+// only). Attaching a record to a creative creates an ordinary Evidence row
+// that copies the record's text and points back here (Evidence.recordId), so
+// every existing visibility, submission, assessment and finding rule applies
+// to the attachment unchanged. A reviewer's check of a record is an internal
+// review check, never a scientific, legal, regulatory or platform validation,
+// and never a decision about any creative. Records are never deleted.
+
+// Where a record stands after the latest reviewer check (UNCHECKED until one exists).
+enum EvidenceRecordStatus {
+  UNCHECKED
+  ACCEPTED
+  NEEDS_MORE_INFO
+  NOT_ACCEPTED
+}
+
+// What a reviewer can record about a record.
+enum EvidenceRecordCheckResult {
+  ACCEPTED
+  NEEDS_MORE_INFO
+  NOT_ACCEPTED
+}
+
+model EvidenceRecord {
+  id            String               @id @default(cuid())
+  // The client whose workspace owns it; null = a Clyntique reference record (team only).
+  ownerClientId String?
+  createdById   String
+  title         String
+  type          EvidenceType
+  description   String?
+  source        String?
+  // Optional reference link (http/https only, validated on the server).
+  url           String?
+  // The claim this record substantiates (decision D3 wording, free text).
+  claimText     String?
+  // When the record stops being valid (licence expiry, study currency). Null = not stated.
+  validUntil    DateTime?
+  status        EvidenceRecordStatus @default(UNCHECKED)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  owner       User?                 @relation("EvidenceRecordOwner", fields: [ownerClientId], references: [id], onDelete: Restrict)
+  createdBy   User                  @relation("EvidenceRecordCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  attachments Evidence[]
+  checks      EvidenceRecordCheck[]
+
+  @@index([ownerClientId, createdAt])
+  @@index([status])
+}
+
+// Append-only history of reviewer checks on a record. The latest row is the
+// record's current status; nothing is edited or deleted.
+model EvidenceRecordCheck {
+  id         String                    @id @default(cuid())
+  recordId   String
+  reviewerId String
+  result     EvidenceRecordCheckResult
+  note       String?
+  createdAt  DateTime                  @default(now())
+
+  record   EvidenceRecord @relation(fields: [recordId], references: [id], onDelete: Restrict)
+  reviewer User           @relation("EvidenceRecordCheckedBy", fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  @@index([recordId, createdAt])
 }
