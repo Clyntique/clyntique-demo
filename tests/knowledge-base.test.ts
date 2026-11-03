@@ -453,6 +453,40 @@ describe("knowledge search (searchKnowledge)", () => {
     expect(lock).toContain(CLIENT_A.id);
   });
 
+  it("the duplicate guard only skips the audit row: a repeat search still runs and returns fresh results", async () => {
+    // Three rows per search, so the "any word" fallback query is not needed.
+    h.prisma.$queryRaw
+      .mockResolvedValueOnce([ROW("c1", "d1", 0.9), ROW("c3", "d2", 0.8), ROW("c4", "d2", 0.7)])
+      .mockResolvedValueOnce([ROW("c2", "d1", 0.9), ROW("c5", "d2", 0.8), ROW("c6", "d2", 0.7)]);
+    h.prisma.knowledgeQuery.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "q1" });
+    const first = await search.searchKnowledge(CLIENT_A, "Does the study show lines are reduced?");
+    const second = await search.searchKnowledge(CLIENT_A, "Does the study show lines are reduced?");
+    // Both searches hit the database; nothing is cached or replayed from the log.
+    expect(h.prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(first?.passages.map((p) => p.chunkId)).toEqual(["c1", "c3", "c4"]);
+    expect(second?.passages.map((p) => p.chunkId)).toEqual(["c2", "c5", "c6"]);
+    expect(second?.verdict).toBe(first?.verdict);
+    expect(h.prisma.knowledgeQuery.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("the duplicate guard is per person: the same question from another client or the team is logged separately", async () => {
+    h.prisma.$queryRaw.mockResolvedValue([ROW("c1", "d1", 0.9)]);
+    h.prisma.knowledgeQuery.findFirst.mockResolvedValue(null);
+    const q = "Does the study show lines are reduced?";
+    await search.searchKnowledge(CLIENT_A, q);
+    await search.searchKnowledge(CLIENT_B, q);
+    await search.searchKnowledge(TEAM, q);
+    const lookups = h.prisma.knowledgeQuery.findFirst.mock.calls.map((c) => c[0].where.userId);
+    expect(lookups).toEqual([CLIENT_A.id, CLIENT_B.id, TEAM.id]);
+    const rows = h.prisma.knowledgeQuery.create.mock.calls.map((c) => c[0].data);
+    expect(rows.map((r) => [r.userId, r.ownerClientId])).toEqual([[CLIENT_A.id, CLIENT_A.id], [CLIENT_B.id, CLIENT_B.id], [TEAM.id, null]]);
+    // Each person's check and insert is locked on their own (person, question) key.
+    const locks = h.prisma.$executeRaw.mock.calls.map(([strings, ...values]) => flat({ strings, values }));
+    expect(locks[0]).toContain(CLIENT_A.id);
+    expect(locks[1]).toContain(CLIENT_B.id);
+    expect(locks[2]).toContain(TEAM.id);
+  });
+
   it("the team's scope is Clyntique's library plus shared documents, never a client id; a policy document or verified rule raises a concern", async () => {
     h.prisma.$queryRaw.mockResolvedValue([ROW("c9", "d2", 0.7)]);
     h.rules.mockResolvedValue([
