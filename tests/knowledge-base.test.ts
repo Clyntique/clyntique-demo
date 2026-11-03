@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CLIENT_A, CLIENT_B, TEAM, createPrismaMock, type PrismaMock } from "./helpers";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // Knowledge base (Nov 2): Content Library uploads and processing, text
 // chunking, question planning, verdicts, AI-answer validation, workspace
@@ -434,7 +436,15 @@ describe("knowledge search (searchKnowledge)", () => {
     expect(h.prisma.knowledgeQuery.create).toHaveBeenCalledTimes(1);
     const lookup = h.prisma.knowledgeQuery.findFirst.mock.calls[0][0].where;
     expect(lookup).toMatchObject({ userId: CLIENT_A.id, question: "Does the study show lines are reduced?" });
-    expect(lookup.createdAt.gte.getTime()).toBeGreaterThan(Date.now() - 60_000);
+    // The window covers the signed-in layout's 30 s auto-refresh, so a results
+    // tab left open does not log its question again on every refresh.
+    const windowMs = Date.now() - lookup.createdAt.gte.getTime();
+    expect(windowMs).toBeGreaterThanOrEqual(30 * 60_000 - 1_000);
+    expect(windowMs).toBeLessThanOrEqual(30 * 60_000 + 1_000);
+    const refresh = readFileSync(join(process.cwd(), "src", "components", "layout", "auto-refresh.tsx"), "utf8");
+    const interval = Number(/const INTERVAL_MS = ([\d_]+);/.exec(refresh)?.[1].replace(/_/g, ""));
+    expect(interval).toBeGreaterThan(0);
+    expect(search.QUERY_LOG_WINDOW_MS).toBeGreaterThan(interval * 10);
     // Check and insert run inside a transaction that first takes an advisory lock on (person, question).
     expect(h.prisma.$transaction).toHaveBeenCalledTimes(2);
     const [strings, ...values] = h.prisma.$executeRaw.mock.calls[0];

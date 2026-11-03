@@ -140,8 +140,9 @@ characters per question.
   documents, the team only from Clyntique's. A reviewer can read a client's
   shared document but cannot turn its text into a Clyntique record (which
   could otherwise be attached to another client's creative).
-- Questions are logged once per person and question within a 10-second
-  window (a page can render more than once per view), as typed, up to 300
+- Questions are logged once per person and question within a 30-minute
+  window (a page renders more than once per view, and the signed-in layout
+  refreshes an open page every 30 s), as typed, up to 300
   characters. A retention period for `KnowledgeQuery` is a product decision
   (section 12).
 - Prompt injection: document text reaches the model only as delimited data;
