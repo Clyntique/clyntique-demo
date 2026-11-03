@@ -413,9 +413,9 @@ describe("compliance passport accuracy (getSubmissionReview)", () => {
   }
 
   it("carries the dictionary record's current status, validity and a link the viewer may open", async () => {
-    setReview([{ record: { id: "rec-a", ownerClientId: CLIENT_A.id, status: "ACCEPTED", validUntil: new Date("2020-01-01") } }]);
+    setReview([{ record: { id: "rec-a", ownerClientId: CLIENT_A.id, status: "ACCEPTED", validUntil: new Date("2020-01-01"), document: { title: "Study 2025", status: "DELETED" } } }]);
     const client = await reviewData.getSubmissionReview(CLIENT_A, "s1");
-    expect(client?.evidence[0].record).toEqual({ id: "rec-a", status: "ACCEPTED", validUntil: new Date("2020-01-01"), expired: true, href: "/dashboard/evidence/rec-a" });
+    expect(client?.evidence[0].record).toEqual({ id: "rec-a", status: "ACCEPTED", validUntil: new Date("2020-01-01"), expired: true, href: "/dashboard/evidence/rec-a", document: { title: "Study 2025", deleted: true } });
     const team = await reviewData.getSubmissionReview(TEAM, "s1");
     expect(team?.evidence[0].record?.href).toBe("/admin/evidence/rec-a");
   });
@@ -423,7 +423,7 @@ describe("compliance passport accuracy (getSubmissionReview)", () => {
   it("a client gets no link to a Clyntique record behind shared reviewer evidence, and evidence without a record has none", async () => {
     setReview([{ origin: "REVIEWER_ADDED", createdAt: new Date("2026-10-11"), record: { id: "rec-team", ownerClientId: null, status: "UNCHECKED", validUntil: null } }]);
     const client = await reviewData.getSubmissionReview(CLIENT_A, "s1");
-    expect(client?.evidence[0].record).toEqual({ id: "rec-team", status: "UNCHECKED", validUntil: null, expired: false, href: null });
+    expect(client?.evidence[0].record).toEqual({ id: "rec-team", status: "UNCHECKED", validUntil: null, expired: false, href: null, document: null });
     setReview([{}]);
     expect((await reviewData.getSubmissionReview(CLIENT_A, "s1"))?.evidence[0].record).toBeNull();
   });

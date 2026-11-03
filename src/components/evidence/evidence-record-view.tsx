@@ -57,6 +57,17 @@ export async function EvidenceRecordView({ role, params }: { role: Role; params:
               <p className="text-meta">No description.</p>
             )}
             <dl className="grid gap-x-6 gap-y-1.5 text-small sm:grid-cols-[9rem_1fr]">
+              {record.document && (
+                <>
+                  <dt className="text-muted">Quoted from</dt>
+                  <dd className="min-w-0 break-words text-ink">
+                    <Link href={record.document.href} className="font-medium text-brand-700 hover:underline">
+                      {record.document.title}
+                    </Link>{" "}
+                    <span className="text-muted">({record.document.fileName}{record.document.deleted ? ", document since deleted" : ""})</span>
+                  </dd>
+                </>
+              )}
               <dt className="text-muted">Source</dt>
               <dd className="min-w-0 break-words text-ink">
                 {record.source ?? "—"}

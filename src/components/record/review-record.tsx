@@ -451,6 +451,7 @@ function EvidenceTable({ evidence, team }: { evidence: EvidenceView[]; team: boo
                         </>
                       )}
                       {e.record.validUntil && ` · valid until ${day(e.record.validUntil)}`}
+                      {e.record.document && ` · quoted from “${e.record.document.title}”${e.record.document.deleted ? " (document since deleted)" : ""}`}
                     </p>
                   )}
                 </td>

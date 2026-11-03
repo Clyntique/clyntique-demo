@@ -4,6 +4,8 @@ import { EvidenceDictionaryView } from "@/components/evidence/evidence-dictionar
 import { PageSkeleton } from "@/components/views/page-skeleton";
 
 export const metadata: Metadata = { title: "Evidence Dictionary · Clyntique" };
+// Uploading a document extracts and indexes its text within the request.
+export const maxDuration = 60;
 
 export default function ClientEvidenceDictionaryPage({ searchParams }: PageProps<"/dashboard/evidence">) {
   return (

@@ -47,6 +47,11 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "Finding",
   "FindingEvent",
   "FindingResponse",
+  // Content Library (20261102200000): documents reference users; chunks and
+  // evidence records reference documents, so documents come first.
+  "LibraryDocument",
+  "LibraryChunk",
+  "KnowledgeQuery",
   // Evidence Dictionary (20261102170000): a record references users only and
   // is referenced by Evidence (Evidence.recordId), so it comes before Evidence.
   "EvidenceRecord",

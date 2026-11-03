@@ -28,7 +28,32 @@ describe("prisma/migrations", () => {
       "20261028000000_policy_structure_and_evidence",
       "20261031160000_policy_source_monitoring",
       "20261102170000_evidence_dictionary",
+      "20261102200000_content_library",
     ]);
+  });
+
+  it("the content-library migration (Nov 2) only creates and adds; only the search index cascades, every other reference is RESTRICT", () => {
+    const body = statements("20261102200000_content_library");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|CREATE TRIGGER|ALTER TABLE "\w+" ADD COLUMN|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 60));
+    for (const k of kinds) expect(k).toMatch(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|CREATE TRIGGER|ALTER TABLE "\w+" ADD (COLUMN|CONSTRAINT))$/);
+    // The only trigger is the one that fills the search column on the new table.
+    expect([...body.matchAll(/CREATE TRIGGER "(\w+)"[^;]*ON "(\w+)"/g)].map((m) => `${m[1]} on ${m[2]}`)).toEqual(["LibraryChunk_tsv_update on LibraryChunk"]);
+    expect([...body.matchAll(/CREATE TABLE "(\w+)"/g)].map((m) => m[1])).toEqual(["LibraryDocument", "LibraryChunk", "KnowledgeQuery"]);
+    expect([...body.matchAll(/ALTER TABLE "(\w+)" ADD COLUMN\s+"(\w+)" (\w+)/g)].map((m) => `${m[1]}.${m[2]} ${m[3]}`)).toEqual(["EvidenceRecord.documentId TEXT"]);
+    // No statement writes or alters data: INSERT/UPDATE may only appear in the trigger's event list.
+    expect(body.replace(/BEFORE INSERT OR UPDATE OF "text"/, "")).not.toMatch(/ALTER COLUMN|\bINSERT\b|\bUPDATE\s+"|\bDROP\b/i);
+    // Full-text search: a tsvector column filled by PostgreSQL's trigger, with a GIN index; never written by the app.
+    expect(body).toMatch(/"tsv" tsvector,/);
+    expect(body).toMatch(/CREATE TRIGGER "LibraryChunk_tsv_update"\s+BEFORE INSERT OR UPDATE OF "text" ON "LibraryChunk"\s+FOR EACH ROW EXECUTE FUNCTION tsvector_update_trigger\("tsv", 'pg_catalog.english', "text"\)/);
+    expect(body).toMatch(/CREATE INDEX "LibraryChunk_tsv_idx" ON "LibraryChunk" USING GIN \("tsv"\)/);
+    const cascades = [...body.matchAll(/ALTER TABLE "(\w+)" ADD CONSTRAINT[^;]*ON DELETE CASCADE/g)].map((m) => m[1]);
+    expect(cascades).toEqual(["LibraryChunk"]);
+    for (const m of body.matchAll(/ALTER TABLE "(?!LibraryChunk")\w+" ADD CONSTRAINT[^;]*ON DELETE (\w+)/g)) expect(m[1]).toBe("RESTRICT");
+    expect(body).toMatch(/"EvidenceRecord" ADD CONSTRAINT[^;]*"documentId"[^;]*REFERENCES "LibraryDocument"/);
   });
 
   it("the evidence-dictionary migration (Nov 2) only creates and adds, with history on RESTRICT and records unchecked by default", () => {

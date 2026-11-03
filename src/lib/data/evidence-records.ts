@@ -62,6 +62,8 @@ export type EvidenceRecordDetail = EvidenceRecordSummary & {
   description: string | null;
   url: string | null;
   createdByName: string;
+  /** Knowledge base: the Content Library document this record quotes, when saved from a search result. */
+  document: { id: string; title: string; fileName: string; deleted: boolean; href: string } | null;
   usages: EvidenceRecordUsage[]; // newest first
   checks: EvidenceRecordCheckView[]; // newest first
   /** TEAM: may record a check now. */
@@ -206,6 +208,7 @@ export async function getEvidenceRecord(user: CurrentUser, recordId: string): Pr
       createdAt: true,
       owner: { select: { name: true } },
       createdBy: { select: { name: true, role: true } },
+      document: { select: { id: true, title: true, fileName: true, status: true } },
       attachments: { select: ATTACHMENT_SELECT, orderBy: { createdAt: "desc" } },
       checks: { orderBy: { createdAt: "desc" }, select: { id: true, result: true, note: true, createdAt: true, reviewer: { select: { name: true } } } },
     },
@@ -250,6 +253,9 @@ export async function getEvidenceRecord(user: CurrentUser, recordId: string): Pr
     description: r.description,
     url: r.url,
     createdByName: team || r.createdBy.role === "CLIENT" ? r.createdBy.name : "Clyntique reviewer",
+    document: r.document
+      ? { id: r.document.id, title: r.document.title, fileName: r.document.fileName, deleted: r.document.status === "DELETED", href: `${basePathFor(user.role)}/evidence/library/${r.document.id}` }
+      : null,
     usages,
     checks: r.checks.map((c) => ({ id: c.id, result: c.result, note: c.note, reviewerName: team ? c.reviewer.name : "Clyntique reviewer", createdAt: c.createdAt })),
     canCheck: team,
