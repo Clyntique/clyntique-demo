@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CLIENT_A, CLIENT_B, TEAM, createPrismaMock, type PrismaMock } from "./helpers";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 // Knowledge base (Nov 2): Content Library uploads and processing, text
 // chunking, question planning, verdicts, AI-answer validation, workspace
@@ -434,13 +436,55 @@ describe("knowledge search (searchKnowledge)", () => {
     expect(h.prisma.knowledgeQuery.create).toHaveBeenCalledTimes(1);
     const lookup = h.prisma.knowledgeQuery.findFirst.mock.calls[0][0].where;
     expect(lookup).toMatchObject({ userId: CLIENT_A.id, question: "Does the study show lines are reduced?" });
-    expect(lookup.createdAt.gte.getTime()).toBeGreaterThan(Date.now() - 60_000);
+    // The window covers the signed-in layout's 30 s auto-refresh, so a results
+    // tab left open does not log its question again on every refresh.
+    const windowMs = Date.now() - lookup.createdAt.gte.getTime();
+    expect(windowMs).toBeGreaterThanOrEqual(30 * 60_000 - 1_000);
+    expect(windowMs).toBeLessThanOrEqual(30 * 60_000 + 1_000);
+    const refresh = readFileSync(join(process.cwd(), "src", "components", "layout", "auto-refresh.tsx"), "utf8");
+    const interval = Number(/const INTERVAL_MS = ([\d_]+);/.exec(refresh)?.[1].replace(/_/g, ""));
+    expect(interval).toBeGreaterThan(0);
+    expect(search.QUERY_LOG_WINDOW_MS).toBeGreaterThan(interval * 10);
     // Check and insert run inside a transaction that first takes an advisory lock on (person, question).
     expect(h.prisma.$transaction).toHaveBeenCalledTimes(2);
     const [strings, ...values] = h.prisma.$executeRaw.mock.calls[0];
     const lock = flat({ strings, values });
     expect(lock).toContain("pg_advisory_xact_lock(hashtext(");
     expect(lock).toContain(CLIENT_A.id);
+  });
+
+  it("the duplicate guard only skips the audit row: a repeat search still runs and returns fresh results", async () => {
+    // Three rows per search, so the "any word" fallback query is not needed.
+    h.prisma.$queryRaw
+      .mockResolvedValueOnce([ROW("c1", "d1", 0.9), ROW("c3", "d2", 0.8), ROW("c4", "d2", 0.7)])
+      .mockResolvedValueOnce([ROW("c2", "d1", 0.9), ROW("c5", "d2", 0.8), ROW("c6", "d2", 0.7)]);
+    h.prisma.knowledgeQuery.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({ id: "q1" });
+    const first = await search.searchKnowledge(CLIENT_A, "Does the study show lines are reduced?");
+    const second = await search.searchKnowledge(CLIENT_A, "Does the study show lines are reduced?");
+    // Both searches hit the database; nothing is cached or replayed from the log.
+    expect(h.prisma.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(first?.passages.map((p) => p.chunkId)).toEqual(["c1", "c3", "c4"]);
+    expect(second?.passages.map((p) => p.chunkId)).toEqual(["c2", "c5", "c6"]);
+    expect(second?.verdict).toBe(first?.verdict);
+    expect(h.prisma.knowledgeQuery.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("the duplicate guard is per person: the same question from another client or the team is logged separately", async () => {
+    h.prisma.$queryRaw.mockResolvedValue([ROW("c1", "d1", 0.9)]);
+    h.prisma.knowledgeQuery.findFirst.mockResolvedValue(null);
+    const q = "Does the study show lines are reduced?";
+    await search.searchKnowledge(CLIENT_A, q);
+    await search.searchKnowledge(CLIENT_B, q);
+    await search.searchKnowledge(TEAM, q);
+    const lookups = h.prisma.knowledgeQuery.findFirst.mock.calls.map((c) => c[0].where.userId);
+    expect(lookups).toEqual([CLIENT_A.id, CLIENT_B.id, TEAM.id]);
+    const rows = h.prisma.knowledgeQuery.create.mock.calls.map((c) => c[0].data);
+    expect(rows.map((r) => [r.userId, r.ownerClientId])).toEqual([[CLIENT_A.id, CLIENT_A.id], [CLIENT_B.id, CLIENT_B.id], [TEAM.id, null]]);
+    // Each person's check and insert is locked on their own (person, question) key.
+    const locks = h.prisma.$executeRaw.mock.calls.map(([strings, ...values]) => flat({ strings, values }));
+    expect(locks[0]).toContain(CLIENT_A.id);
+    expect(locks[1]).toContain(CLIENT_B.id);
+    expect(locks[2]).toContain(TEAM.id);
   });
 
   it("the team's scope is Clyntique's library plus shared documents, never a client id; a policy document or verified rule raises a concern", async () => {

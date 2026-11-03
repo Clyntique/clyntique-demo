@@ -140,10 +140,19 @@ characters per question.
   documents, the team only from Clyntique's. A reviewer can read a client's
   shared document but cannot turn its text into a Clyntique record (which
   could otherwise be attached to another client's creative).
-- Questions are logged once per person and question within a 10-second
-  window (a page can render more than once per view), as typed, up to 300
+- Questions are logged once per person and question within a 30-minute
+  window (a page renders more than once per view, and the signed-in layout
+  refreshes an open page every 30 s), as typed, up to 300
   characters. A retention period for `KnowledgeQuery` is a product decision
   (section 12).
+- Known limitation of the question log: the 30-minute guard cannot tell an
+  intentional repeat of the same question from an automatic page refresh, so
+  a person who deliberately asks the same question again within 30 minutes
+  gets fresh results but no second audit row. The guard is per person
+  (and so per client workspace): different people asking the same question
+  are always logged separately. It affects only the audit row, never the
+  search itself. Follow-up: log on the explicit search submission instead
+  (tracked as a GitHub issue).
 - Prompt injection: document text reaches the model only as delimited data;
   the model cannot act, only answer, and its answer is validated.
 - Nothing from the library is reachable from `/demo` (no imports, no routes).

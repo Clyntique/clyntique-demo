@@ -64,7 +64,10 @@ export type KnowledgeResult = {
 };
 
 export const MAX_PASSAGES = 10;
-const QUERY_LOG_WINDOW_MS = 10_000;
+// Long enough to cover the dashboard's 30 s auto-refresh (AutoRefresh in the
+// signed-in layouts re-renders an open results page), so a results tab left
+// open logs its question at most twice an hour instead of every 30 s.
+export const QUERY_LOG_WINDOW_MS = 30 * 60_000;
 const MAX_PER_DOCUMENT = 3;
 
 type Row = { id: string; documentId: string; page: number | null; text: string; snippet: string; rank: number };
@@ -167,8 +170,9 @@ export async function searchKnowledge(user: CurrentUser, question: string): Prom
   }
 
   // One audit row per question: the page renders more than once per view
-  // (two concurrent renders a few milliseconds apart, plus refreshes), so the
-  // same question by the same person within a short window is logged once.
+  // (two concurrent renders a few milliseconds apart, plus the layout's 30 s
+  // auto-refresh), so the same question by the same person within
+  // QUERY_LOG_WINDOW_MS (30 minutes) is logged once.
   // The check and the insert run under a transaction-scoped advisory lock on
   // (person, question), so concurrent renders cannot both pass the check.
   try {
