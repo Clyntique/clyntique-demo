@@ -271,6 +271,17 @@ async function main() {
 
         await tx.$executeRawUnsafe(`SET session_replication_role = 'origin';`);
 
+        // The backup leaves out derived search columns (see db-export-columns.ts),
+        // and triggers were off during the load, so rebuild them now: touching
+        // "text" fires LibraryChunk_tsv_update, the same trigger that fills tsv
+        // on every normal insert. Then prove none were missed.
+        if (tablesToRestore.includes("LibraryChunk")) {
+          const rebuilt = await tx.$executeRawUnsafe(`UPDATE "LibraryChunk" SET "text" = "text" WHERE "tsv" IS NULL;`);
+          const [{ missing }] = await tx.$queryRawUnsafe<{ missing: number }[]>(`SELECT COUNT(*)::int AS missing FROM "LibraryChunk" WHERE "tsv" IS NULL`);
+          if (Number(missing) !== 0) throw new Error(`Search index rebuild left ${missing} LibraryChunk row(s) without tsv, rolling back.`);
+          console.log(`  Rebuilt search index for ${rebuilt} LibraryChunk rows`);
+        }
+
         // Verify before commit: every restored table must hold exactly the
         // backup's row count. Any difference throws, which rolls back the
         // whole restore, so a partial result can never be mistaken for success.

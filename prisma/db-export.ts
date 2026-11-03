@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { exportColumns, exportSelect, type ColumnInfo } from "./db-export-columns";
 
 const flag = process.argv.indexOf("--out");
 const outRoot = flag > -1 ? process.argv[flag + 1] : undefined;
@@ -35,7 +36,13 @@ async function main() {
       );
       const manifest: Record<string, number> = {};
       for (const { table_name } of tables) {
-        const rows = await tx.$queryRawUnsafe<unknown[]>(`SELECT * FROM "${table_name.replace(/"/g, '""')}"`);
+        // Every column except derived search columns (tsvector), which Prisma
+        // cannot read and the restore's trigger rebuilds.
+        const columns = await tx.$queryRawUnsafe<ColumnInfo[]>(
+          `SELECT column_name, udt_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1 ORDER BY ordinal_position`,
+          table_name,
+        );
+        const rows = await tx.$queryRawUnsafe<unknown[]>(exportSelect(table_name, exportColumns(columns)));
         writeFileSync(join(dir, `${table_name}.json`), JSON.stringify(rows, null, 2));
         manifest[table_name] = rows.length;
         console.log(`  ${table_name.padEnd(22)} ${rows.length}`);
@@ -43,7 +50,9 @@ async function main() {
       writeFileSync(join(dir, "_manifest.json"), JSON.stringify({ exportedAt: new Date().toISOString(), tables: manifest }, null, 2));
     },
     // maxWait: opening a first connection to Render can take several seconds.
-    { isolationLevel: "RepeatableRead", maxWait: 30_000, timeout: 120_000 },
+    // timeout: a full export over the slow link to Render took 124 s on
+    // Nov 3 2026, so allow 10 minutes.
+    { isolationLevel: "RepeatableRead", maxWait: 30_000, timeout: 600_000 },
   );
   console.log(`\nExport written to ${dir}`);
 }
