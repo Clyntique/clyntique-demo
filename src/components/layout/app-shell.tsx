@@ -15,13 +15,12 @@ import { NavList, type NavCounts } from "./nav-links";
 import { SidebarProvider } from "./sidebar-context";
 import { ShellLayout } from "./shell-layout";
 import { DesktopSidebar } from "./desktop-sidebar";
+import { DashboardHeader } from "./dashboard-header";
 
 // Authenticated application layout shared by the TEAM and CLIENT areas.
 // Only the user section and the TEAM queue count read the session/database,
 // so the rest of the shell is static and renders immediately.
 export function AppShell({ role, children }: { role: Role; children: ReactNode }) {
-  const home = basePathFor(role);
-
   return (
     <SidebarProvider>
       <HistoryGuard />
@@ -38,15 +37,10 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
             <SidebarContent role={role} />
           </Suspense>
         }
-        mobileHeader={
-          <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-line bg-surface/95 px-4 backdrop-blur md:hidden">
-            <Link href={home} className="rounded-md flex items-center" aria-label="Clyntique overview">
-              <BrandMark width={32} />
-            </Link>
-            <Suspense fallback={<Skeleton className="h-9 w-20" />}>
-              <PhoneMenu role={role} />
-            </Suspense>
-          </header>
+        header={
+          <Suspense fallback={<HeaderSkeleton role={role} />}>
+            <HeaderContent role={role} />
+          </Suspense>
         }
       >
         {children}
@@ -80,6 +74,42 @@ async function SidebarContent({ role }: { role: Role }) {
       user={{ id: user.id, name: user.name, email: user.email, role: user.role }}
       counts={counts}
     />
+  );
+}
+
+async function HeaderContent({ role }: { role: Role }) {
+  const user = await requireRole(role);
+  const counts = await navCounts(user);
+  return (
+    <DashboardHeader
+      role={role}
+      user={{ id: user.id, name: user.name, email: user.email, role: user.role }}
+      counts={counts}
+      mobileMenuTrigger={
+        <Suspense fallback={<Skeleton className="h-9 w-20" />}>
+          <PhoneMenu role={role} />
+        </Suspense>
+      }
+    />
+  );
+}
+
+function HeaderSkeleton({ role }: { role: Role }) {
+  const home = basePathFor(role);
+  return (
+    <header className="sticky top-0 z-20 flex h-16 w-full items-center justify-between border-b border-line bg-surface/90 px-4 backdrop-blur sm:px-6 md:px-8">
+      <div className="flex items-center gap-3">
+        <Link href={home} className="rounded-md flex items-center md:hidden" aria-label="Clyntique overview">
+          <BrandMark width={28} />
+        </Link>
+        <Skeleton className="h-5 w-32 hidden sm:block" />
+      </div>
+      <div className="flex items-center gap-2">
+        <Skeleton className="size-9 rounded-lg" />
+        <Skeleton className="size-9 rounded-lg" />
+        <Skeleton className="size-9 rounded-full" />
+      </div>
+    </header>
   );
 }
 

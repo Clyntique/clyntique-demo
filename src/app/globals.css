@@ -114,6 +114,130 @@
     color-scheme: light;
   }
 
+  html.dark {
+    color-scheme: dark;
+  }
+
+  .dark {
+    --color-canvas: #090d16;
+    --color-surface: #0f172a;
+    --color-subtle: #1e293b;
+    --color-stage: #141e30;
+    --color-cream: #131c2e;
+    --color-line: #1e293b;
+    --color-line-strong: #334155;
+    --color-ink: #f8fafc;
+    --color-ink-soft: #cbd5e1;
+    --color-muted: #94a3b8;
+    --color-faint: #64748b;
+
+    --color-placeholder-1: #1e293b;
+    --color-placeholder-2: #243247;
+    --color-placeholder-3: #182234;
+    --color-placeholder-4: #1e293b;
+
+    --color-brand-50: #172554;
+    --color-brand-100: #1e3a8a;
+    --color-brand-200: #1d4ed8;
+    --color-brand-300: #2563eb;
+    --color-brand-400: #3b82f6;
+    --color-brand-500: #60a5fa;
+    --color-brand-600: #3b82f6;
+    --color-brand-700: #60a5fa;
+    --color-brand-800: #93c5fd;
+    --color-brand-900: #bfdbfe;
+
+    --color-gold-50: #261f13;
+    --color-gold-100: #3b2f19;
+    --color-gold-200: #59441f;
+    --color-gold-300: #856326;
+    --color-gold-500: #dca858;
+    --color-gold-600: #eab366;
+    --color-gold-700: #f5c47a;
+
+    --color-positive-soft: rgba(5, 150, 105, 0.16);
+    --color-positive-line: rgba(16, 185, 129, 0.3);
+    --color-positive-solid: #10b981;
+    --color-positive-strong: #34d399;
+    --color-positive-ink: #6ee7b7;
+
+    --color-attention-soft: rgba(217, 119, 6, 0.16);
+    --color-attention-line: rgba(245, 158, 11, 0.3);
+    --color-attention-solid: #f59e0b;
+    --color-attention-strong: #fbbf24;
+    --color-attention-ink: #fde68a;
+
+    --color-critical-soft: rgba(220, 38, 38, 0.16);
+    --color-critical-line: rgba(239, 68, 68, 0.3);
+    --color-critical-solid: #ef4444;
+    --color-critical-strong: #f87171;
+    --color-critical-ink: #fca5a5;
+
+    --shadow-2xs: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+    --shadow-xs: 0 1px 3px 0 rgb(0 0 0 / 0.5);
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.5), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+    --shadow-pop: 0 10px 25px -5px rgb(0 0 0 / 0.7), 0 8px 10px -6px rgb(0 0 0 / 0.5);
+    --shadow-art: 0 12px 32px -4px rgb(0 0 0 / 0.8);
+  }
+
+  .theme-light {
+    color-scheme: light;
+    --color-canvas: #f8f9fa;
+    --color-surface: #ffffff;
+    --color-subtle: #f1f3f5;
+    --color-stage: #edf0f2;
+    --color-cream: #faf9f6;
+    --color-line: #e5e7eb;
+    --color-line-strong: #d1d5db;
+    --color-ink: #0f172a;
+    --color-ink-soft: #334155;
+    --color-muted: #64748b;
+    --color-faint: #94a3b8;
+    --color-placeholder-1: #f1f3f5;
+    --color-placeholder-2: #e9ecef;
+    --color-placeholder-3: #f8f9fa;
+    --color-placeholder-4: #edf0f2;
+    --color-brand-50: #f1f5f9;
+    --color-brand-100: #e2e8f0;
+    --color-brand-200: #cbd5e1;
+    --color-brand-300: #94a3b8;
+    --color-brand-400: #64748b;
+    --color-brand-500: #334155;
+    --color-brand-600: #1a2c48;
+    --color-brand-700: #14233a;
+    --color-brand-800: #0f1a2b;
+    --color-brand-900: #0a111e;
+    --color-gold-50: #fdfaf3;
+    --color-gold-100: #fbf2de;
+    --color-gold-200: #f5e2b8;
+    --color-gold-300: #eed08d;
+    --color-gold-500: #dca858;
+    --color-gold-600: #b88636;
+    --color-gold-700: #8a6322;
+    --color-positive-soft: #ecfdf5;
+    --color-positive-line: #a7f3d0;
+    --color-positive-solid: #059669;
+    --color-positive-strong: #047857;
+    --color-positive-ink: #065f46;
+    --color-attention-soft: #fffbeb;
+    --color-attention-line: #fde68a;
+    --color-attention-solid: #d97706;
+    --color-attention-strong: #b45309;
+    --color-attention-ink: #92400e;
+    --color-critical-soft: #fef2f2;
+    --color-critical-line: #fecaca;
+    --color-critical-solid: #dc2626;
+    --color-critical-strong: #b91c1c;
+    --color-critical-ink: #991b1b;
+    --color-navy: #1a2c48;
+    --color-gold: #dca858;
+    --shadow-2xs: 0 1px 2px 0 rgb(15 23 42 / 0.03);
+    --shadow-xs: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+    --shadow-card: 0 1px 3px 0 rgb(15 23 42 / 0.05), 0 1px 2px -1px rgb(15 23 42 / 0.03);
+    --shadow-pop: 0 10px 25px -5px rgb(15 23 42 / 0.08), 0 8px 10px -6px rgb(15 23 42 / 0.04);
+    --shadow-art: 0 12px 32px -4px rgb(15 23 42 / 0.12);
+  }
+
   body {
     background: var(--color-canvas);
     color: var(--color-ink);
