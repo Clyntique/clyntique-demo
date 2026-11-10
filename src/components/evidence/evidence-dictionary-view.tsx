@@ -3,7 +3,7 @@ import type { EvidenceRecordStatus, EvidenceType, Role } from "@/generated/prism
 import { requireRole } from "@/lib/auth/dal";
 import { getEvidenceRecords, RECORD_STATUSES } from "@/lib/data/evidence-records";
 import { getLibraryDocuments } from "@/lib/data/library";
-import { searchKnowledge } from "@/lib/knowledge/search";
+import { findLoggedSearch, searchKnowledge } from "@/lib/knowledge/search";
 import { basePathFor } from "@/lib/navigation";
 import { uploadsConfigured } from "@/lib/review/blob";
 import { libraryOwnerFor } from "@/lib/workflow/library-commands";
@@ -29,8 +29,13 @@ import { RecordStatusPill, formatDay } from "./record-status";
  * sources in the main area, then the Content Library (uploads) and the
  * structured evidence records with their filters. The loaders decide what
  * this viewer may see (src/lib/data/*, src/lib/knowledge/search.ts); this
- * page only lays it out. The question and the record filters are plain query
- * parameters, so any view can be linked and the page needs no client state.
+ * page only lays it out. The record filters are plain query parameters.
+ *
+ * The question box posts to a server action that logs the question and
+ * redirects here with `q` and `s` (the id of that log row). This page never
+ * writes a log row: it shows results only when `s` names this person's own
+ * logged search of exactly this question, so the layout's auto-refresh, a
+ * reload or a hand-typed link cannot log anything or reach an AI service.
  */
 
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
@@ -49,13 +54,14 @@ export async function EvidenceDictionaryView({ role, searchParams }: { role: Rol
 
   // `q` asks the knowledge base; `records` filters the structured record list.
   const question = (one(params.q) ?? "").trim().slice(0, 300);
+  const logged = question ? await findLoggedSearch(user, one(params.s), question) : null;
   const recordQuery = (one(params.records) ?? "").trim().slice(0, 120);
 
   const [records, all, documents, result] = await Promise.all([
     getEvidenceRecords(user, { query: recordQuery, type, status, owner }),
     getEvidenceRecords(user),
     getLibraryDocuments(user),
-    question ? searchKnowledge(user, question) : Promise.resolve(null),
+    logged ? searchKnowledge(user, logged.question, { searchId: logged.id }) : Promise.resolve(null),
   ]);
   const base = basePathFor(role);
   const href = `${base}/evidence`;
@@ -75,7 +81,7 @@ export async function EvidenceDictionaryView({ role, searchParams }: { role: Rol
       />
 
       <div className="flex flex-col gap-8">
-        <KnowledgeSearchBox role={role} question={question} documentsSearched={indexed} />
+        <KnowledgeSearchBox question={question} documentsSearched={indexed} notRun={Boolean(question) && !result} />
 
         {result && <KnowledgeResults role={role} result={result} />}
 
@@ -116,7 +122,8 @@ export async function EvidenceDictionaryView({ role, searchParams }: { role: Rol
         />
 
         <form method="get" action={href} className="flex flex-col gap-3 sm:flex-row sm:items-end" role="search" aria-label="Search evidence records">
-          {question && <input type="hidden" name="q" value={question} />}
+          {logged && <input type="hidden" name="q" value={logged.question} />}
+          {logged && <input type="hidden" name="s" value={logged.id} />}
           <label className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-small font-medium text-ink-soft">Filter records</span>
             <Input name="records" defaultValue={recordQuery} icon={<SearchIcon />} placeholder="Title, claim, source or description" maxLength={120} aria-label="Search evidence records" />
@@ -158,7 +165,7 @@ export async function EvidenceDictionaryView({ role, searchParams }: { role: Rol
               Apply
             </button>
             {filtered && (
-              <Link href={question ? `${href}?q=${encodeURIComponent(question)}` : href} className={buttonClasses({ variant: "ghost" })}>
+              <Link href={logged ? `${href}?q=${encodeURIComponent(logged.question)}&s=${encodeURIComponent(logged.id)}` : href} className={buttonClasses({ variant: "ghost" })}>
                 Clear
               </Link>
             )}

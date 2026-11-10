@@ -16,7 +16,14 @@ import { aiAnswersEnabled, planQuery, verdictFor, type GroundedAnswer, type Know
  * viewer's Evidence Dictionary records, and the policy rules Clyntique has
  * VERIFIED and APPROVED (never drafts). The verdict is decided by rules
  * (query.ts); an AI-written answer is added only when switched on, and only
- * from the passages below. Every question is logged (KnowledgeQuery).
+ * from the passages below.
+ *
+ * Logging (Nov 10): a question is logged (KnowledgeQuery) only when a person
+ * submits the search form (submitKnowledgeSearch, called by the form action).
+ * Rendering the results page never writes a log row, so the signed-in
+ * layout's 30 s auto-refresh, a reload or the back button cannot add rows.
+ * The page shows results only for a question that has its log row
+ * (findLoggedSearch), so every displayed result has exactly one audit entry.
  */
 
 export type Passage = {
@@ -64,10 +71,15 @@ export type KnowledgeResult = {
 };
 
 export const MAX_PASSAGES = 10;
-// Long enough to cover the dashboard's 30 s auto-refresh (AutoRefresh in the
-// signed-in layouts re-renders an open results page), so a results tab left
-// open logs its question at most twice an hour instead of every 30 s.
-export const QUERY_LOG_WINDOW_MS = 30 * 60_000;
+// A double click or a double form submission of the same question by the
+// same person within this window is one search, and gets one log row.
+// Deliberately asking the same question again later is logged again.
+export const DOUBLE_SUBMIT_WINDOW_MS = 10_000;
+// An AI answer may be requested once per logged search, and only while the
+// search is this fresh (the first render after the form was submitted).
+export const AI_CLAIM_WINDOW_MS = 2 * 60_000;
+export const AI_ONCE_NOTICE = "The AI reading is produced once, when a search is submitted. Press Search to ask again.";
+const SEARCH_ID_MAX_CHARS = 64;
 const MAX_PER_DOCUMENT = 3;
 
 type Row = { id: string; documentId: string; page: number | null; text: string; snippet: string; rank: number };
@@ -111,7 +123,40 @@ async function matchingRules(terms: string[]): Promise<RuleHit[]> {
   return hits.slice(0, 5);
 }
 
-export async function searchKnowledge(user: CurrentUser, question: string): Promise<KnowledgeResult | null> {
+export type SearchOptions = {
+  /**
+   * Id of this search's log row (from submitKnowledgeSearch). Without it no
+   * external AI request is ever made. With it, an AI answer is requested only
+   * if this call wins the one-time claim on that row (claimAiAnswer).
+   */
+  searchId?: string | null;
+};
+
+/**
+ * One-time permission to send this search to the external AI service: flips
+ * `aiUsed` from false to true on the search's own log row, atomically, and
+ * only while the row is fresh. A page refresh, a reload, a second tab or a
+ * concurrent render finds the flag already set and gets no AI request.
+ * `aiUsed` therefore means "an external AI request was made for this search".
+ */
+async function claimAiAnswer(user: CurrentUser, searchId: string, question: string): Promise<boolean> {
+  try {
+    const claimed = await prisma.knowledgeQuery.updateMany({
+      where: { id: searchId, userId: user.id, question, aiUsed: false, createdAt: { gte: new Date(Date.now() - AI_CLAIM_WINDOW_MS) } },
+      data: { aiUsed: true },
+    });
+    return claimed.count === 1;
+  } catch (error) {
+    console.error("Knowledge AI claim failed", error instanceof Error ? error.name : "unknown error");
+    return false;
+  }
+}
+
+/**
+ * Runs one question and returns what this viewer may see. Read-only apart
+ * from the one-time AI claim above: it never creates a log row.
+ */
+export async function searchKnowledge(user: CurrentUser, question: string, options: SearchOptions = {}): Promise<KnowledgeResult | null> {
   const plan = planQuery(question);
   if (!plan) return null;
   const base = basePathFor(user.role);
@@ -157,40 +202,87 @@ export async function searchKnowledge(user: CurrentUser, question: string): Prom
   let answer: GroundedAnswer | null = null;
   let aiNote: string | null = null;
   if (aiEnabled && passages.length > 0) {
-    const generated = await generateGroundedAnswer(plan.strict, passages, rules);
-    if (generated.ok) {
-      answer = generated.answer;
-      // The model may only make the verdict more cautious, never less.
-      if (answer.verdict === "INSUFFICIENT_INFORMATION" || (answer.verdict === "POTENTIAL_CONCERN" && verdict === "EVIDENCE_FOUND")) verdict = answer.verdict;
+    const searchId = validSearchId(options.searchId);
+    if (searchId && (await claimAiAnswer(user, searchId, plan.strict))) {
+      const ruleVerdict = verdict;
+      const generated = await generateGroundedAnswer(plan.strict, passages, rules);
+      if (generated.ok) {
+        answer = generated.answer;
+        // The model may only make the verdict more cautious, never less.
+        if (answer.verdict === "INSUFFICIENT_INFORMATION" || (answer.verdict === "POTENTIAL_CONCERN" && verdict === "EVIDENCE_FOUND")) verdict = answer.verdict;
+      } else {
+        aiNote = generated.note;
+      }
+      if (verdict !== ruleVerdict) {
+        // Keep the log row in step with the verdict the person was shown.
+        await prisma.knowledgeQuery.updateMany({ where: { id: searchId, userId: user.id }, data: { verdict } }).catch(() => undefined);
+      }
     } else {
-      aiNote = generated.note;
+      aiNote = AI_ONCE_NOTICE;
     }
   } else if (aiEnabled) {
     aiNote = "No passages to answer from.";
   }
 
-  // One audit row per question: the page renders more than once per view
-  // (two concurrent renders a few milliseconds apart, plus the layout's 30 s
-  // auto-refresh), so the same question by the same person within
-  // QUERY_LOG_WINDOW_MS (30 minutes) is logged once.
-  // The check and the insert run under a transaction-scoped advisory lock on
-  // (person, question), so concurrent renders cannot both pass the check.
+  return { question: plan.strict, verdict, passages, records: records.slice(0, 6), rules, answer, aiEnabled, aiNote, documentsSearched };
+}
+
+function validSearchId(value: string | null | undefined): string | null {
+  const id = String(value ?? "").trim();
+  return id && id.length <= SEARCH_ID_MAX_CHARS && /^[A-Za-z0-9_-]+$/.test(id) ? id : null;
+}
+
+/**
+ * The log row of a submitted search, if `searchId` names one that belongs to
+ * this person and this exact question. Read-only. The results page shows
+ * results only when this returns a row, so a hand-typed or shared `?q=` link
+ * cannot run a search that is missing from the audit log, and one person's
+ * search id is useless to anyone else.
+ */
+export async function findLoggedSearch(user: CurrentUser, searchId: string | null | undefined, question: string): Promise<{ id: string; question: string } | null> {
+  const id = validSearchId(searchId);
+  const plan = planQuery(question);
+  if (!id || !plan) return null;
+  return prisma.knowledgeQuery.findFirst({ where: { id, userId: user.id, question: plan.strict }, select: { id: true, question: true } });
+}
+
+export type SubmittedSearch = { question: string; searchId: string | null };
+
+/**
+ * A person pressed Search (or an example question): runs the question once,
+ * with no AI, and writes its one audit row. Called only by the form action.
+ * Returns null for a question with nothing searchable in it; `searchId` is
+ * null when the audit row could not be written (the page then shows no
+ * results, so nothing is displayed without an audit entry).
+ *
+ * The check and the insert run under a transaction-scoped advisory lock on
+ * (person, question), so a double click cannot write two rows.
+ */
+export async function submitKnowledgeSearch(user: CurrentUser, question: string): Promise<SubmittedSearch | null> {
+  const plan = planQuery(question);
+  if (!plan) return null;
+  const result = await searchKnowledge(user, plan.strict);
+  if (!result) return null;
   try {
-    await prisma.$transaction(async (tx) => {
+    const searchId = await prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`${user.id}\n${plan.strict}`}))`;
       const recent = await tx.knowledgeQuery.findFirst({
-        where: { userId: user.id, question: plan.strict, createdAt: { gte: new Date(Date.now() - QUERY_LOG_WINDOW_MS) } },
+        where: { userId: user.id, question: plan.strict, createdAt: { gte: new Date(Date.now() - DOUBLE_SUBMIT_WINDOW_MS) } },
+        orderBy: { createdAt: "desc" },
         select: { id: true },
       });
-      if (!recent) {
-        await tx.knowledgeQuery.create({ data: { userId: user.id, ownerClientId: user.role === "TEAM" ? null : user.id, question: plan.strict, verdict, resultCount: passages.length, aiUsed: answer !== null } });
-      }
+      if (recent) return recent.id;
+      const created = await tx.knowledgeQuery.create({
+        data: { userId: user.id, ownerClientId: user.role === "TEAM" ? null : user.id, question: plan.strict, verdict: result.verdict, resultCount: result.passages.length, aiUsed: false },
+        select: { id: true },
+      });
+      return created.id;
     });
+    return { question: plan.strict, searchId };
   } catch (error) {
     console.error("Knowledge query log failed", error instanceof Error ? error.name : "unknown error");
+    return { question: plan.strict, searchId: null };
   }
-
-  return { question: plan.strict, verdict, passages, records: records.slice(0, 6), rules, answer, aiEnabled, aiNote, documentsSearched };
 }
 
 /** Recent questions of this workspace, for "have we asked this before". */

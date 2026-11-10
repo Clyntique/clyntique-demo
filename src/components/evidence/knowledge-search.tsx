@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Role } from "@/generated/prisma/enums";
 import type { KnowledgeResult, Passage } from "@/lib/knowledge/search";
-import { KNOWLEDGE_AI_OFF_NOTICE, KNOWLEDGE_NOTICE, KNOWLEDGE_SEARCH_PROMPT, KNOWLEDGE_VERDICT_DESCRIPTION, KNOWLEDGE_VERDICT_LABEL, QUESTION_MAX_CHARS, type KnowledgeVerdict } from "@/lib/knowledge/query";
+import { submitKnowledgeSearchAction } from "@/lib/knowledge/actions";
+import { KNOWLEDGE_AI_OFF_NOTICE, KNOWLEDGE_NOTICE, KNOWLEDGE_NOT_RUN_NOTICE, KNOWLEDGE_PRIVACY_NOTICE, KNOWLEDGE_SEARCH_PROMPT, KNOWLEDGE_VERDICT_DESCRIPTION, KNOWLEDGE_VERDICT_LABEL, QUESTION_MAX_CHARS, type KnowledgeVerdict } from "@/lib/knowledge/query";
 import { basePathFor } from "@/lib/navigation";
 import { cn } from "@/lib/cn";
 import { Badge } from "@/components/ui/badge";
@@ -35,19 +36,32 @@ const EXAMPLES = [
   "Which documents support this statement?",
 ];
 
-export function KnowledgeSearchBox({ role, question, documentsSearched }: { role: Role; question: string; documentsSearched: number }) {
-  const href = `${basePathFor(role)}/evidence`;
+/**
+ * The form posts to a server action, which logs the question once and then
+ * shows the results page. Example questions are submit buttons of the same
+ * form, so they are logged the same way; nothing here is a plain link that
+ * would run a search just by being loaded or refreshed.
+ */
+export function KnowledgeSearchBox({ question, documentsSearched, notRun = false }: { question: string; documentsSearched: number; notRun?: boolean }) {
   return (
-    <form method="get" action={href} role="search" aria-label="Ask your Knowledge Base" className="flex flex-col gap-3">
+    <form action={submitKnowledgeSearchAction} role="search" aria-label="Ask your Knowledge Base" className="flex flex-col gap-3">
       <label className="flex flex-col gap-1.5">
         <span className="text-small font-medium text-ink-soft">Ask your Knowledge Base</span>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <Input name="q" size="lg" defaultValue={question} icon={<SearchIcon />} placeholder={KNOWLEDGE_SEARCH_PROMPT} maxLength={QUESTION_MAX_CHARS} className="flex-1" aria-label={KNOWLEDGE_SEARCH_PROMPT} />
+          <Input name="q" size="lg" defaultValue={question} icon={<SearchIcon />} placeholder={KNOWLEDGE_SEARCH_PROMPT} maxLength={QUESTION_MAX_CHARS} className="flex-1" aria-label={KNOWLEDGE_SEARCH_PROMPT} aria-describedby="knowledge-privacy-notice" />
           <button type="submit" className={buttonClasses({ variant: "primary", size: "lg" })}>
             Search
           </button>
         </div>
       </label>
+      <p id="knowledge-privacy-notice" role="note" className="text-small rounded-md border border-line bg-subtle px-3 py-2 text-ink-soft">
+        {KNOWLEDGE_PRIVACY_NOTICE}
+      </p>
+      {notRun && (
+        <p role="status" className="text-small text-ink-soft">
+          {KNOWLEDGE_NOT_RUN_NOTICE}
+        </p>
+      )}
       <p className="text-meta">
         Full questions work; no category needed. Searches {documentsSearched} indexed {documentsSearched === 1 ? "document" : "documents"}, your Evidence Dictionary and Clyntique&apos;s verified policy rules.
       </p>
@@ -55,9 +69,9 @@ export function KnowledgeSearchBox({ role, question, documentsSearched }: { role
         <ul className="flex flex-wrap gap-1.5" aria-label="Example questions">
           {EXAMPLES.map((q) => (
             <li key={q}>
-              <Link href={`${href}?q=${encodeURIComponent(q)}`} className="inline-flex rounded-full border border-line bg-surface px-2.5 py-1 text-caption text-ink-soft hover:border-line-strong hover:text-ink">
+              <button type="submit" name="example" value={q} className="inline-flex cursor-pointer rounded-full border border-line bg-surface px-2.5 py-1 text-left text-caption text-ink-soft hover:border-line-strong hover:text-ink">
                 {q}
-              </Link>
+              </button>
             </li>
           ))}
         </ul>
