@@ -22,6 +22,8 @@ import { PrismaClient } from "../src/generated/prisma/client";
 // skipped with a warning.
 const TOPOLOGICAL_TABLE_ORDER = [
   "User",
+  // User profile (20261105000000): references User.
+  "UserProfile",
   "Market",
   "AdPlatform",
   "Project",

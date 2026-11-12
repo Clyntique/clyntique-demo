@@ -24,6 +24,7 @@ export interface DesktopSidebarProps {
     name: string;
     email: string;
     role: Role;
+    avatarUrl?: string | null;
   };
   counts?: NavCounts;
 }
@@ -114,7 +115,7 @@ export function DesktopSidebar({ role, user, counts }: DesktopSidebarProps) {
       <div className={cn("border-t border-line/80 bg-surface/80 p-2.5 transition-all", isCollapsed ? "flex flex-col items-center gap-2" : "")}>
         {isCollapsed ? (
           <div className="group relative flex flex-col items-center gap-2">
-            <Avatar name={user.name} className="size-8 ring-1 ring-line" />
+            <Avatar name={user.name} src={user.avatarUrl} className="size-8 ring-1 ring-line" />
             <LogoutButton compact={true} />
 
             {/* User Tooltip */}
@@ -135,7 +136,7 @@ export function DesktopSidebar({ role, user, counts }: DesktopSidebarProps) {
         ) : (
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2.5 px-2 py-1">
-              <Avatar name={user.name} className="size-8 ring-1 ring-line" />
+              <Avatar name={user.name} src={user.avatarUrl} className="size-8 ring-1 ring-line" />
               <div className="min-w-0 flex-1">
                 <p className="text-small truncate font-medium text-ink">{user.name}</p>
                 <p className="text-caption truncate text-muted">

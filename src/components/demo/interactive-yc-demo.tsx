@@ -41,7 +41,7 @@ function Sandbox({ role, view, id }: { role: DemoRole | null; view: DemoView | u
   };
 
   return (
-    <div className="min-h-screen bg-canvas text-ink flex flex-col antialiased">
+    <div className="theme-light min-h-screen bg-canvas text-ink flex flex-col antialiased">
       <DemoBanner onReset={onReset} />
       <DemoHeader role={role} view={view} id={id} />
       {!role || !view ? (

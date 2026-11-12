@@ -29,7 +29,23 @@ describe("prisma/migrations", () => {
       "20261031160000_policy_source_monitoring",
       "20261102170000_evidence_dictionary",
       "20261102200000_content_library",
+      "20261105000000_user_profile",
     ]);
+  });
+
+  it("the user-profile migration (Nov 5) only creates and adds; UserProfile cascades on User delete, no existing rows are altered or dropped", () => {
+    const body = statements("20261105000000_user_profile");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 60));
+    for (const k of kinds) expect(k).toMatch(/^(CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|ALTER TABLE "\w+" ADD CONSTRAINT)$/);
+    expect([...body.matchAll(/CREATE TABLE "(\w+)"/g)].map((m) => m[1])).toEqual(["UserProfile"]);
+    expect(body).not.toMatch(/ALTER COLUMN|\bINSERT\b|\bUPDATE\s+"|\bDROP\b/i);
+    expect(body).toContain(`"timezone" TEXT NOT NULL DEFAULT 'UTC'`);
+    expect(body).toContain(`"preferredLanguage" TEXT NOT NULL DEFAULT 'en-US'`);
+    expect(body).toMatch(/"UserProfile" ADD CONSTRAINT[^;]*REFERENCES "User"\("id"\) ON DELETE CASCADE/);
   });
 
   it("the content-library migration (Nov 2) only creates and adds; only the search index cascades, every other reference is RESTRICT", () => {
