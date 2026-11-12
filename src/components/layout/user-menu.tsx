@@ -14,6 +14,7 @@ export interface UserMenuProps {
     name: string;
     email: string;
     role: Role;
+    avatarUrl?: string | null;
   };
 }
 
@@ -51,7 +52,7 @@ export function UserMenu({ user }: UserMenuProps) {
         onClick={() => setOpen((prev) => !prev)}
         className="group flex items-center gap-2 rounded-lg p-1 text-ink transition-colors hover:bg-subtle focus-visible:outline-2 focus-visible:outline-brand-600"
       >
-        <Avatar name={user.name} size="sm" className="ring-1 ring-line" />
+        <Avatar name={user.name} src={user.avatarUrl} size="sm" className="ring-1 ring-line" />
         <span className="hidden text-small font-medium sm:inline max-w-[120px] truncate text-left">
           {user.name}
         </span>

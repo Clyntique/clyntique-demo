@@ -16,6 +16,7 @@ export type CurrentUser = {
   email: string;
   role: Role;
   isPolicyAdmin?: boolean;
+  avatarUrl?: string | null;
   /** Signed in through quick demo login: never a policy administrator. */
   demoSession?: boolean;
 };
@@ -29,10 +30,29 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   // Never select passwordHash here: this object can reach the UI.
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, email: true, role: true, isPolicyAdmin: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isPolicyAdmin: true,
+      profile: {
+        select: {
+          avatarUrl: true,
+        },
+      },
+    },
   });
   if (!user) return null;
-  return session.demo ? { ...user, isPolicyAdmin: false, demoSession: true } : user;
+  const current: CurrentUser = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    isPolicyAdmin: user.isPolicyAdmin,
+    avatarUrl: user.profile?.avatarUrl ?? null,
+  };
+  return session.demo ? { ...current, isPolicyAdmin: false, demoSession: true } : current;
 });
 
 export async function requireUser(): Promise<CurrentUser> {

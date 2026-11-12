@@ -71,7 +71,7 @@ async function SidebarContent({ role }: { role: Role }) {
   return (
     <DesktopSidebar
       role={role}
-      user={{ id: user.id, name: user.name, email: user.email, role: user.role }}
+      user={{ id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl }}
       counts={counts}
     />
   );
@@ -83,7 +83,7 @@ async function HeaderContent({ role }: { role: Role }) {
   return (
     <DashboardHeader
       role={role}
-      user={{ id: user.id, name: user.name, email: user.email, role: user.role }}
+      user={{ id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl }}
       counts={counts}
       mobileMenuTrigger={
         <Suspense fallback={<Skeleton className="h-9 w-20" />}>

@@ -23,6 +23,7 @@
     "db:policy-tier1-import": "tsx prisma/policy-tier1-import.ts",
     "db:policy-tier2-import": "tsx prisma/policy-tier2-import.ts",
     "db:rehearsal-tier2": "tsx scripts/rehearse-tier2-postgres.ts",
+    "db:rehearsal-profile": "tsx scripts/rehearse-user-profile-postgres.ts",
     "db:demo-fixtures": "node --conditions=react-server --import tsx prisma/demo-fixtures.ts",
     "db:concurrency-check": "node --conditions=react-server --import tsx prisma/concurrency-check.ts",
     "db:chat-check": "node --conditions=react-server --import tsx prisma/chat-check.ts",
