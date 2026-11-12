@@ -84,7 +84,7 @@ on the server only.
   record" on every passage (with an optional claim text).
 - Evidence record page and Compliance Passport show "Quoted from <document>"
   (and "document since deleted" when its file is gone).
-- Audit: every question is logged with its verdict; documents keep uploader,
+- Audit: every submitted search is logged with its verdict; documents keep uploader,
   timestamps, processing results and deletion details.
 
 ## 6. Document upload and search experience
@@ -140,19 +140,43 @@ characters per question.
   documents, the team only from Clyntique's. A reviewer can read a client's
   shared document but cannot turn its text into a Clyntique record (which
   could otherwise be attached to another client's creative).
-- Questions are logged once per person and question within a 30-minute
-  window (a page renders more than once per view, and the signed-in layout
-  refreshes an open page every 30 s), as typed, up to 300
-  characters. A retention period for `KnowledgeQuery` is a product decision
-  (section 12).
-- Known limitation of the question log: the 30-minute guard cannot tell an
-  intentional repeat of the same question from an automatic page refresh, so
-  a person who deliberately asks the same question again within 30 minutes
-  gets fresh results but no second audit row. The guard is per person
-  (and so per client workspace): different people asking the same question
-  are always logged separately. It affects only the audit row, never the
-  search itself. Follow-up: log on the explicit search submission instead
-  (tracked as a GitHub issue).
+- Questions are logged only when a person submits the search form (the
+  Search button or an example question), as typed, up to 300 characters. The
+  form posts to a server action (`submitKnowledgeSearchAction`) that runs the
+  search, writes one `KnowledgeQuery` row and redirects to the results page
+  with the row's id (`?q=…&s=…`). Rendering the results page never writes a
+  log row, so the signed-in layout's 30 s auto-refresh, a reload, the back
+  button or a second tab add nothing to the log.
+- The results page shows results only when `s` names the viewer's own log
+  row for exactly that question. A hand-typed or shared `?q=` link shows the
+  question in the box with "press Search to run it", so nothing is displayed
+  without an audit entry, and one person's search id is useless to another.
+- A double click or double submission of the same question by the same
+  person within 10 seconds is one search (one row, under a transaction-scoped
+  advisory lock). Asking the same question again later is logged again.
+- Privacy notice: the question box always shows a notice not to enter patient
+  names, contact details, dates of birth, record numbers or other identifying
+  or sensitive personal information, and that questions are saved.
+- External AI requests (only relevant if AI answers are ever switched on):
+  an AI answer may be requested at most once per logged search. The first
+  render after a submission atomically flips `aiUsed` from false to true on
+  that search's row (and only within 2 minutes of the submission); every
+  later render finds it set and makes no AI request. `aiUsed` therefore means
+  "an external AI request was made for this search". Consequence to settle
+  before AI is enabled: the AI reading is not stored, so it is shown once and
+  disappears on the next refresh; storing it needs a schema change and the
+  data-handling review (section 12).
+- Question-log retention is prepared but not active
+  (`src/lib/knowledge/retention.ts`, `prisma/knowledge-query-retention.ts`).
+  It is disabled unless `KNOWLEDGE_QUERY_RETENTION_DAYS` is set to a whole
+  number of days between 30 and 3650, and even then nothing runs on its own:
+  there is no scheduler, cron or route. A person must run the script, which
+  is a dry run unless given `--apply`, `--retention-approved` and
+  `RETENTION_CONFIRM_DATABASE=<database name>`. It can delete only
+  `KnowledgeQuery` rows older than the period; no table references
+  `KnowledgeQuery`, so nothing cascades, and the script counts every other
+  table before and after in one transaction and rolls back on any difference.
+  The retention period itself is still a product decision (section 12).
 - Prompt injection: document text reaches the model only as delimited data;
   the model cannot act, only answer, and its answer is validated.
 - Nothing from the library is reachable from `/demo` (no imports, no routes).

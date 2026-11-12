@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/dal";
+import { basePathFor } from "@/lib/navigation";
+import { submitKnowledgeSearch } from "@/lib/knowledge/search";
 import {
   createLibraryDocument,
   deleteLibraryDocument,
@@ -73,4 +76,24 @@ export async function saveChunkAsRecordAction(_prev: LibraryActionState, formDat
   revalidate();
   if (!result.ok) return { error: result.error };
   return { ok: "Saved to the Evidence Dictionary. Attach it to a submission from the record page.", recordId: result.recordId };
+}
+
+/**
+ * The question box was submitted (Search, or an example question): the one
+ * place a knowledge search is logged. Runs for the signed-in person in their
+ * own workspace only (the role comes from the session, never the form), then
+ * sends the browser to the results page with the id of the log row. That page
+ * only reads, so refreshing it logs nothing and calls no AI service.
+ */
+export async function submitKnowledgeSearchAction(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/auth/login");
+  const href = `${basePathFor(user.role)}/evidence`;
+  const question = String(formData.get("example") ?? formData.get("q") ?? "").trim();
+  if (!question) redirect(href);
+  const submitted = await submitKnowledgeSearch(user, question);
+  if (!submitted) redirect(`${href}?q=${encodeURIComponent(question.slice(0, 300))}`);
+  const params = new URLSearchParams({ q: submitted.question });
+  if (submitted.searchId) params.set("s", submitted.searchId);
+  redirect(`${href}?${params.toString()}`);
 }

@@ -25,6 +25,14 @@ export const KNOWLEDGE_NOTICE =
 export const KNOWLEDGE_AI_OFF_NOTICE =
   "AI-written answers are switched off until the handling of private documents by an external AI service has been reviewed and approved. Search, passages and sources work without it.";
 
+/** Shown next to the question box: questions are kept in an audit log, so they must not identify anyone. */
+export const KNOWLEDGE_PRIVACY_NOTICE =
+  "Privacy: do not enter patient names, contact details, dates of birth, record numbers or any other information that identifies a person, or other sensitive personal information. Questions you search are saved in an audit log.";
+
+/** Shown when the address carries a question that has not been submitted as a search (an old link, or one typed by hand). */
+export const KNOWLEDGE_NOT_RUN_NOTICE =
+  "This question has not been searched yet. Press Search to run it. Questions made only of very short or common words cannot be searched.";
+
 /** Words that carry no search meaning on their own (PostgreSQL drops most of them too; this keeps the OR query short). */
 const STOP_WORDS = new Set(
   "a an the and or but if then than this that these those is are was were be been being do does did doing have has had having will would can could should may might must shall of in on at to for from by with about into over under between through during before after above below up down out off again further once here there when where why how all any both each few more most other some such no nor not only own same so too very s t just don now we our ours us you your yours they them their it its i me my mine he she his her him what which who whom whose will".split(" "),
