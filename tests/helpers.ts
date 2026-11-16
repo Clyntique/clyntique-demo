@@ -65,6 +65,8 @@ export function createPrismaMock() {
     libraryChunk: model(),
     knowledgeQuery: model(),
     userProfile: model(),
+    notification: model(),
+    notificationPreference: model(),
     $queryRaw: vi.fn().mockResolvedValue([]),
     $executeRaw: vi.fn().mockResolvedValue(0),
     $transaction: vi.fn(),

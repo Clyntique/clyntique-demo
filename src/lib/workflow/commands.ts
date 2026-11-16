@@ -27,6 +27,7 @@ import type { CurrentUser } from "@/lib/auth/dal";
 import { EVIDENCE_MAX_BYTES, evidenceKindFor, evidencePathMatches } from "@/lib/evidence-files";
 import { UPLOAD_KEY_PATTERN } from "@/lib/media";
 import { prisma } from "@/lib/prisma";
+import { notifyDecisionPublished, notifyReviewReopened, notifyReviewStarted, notifySubmissionReceived } from "@/lib/notifications/events";
 import { contentMatches, deleteUnreferencedBlob, headBlob, isPrivateBlobUrl } from "@/lib/review/blob";
 import { canRequestChanges, checkOutcome, evidenceIsFinal, moveFinding, submittedToTeam, type FindingMove } from "./findings";
 import { loadReadiness } from "./readiness";
@@ -323,11 +324,13 @@ export async function submitForReview(user: CurrentUser, creativeId: string): Pr
       });
       if (lockedGaps.length || !lockedVersion) throw new Conflict(`Before submitting: ${lockedGaps.map((gap) => SUBMIT_GAP_MESSAGE[gap]).join(" ")}`);
       const cycle = await tx.reviewCycle.create({ data: { creativeId: g.s.id, number: 1, openedById: user.id }, select: { id: true } });
+      const snapshot = await detailsSnapshot(tx, g.s.id);
       const round = await tx.submissionRound.create({
-        data: { creativeId: g.s.id, cycleId: cycle.id, number: 1, versionId: lockedVersion.id, submittedById: user.id, ...(await detailsSnapshot(tx, g.s.id)) },
+        data: { creativeId: g.s.id, cycleId: cycle.id, number: 1, versionId: lockedVersion.id, submittedById: user.id, ...snapshot },
         select: { id: true },
       });
       await activity(tx, g.s, user, "SUBMISSION_SUBMITTED", `Submitted “${g.s.name}” for review (V${lockedVersion.versionNumber})`);
+      await notifySubmissionReceived(tx, user, { creativeId: g.s.id, roundId: round.id, roundNumber: 1, cycleNumber: 1, submittedName: snapshot.submittedName, resubmission: false });
       return { ok: true as const, roundId: round.id };
     }),
   );
@@ -419,6 +422,7 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
       const locked = await loadReadiness(g.s.id, current.cycle.id, tx);
       if (!lockedVersion) throw new Conflict(DENIAL_MESSAGE.INVALID_STATE);
       if (locked.gaps.length) throw new Conflict(`Address every open finding before resubmitting (${locked.gaps.length} item${locked.gaps.length === 1 ? "" : "s"} outstanding).`);
+      const snapshot = await detailsSnapshot(tx, g.s.id);
       const round = await tx.submissionRound.create({
         data: {
           creativeId: g.s.id,
@@ -427,7 +431,7 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
           versionId: lockedVersion.id,
           submittedById: user.id,
           note: cleanNote || null,
-          ...(await detailsSnapshot(tx, g.s.id)),
+          ...snapshot,
         },
         select: { id: true },
       });
@@ -445,6 +449,14 @@ export async function resubmit(user: CurrentUser, creativeId: string, note?: str
         "RESUBMITTED",
         `Resubmitted “${g.s.name}” (V${lockedVersion.versionNumber}, round ${current.round!.number + 1})${extras.length ? ` with ${extras.join(" and ")}` : ""}`,
       );
+      await notifySubmissionReceived(tx, user, {
+        creativeId: g.s.id,
+        roundId: round.id,
+        roundNumber: current.round!.number + 1,
+        cycleNumber: current.cycle.number,
+        submittedName: snapshot.submittedName,
+        resubmission: true,
+      });
       return { ok: true as const, roundId: round.id };
     }),
   );
@@ -835,6 +847,7 @@ export async function startReview(user: CurrentUser, creativeId: string): Promis
       });
       if (!count) throw new Conflict("Another reviewer has already started this review.");
       await activity(tx, g.s, user, "REVIEW_STARTED", `Review started for “${g.s.name}”`);
+      await notifyReviewStarted(tx, user, { creativeId: g.s.id });
       return { ok: true as const };
     }),
   );
@@ -1130,10 +1143,12 @@ export async function requestChanges(
       }
       await publishDrafts(tx, g.s, user, drafts);
       // One decision per round (unique roundId) rejects a concurrent second decision.
-      await tx.reviewDecision.create({
+      const decision = await tx.reviewDecision.create({
         data: { creativeId: g.s.id, cycleId: ctx.cycleId, roundId: requested.roundId, versionId: requested.versionId, reviewerId: user.id, kind: "CHANGES_REQUESTED", summary },
+        select: { id: true },
       });
       await activity(tx, g.s, user, "CHANGES_REQUESTED", `Changes requested on “${g.s.name}” (V${ctx.versionNumber})`);
+      await notifyDecisionPublished(tx, user, { creativeId: g.s.id, cycleId: ctx.cycleId, decisionId: decision.id, final: false });
       return { ok: true as const };
     }),
   );
@@ -1191,7 +1206,7 @@ export async function completeReview(
       await publishDrafts(tx, g.s, user, drafts);
       const closed = await tx.reviewCycle.updateMany({ where: { id: ctx.cycleId, closedAt: null }, data: { closedAt: new Date() } });
       if (!closed.count) throw new Conflict("This review cycle is already closed.");
-      await tx.reviewDecision.create({
+      const decision = await tx.reviewDecision.create({
         data: {
           creativeId: g.s.id,
           cycleId: ctx.cycleId,
@@ -1203,8 +1218,10 @@ export async function completeReview(
           summary,
           scopeNote: scopeNote || null,
         },
+        select: { id: true },
       });
       await activity(tx, g.s, user, "REVIEW_COMPLETED", `Review completed for “${g.s.name}” (V${ctx.versionNumber})`);
+      await notifyDecisionPublished(tx, user, { creativeId: g.s.id, cycleId: ctx.cycleId, decisionId: decision.id, final: true });
       return { ok: true as const };
     }),
   );
@@ -1287,6 +1304,7 @@ export async function openReviewCycle(user: CurrentUser, input: ReopenInput): Pr
         select: { id: true },
       });
       await activity(tx, g.s, user, "REVIEW_STARTED", `Re-review opened for “${g.s.name}” (cycle ${cycle.number}, V${version.versionNumber}): ${REVIEW_CYCLE_REASON_LABEL[reason]}`);
+      await notifyReviewReopened(tx, user, { creativeId: g.s.id, cycleId: cycle.id, cycleNumber: cycle.number });
       return { ok: true as const, cycleId: cycle.id, cycleNumber: cycle.number, roundId: round.id };
     }),
   );

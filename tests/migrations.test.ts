@@ -30,7 +30,28 @@ describe("prisma/migrations", () => {
       "20261102170000_evidence_dictionary",
       "20261102200000_content_library",
       "20261105000000_user_profile",
+      "20261116180000_notifications",
     ]);
+  });
+
+  it("the notifications migration (Nov 16) only creates and adds; every new reference cascades from its parent, nothing existing changes", () => {
+    const body = statements("20261116180000_notifications");
+    const kinds = body
+      .split(";")
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((l) => l.match(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|ALTER TABLE "\w+" ADD CONSTRAINT)/)?.[1] ?? l.slice(0, 60));
+    for (const k of kinds) expect(k).toMatch(/^(CREATE TYPE|CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|ALTER TABLE "\w+" ADD CONSTRAINT)$/);
+    expect([...body.matchAll(/CREATE TABLE "(\w+)"/g)].map((m) => m[1])).toEqual(["Notification", "NotificationPreference"]);
+    expect([...body.matchAll(/CREATE TYPE "(\w+)"/g)].map((m) => m[1])).toEqual(["NotificationKind"]);
+    expect(body).not.toMatch(/ALTER COLUMN|ADD COLUMN|\bINSERT\b|\bUPDATE\s+"|\bDROP\b|\bDELETE FROM\b/i);
+    // Constraints are only ever added to the two new tables.
+    expect([...body.matchAll(/ALTER TABLE "(\w+)"/g)].every((m) => m[1] === "Notification" || m[1] === "NotificationPreference")).toBe(true);
+    expect(body).toContain(`CREATE UNIQUE INDEX "Notification_recipientId_dedupeKey_key" ON "Notification"("recipientId", "dedupeKey")`);
+    expect(body).toContain(`CREATE UNIQUE INDEX "NotificationPreference_userId_kind_key" ON "NotificationPreference"("userId", "kind")`);
+    for (const parent of ["User", "Creative", "Conversation", "EvidenceRecord"]) {
+      expect(body).toMatch(new RegExp(`REFERENCES "${parent}"\\("id"\\) ON DELETE CASCADE`));
+    }
   });
 
   it("the user-profile migration (Nov 5) only creates and adds; UserProfile cascades on User delete, no existing rows are altered or dropped", () => {
