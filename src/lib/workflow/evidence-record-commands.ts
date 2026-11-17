@@ -3,6 +3,7 @@ import type { EvidenceRecordCheckResult, EvidenceType } from "@/generated/prisma
 import { EvidenceType as EvidenceTypes } from "@/generated/prisma/enums";
 import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
+import { notifyRecordChecked } from "@/lib/notifications/events";
 import { Conflict, LIMITS, clean, currentRound, fail, guard, latestVersion, lockSubmission, run, validLink, type CommandResult } from "./commands";
 import { EVIDENCE_RECORD_CHECK_RESULTS, parseValidUntil, recordOwnedBy, statusAfterCheck, teamMaySeeRecord } from "./evidence-records";
 import { DENIAL_MESSAGE } from "./policy";
@@ -231,6 +232,7 @@ export async function checkEvidenceRecord(
         select: { id: true },
       });
       await tx.evidenceRecord.update({ where: { id: record.id }, data: { status: statusAfterCheck(result) } });
+      await notifyRecordChecked(tx, user, { recordId: record.id, checkId: check.id });
       return { ok: true as const, checkId: check.id };
     }),
   );

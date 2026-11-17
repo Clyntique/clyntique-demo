@@ -3,12 +3,16 @@ import type { CurrentUser } from "@/lib/auth/dal";
 import { prisma } from "@/lib/prisma";
 import { ensureConversation, findAccessibleConversation, otherRole, resolveSubject } from "./access";
 import { MESSAGE_MAX_LENGTH } from "./limits";
+import { notifyNewMessage } from "@/lib/notifications/events";
+import { markConversationNotificationsRead } from "@/lib/notifications/data";
 
 /*
  * Reviewer chat writes. Deliberately imports nothing from the review workflow
  * (src/lib/workflow, src/lib/review): sending or reading a message can never
  * change a submission's status, findings, decisions or evidence, and writes no
  * project Activity entry. Official decisions stay in the review workflow.
+ * It does write the recipient's in-app notification (src/lib/notifications,
+ * which imports neither chat nor workflow code).
  */
 
 const SEND_LIMIT = 15; // messages per user per minute
@@ -54,13 +58,16 @@ export async function postMessage(user: CurrentUser, input: PostMessageInput): P
   if (recent >= SEND_LIMIT) return { ok: false, error: "You're sending messages too quickly. Please wait a moment." };
 
   const now = new Date();
-  const [message] = await prisma.$transaction([
-    prisma.message.create({
+  const message = await prisma.$transaction(async (tx) => {
+    const created = await tx.message.create({
       data: { conversationId, senderId: user.id, senderRole: user.role, body: cleaned.body, createdAt: now },
       select: { id: true },
-    }),
-    prisma.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: now }, select: { id: true } }),
-  ]);
+    });
+    await tx.conversation.update({ where: { id: conversationId }, data: { lastMessageAt: now }, select: { id: true } });
+    // Best-effort: a notification problem never stops a message (src/lib/notifications/emit.ts).
+    await notifyNewMessage(tx, user, { conversationId });
+    return created;
+  });
   return { ok: true, conversationId, messageId: message.id };
 }
 
@@ -72,5 +79,6 @@ export async function markConversationRead(user: CurrentUser, conversationId: st
     where: { conversationId: found.id, readAt: null, senderRole: otherRole(user.role) },
     data: { readAt: new Date(), readById: user.id },
   });
+  await markConversationNotificationsRead(user.id, found.id);
   return { ok: true, marked: result.count };
 }

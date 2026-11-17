@@ -12,6 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:check": "tsx prisma/db-check.ts",
     "db:target": "tsx prisma/db-target.ts",
+    "db:rehearse-notifications": "tsx --conditions=react-server scripts/rehearse-notifications-pg.ts",
     "db:inventory": "tsx prisma/db-inventory.ts",
     "db:preflight": "tsx prisma/db-preflight.ts",
     "db:export": "tsx prisma/db-export.ts",

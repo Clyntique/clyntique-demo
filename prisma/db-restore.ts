@@ -78,6 +78,10 @@ const TOPOLOGICAL_TABLE_ORDER = [
   "ExternalSubmission",
   "ExternalOutcome",
   "PolicyRuleEvent",
+  // In-app notifications (20261116180000): reference User, Creative,
+  // Conversation and EvidenceRecord, so they come after all of them.
+  "Notification",
+  "NotificationPreference",
   "_prisma_migrations"
 ];
 

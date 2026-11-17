@@ -204,6 +204,9 @@ model User {
   resolvedSourceChanges      PolicySourceChangeProposal[] @relation("ChangeResolvedBy")
   // User profile and personal preferences (Nov 5)
   profile                    UserProfile?
+  // In-app notifications (PR D, Nov 16)
+  notifications              Notification[]
+  notificationPreferences    NotificationPreference[]
 }
 
 // A campaign/client project, e.g. "Acme Health — Q4 Campaign".
@@ -261,6 +264,7 @@ model Creative {
   externalSubmissions ExternalSubmission[]
 
   conversations Conversation[]
+  notifications Notification[]
 
   @@index([projectId])
   @@index([createdById])
@@ -1004,10 +1008,11 @@ model Conversation {
   lastMessageAt      DateTime @default(now())
   createdAt          DateTime @default(now())
 
-  client           User      @relation("ConversationClient", fields: [clientId], references: [id], onDelete: Restrict)
-  creative         Creative? @relation(fields: [creativeId], references: [id], onDelete: SetNull)
-  assignedReviewer User?     @relation("ConversationReviewer", fields: [assignedReviewerId], references: [id], onDelete: SetNull)
+  client           User           @relation("ConversationClient", fields: [clientId], references: [id], onDelete: Restrict)
+  creative         Creative?      @relation(fields: [creativeId], references: [id], onDelete: SetNull)
+  assignedReviewer User?          @relation("ConversationReviewer", fields: [assignedReviewerId], references: [id], onDelete: SetNull)
   messages         Message[]
+  notifications    Notification[]
 
   @@unique([clientId, subjectKey])
   @@index([assignedReviewerId, lastMessageAt])
@@ -1296,11 +1301,12 @@ model EvidenceRecord {
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
-  owner       User?                 @relation("EvidenceRecordOwner", fields: [ownerClientId], references: [id], onDelete: Restrict)
-  createdBy   User                  @relation("EvidenceRecordCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  document    LibraryDocument?      @relation(fields: [documentId], references: [id], onDelete: Restrict)
-  attachments Evidence[]
-  checks      EvidenceRecordCheck[]
+  owner         User?                 @relation("EvidenceRecordOwner", fields: [ownerClientId], references: [id], onDelete: Restrict)
+  createdBy     User                  @relation("EvidenceRecordCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  document      LibraryDocument?      @relation(fields: [documentId], references: [id], onDelete: Restrict)
+  attachments   Evidence[]
+  checks        EvidenceRecordCheck[]
+  notifications Notification[]
 
   @@index([ownerClientId, createdAt])
   @@index([status])
@@ -1440,8 +1446,68 @@ model UserProfile {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
+// ---------------------------------------------------------------------------
+// In-app notifications (PR D, Nov 16). Fully additive.
+// One row per recipient, written in the same transaction as the workflow step
+// that caused it (src/lib/notifications/emit.ts). Never email or SMS.
+
+enum NotificationKind {
+  SUBMISSION_RECEIVED
+  RESUBMISSION_RECEIVED
+  REVIEW_STARTED
+  CHANGES_REQUESTED
+  REVIEW_COMPLETED
+  REVIEW_REOPENED
+  NEW_MESSAGE
+  EVIDENCE_REVIEWED
+}
+
+model Notification {
+  id               String           @id @default(cuid())
+  recipientId      String
+  kind             NotificationKind
+  // Unique per recipient: the source row's id (round:..., decision:...) or a
+  // conversation key that re-arms. Retries and replays write nothing new.
+  dedupeKey        String
+  // Worded at write time from what this recipient may see.
+  title            String
+  body             String?
+  // Relative path under the recipient's own base path (/dashboard or /admin).
+  href             String
+  creativeId       String?
+  conversationId   String?
+  evidenceRecordId String?
+  // Messages fold into one row per conversation; this counts them.
+  eventCount       Int              @default(1)
+  createdAt        DateTime         @default(now())
+  readAt           DateTime?
+
+  recipient      User            @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  creative       Creative?       @relation(fields: [creativeId], references: [id], onDelete: Cascade)
+  conversation   Conversation?   @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  evidenceRecord EvidenceRecord? @relation(fields: [evidenceRecordId], references: [id], onDelete: Cascade)
+
+  @@unique([recipientId, dedupeKey])
+  @@index([recipientId, readAt, createdAt])
+  @@index([creativeId])
+  @@index([conversationId])
+  @@index([evidenceRecordId])
+}
+
+// A user's in-app choice per kind. No row = on. Mandatory kinds ignore it.
+model NotificationPreference {
+  id        String           @id @default(cuid())
+  userId    String
+  kind      NotificationKind
+  inApp     Boolean          @default(true)
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
+}
