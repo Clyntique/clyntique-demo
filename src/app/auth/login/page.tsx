@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Brand, BrandMark } from "@/components/layout/brand";
-import { REVIEW_DISCLAIMER } from "@/lib/workflow/labels";
 import { FileTextIcon, ShieldIcon, CheckCircleIcon, ArrowRightIcon, SparklesIcon } from "@/components/ui/icons";
 import { LoginForm } from "./login-form";
 import { AuthExtras } from "@/components/auth/auth-extras";
@@ -81,11 +80,6 @@ export default function LoginPage() {
               );
             })}
           </ol>
-        </div>
-
-        {/* Bottom Disclaimer */}
-        <div className="relative z-10 pt-6 max-w-md">
-          <p className="text-caption text-muted/90 leading-relaxed">{REVIEW_DISCLAIMER}</p>
         </div>
       </section>
 
@@ -188,10 +182,6 @@ export default function LoginPage() {
 
             {/* Auth extras: demo logins (render only when enabled on the server) */}
             <AuthExtras />
-
-            <p className="text-caption mt-6 text-center text-muted/80 lg:hidden leading-relaxed">
-              {REVIEW_DISCLAIMER}
-            </p>
           </div>
         </div>
 

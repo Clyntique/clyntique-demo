@@ -3,7 +3,6 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Brand, BrandMark } from "@/components/layout/brand";
-import { REVIEW_DISCLAIMER } from "@/lib/workflow/labels";
 import { SignupForm } from "@/components/auth/signup-form";
 import { clientSignupEnabled } from "@/lib/auth/registration";
 
@@ -51,11 +50,6 @@ export default function SignupPage() {
               Submit creatives, attach evidence, and track approvals in one workspace.
             </h1>
           </div>
-        </div>
-
-        {/* Bottom Disclaimer */}
-        <div className="relative z-10 pt-6 max-w-md">
-          <p className="text-caption text-muted/90 leading-relaxed">{REVIEW_DISCLAIMER}</p>
         </div>
       </section>
 
@@ -143,10 +137,6 @@ export default function SignupPage() {
                 </Link>
               </p>
             </div>
-
-            <p className="text-caption mt-6 text-center text-muted/80 lg:hidden leading-relaxed">
-              {REVIEW_DISCLAIMER}
-            </p>
           </div>
         </div>
 
