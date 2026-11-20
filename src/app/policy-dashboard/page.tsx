@@ -5,6 +5,7 @@ import { MarketingFooter } from "@/components/marketing/footer";
 import { GlobalPolicyDashboardView } from "@/components/policy/global-policy-dashboard-view";
 import { PageSkeleton } from "@/components/views/page-skeleton";
 import type { PolicyRule } from "@/lib/policy/types";
+import { toPublicPolicyRules } from "@/lib/policy/public-rules";
 
 export const metadata: Metadata = {
   title: "Global Policy Dashboard · Clyntique",
@@ -32,7 +33,9 @@ async function StandalonePolicyDashboardData() {
   let dbRules: PolicyRule[] = [];
   try {
     const { getDbPolicyRules } = await import("@/lib/policy/db");
-    dbRules = await getDbPolicyRules();
+    // Public page: unpublished drafts, staff names and internal notes must
+    // never leave the server (see src/lib/policy/public-rules.ts).
+    dbRules = toPublicPolicyRules(await getDbPolicyRules());
   } catch {
     dbRules = [];
   }
